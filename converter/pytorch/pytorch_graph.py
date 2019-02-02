@@ -107,11 +107,9 @@ class PytorchGraph(Graph):
         """
         build graph for pytorch 0.4.0
         """
-
         import re
         # construct graph
         dummy_input = torch.autograd.Variable(torch.randn(shape), requires_grad=False)
-
 
         with self.set_training(self.model, False):
             trace, output = torch.jit.get_trace_graph(self.model, (dummy_input, ))

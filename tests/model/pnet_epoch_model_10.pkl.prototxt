@@ -1,0 +1,133 @@
+layer {
+  name: "data"
+  type: "Input"
+  top: "data"
+  input_param {
+    shape {
+      dim: 1
+      dim: 3
+      dim: 12
+      dim: 12
+    }
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnConv2dn0n16"
+  type: "Convolution"
+  bottom: "data"
+  top: "PNetnSequentialnprenlayernnConv2dn0n16"
+  convolution_param {
+    num_output: 10
+    bias_term: true
+    pad: 0
+    kernel_size: 3
+    group: 1
+    stride: 1
+    dilation: 1
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnPReLUn1n17"
+  type: "PReLU"
+  bottom: "PNetnSequentialnprenlayernnConv2dn0n16"
+  top: "PNetnSequentialnprenlayernnPReLUn1n17"
+  prelu_param {
+    channel_shared: true
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnMaxPool2dn2n18"
+  type: "Pooling"
+  bottom: "PNetnSequentialnprenlayernnPReLUn1n17"
+  top: "PNetnSequentialnprenlayernnMaxPool2dn2n18"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+    pad: 0
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnConv2dn3n20"
+  type: "Convolution"
+  bottom: "PNetnSequentialnprenlayernnMaxPool2dn2n18"
+  top: "PNetnSequentialnprenlayernnConv2dn3n20"
+  convolution_param {
+    num_output: 16
+    bias_term: true
+    pad: 0
+    kernel_size: 3
+    group: 1
+    stride: 1
+    dilation: 1
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnPReLUn4n21"
+  type: "PReLU"
+  bottom: "PNetnSequentialnprenlayernnConv2dn3n20"
+  top: "PNetnSequentialnprenlayernnPReLUn4n21"
+  prelu_param {
+    channel_shared: true
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnConv2dn5n22"
+  type: "Convolution"
+  bottom: "PNetnSequentialnprenlayernnPReLUn4n21"
+  top: "PNetnSequentialnprenlayernnConv2dn5n22"
+  convolution_param {
+    num_output: 32
+    bias_term: true
+    pad: 0
+    kernel_size: 3
+    group: 1
+    stride: 1
+    dilation: 1
+  }
+}
+layer {
+  name: "PNetnSequentialnprenlayernnPReLUn6n23"
+  type: "PReLU"
+  bottom: "PNetnSequentialnprenlayernnConv2dn5n22"
+  top: "PNetnSequentialnprenlayernnPReLUn6n23"
+  prelu_param {
+    channel_shared: true
+  }
+}
+layer {
+  name: "PNetnConv2dnconv4n1n24"
+  type: "Convolution"
+  bottom: "PNetnSequentialnprenlayernnPReLUn6n23"
+  top: "PNetnConv2dnconv4n1n24"
+  convolution_param {
+    num_output: 1
+    bias_term: true
+    pad: 0
+    kernel_size: 1
+    group: 1
+    stride: 1
+    dilation: 1
+  }
+}
+layer {
+  name: "PNetnConv2dnconv4n2n26"
+  type: "Convolution"
+  bottom: "PNetnSequentialnprenlayernnPReLUn6n23"
+  top: "PNetnConv2dnconv4n2n26"
+  convolution_param {
+    num_output: 4
+    bias_term: true
+    pad: 0
+    kernel_size: 1
+    group: 1
+    stride: 1
+    dilation: 1
+  }
+}
+layer {
+  name: "PNet25"
+  type: "Sigmoid"
+  bottom: "PNetnConv2dnconv4n1n24"
+  top: "PNet25"
+}

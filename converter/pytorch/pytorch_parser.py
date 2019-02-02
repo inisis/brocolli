@@ -7,7 +7,8 @@ import os
 import numpy as np
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
-import caffe_pb2 as pb2
+import caffe.proto.caffe_pb2 as pb2
+# import caffe_pb2 as pb2
 import torch
 import torchvision
 
@@ -186,14 +187,15 @@ class PytorchParser(Parser):
         weight = self.state_dict[weights_name]
 
         weight = weight.numpy()
-        dim = weight.ndim - 2
 
-        weight = np.transpose(weight, list(range(2, dim + 2)) + [1, 0])
+        # dim = weight.ndim - 2
+
+        # weight = np.transpose(weight, list(range(2, dim + 2)) + [1, 0])
 
         self.set_weight(source_node.name, 'weights', weight)
         kwargs['kernel_shape'] = list(weight.shape)
 
-        layer.convolution_param.num_output = list(weight.shape)[3]
+        layer.convolution_param.num_output = list(weight.shape)[0]
 
         # handle bias
         if bias_name in self.state_dict:
@@ -234,7 +236,7 @@ class PytorchParser(Parser):
         dim = weight.ndim
 
         layer.prelu_param.channel_shared = True if dim == 1 else False
-        layer.blobs.extend([as_blob(weight)])
+        layer.blobs.extend([as_blob(weight[0])])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -242,6 +244,7 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+
         return layer
 
     def rename_MaxPooling(self, source_node):
