@@ -28,7 +28,18 @@ class PytorchParser(Parser):
     'onnx::Conv': 'Conv',
     'onnx::Sigmoid': 'Sigmoid',
     'onnx::PRelu': 'PRelu',
-    'aten::max_pool2d': 'MaxPooling'
+    'onnx::BatchNormalization': 'BatchNormalization',
+    'onnx::Relu': 'Relu',
+    'onnx::MaxPool': 'MaxPool',
+    'onnx::Add': 'Add',
+    'onnx::AveragePool': 'AvgPool',
+    'onnx::Flatten': 'Flatten',
+    'onnx::Gemm': 'FullyConnected',
+    'onnx::Dropout': 'Dropout',
+    'onnx::LogSoftmax': 'Softmax',
+
+    'aten::max_pool2d': 'MaxPooling',
+    'aten::adaptive_avg_pool2d': 'AvgPooling'
 
     # TODO
 }
@@ -87,7 +98,12 @@ class PytorchParser(Parser):
             if hasattr(self, "rename_" + node_type):
                 func = getattr(self, "rename_" + node_type)
                 layer_data = func(current_node)
-                caffe_net.append(layer_data)
+                if(node_type == "BatchNormalization"):
+                    caffe_net.append(layer_data[0])
+                    caffe_net.append(layer_data[1])
+                    # caffe_net.append(layer_data)
+                else:
+                    caffe_net.append(layer_data)
 
             else:
                 self.rename_UNKNOWN(current_node)
@@ -180,17 +196,12 @@ class PytorchParser(Parser):
         kwargs['group'] = attr['group']
         layer.convolution_param.group = attr['group']
 
-
         bias_name = '{0}.bias'.format(source_node.weights_name)
         weights_name = '{0}.weight'.format(source_node.weights_name)
 
         weight = self.state_dict[weights_name]
 
         weight = weight.numpy()
-
-        # dim = weight.ndim - 2
-
-        # weight = np.transpose(weight, list(range(2, dim + 2)) + [1, 0])
 
         self.set_weight(source_node.name, 'weights', weight)
         kwargs['kernel_shape'] = list(weight.shape)
@@ -255,14 +266,6 @@ class PytorchParser(Parser):
 
         layer.pooling_param.pool = pb2.PoolingParameter.MAX
 
-        # dilation
-        # if 'dilations' in attr:
-        #     kwargs['dilations'] = [1] + attr['dilations'] + [1]
-        #     layer.pooling_param.dilation.extend([attr['dilations'][0]])
-        # else:
-        #     kwargs['dilations'] = [1] + [1, 1] + [1]
-        #     layer.pooling_param.dilation.extend(1)
-
         if len(attr['padding']) == 4:
             kwargs['padding'] = [0] + attr['padding'][0:2] + [0, 0] + attr['padding'][2:] + [0]
             if attr['padding'][0] == attr['padding'][1]:
@@ -271,7 +274,7 @@ class PytorchParser(Parser):
                 layer.pooling_param.pad_h = attr['padding'][0]
                 layer.pooling_param.pad_w = attr['padding'][1]
         elif len(attr['padding']) == 2:
-            kwargs['padding'] = ( [0] + attr['padding'][0:2] + [0] ) *2
+            kwargs['padding'] = ([0] + attr['padding'][0:2] + [0]) * 2
             if attr['padding'][0] == attr['padding'][1]:
                 layer.pooling_param.pad = attr['padding'][0]
             else:
@@ -302,6 +305,80 @@ class PytorchParser(Parser):
 
         if 'ceil_mode' not in attr:
             kwargs['ceil_mode'] = 0
+            if attr['padding'][0] == attr['padding'][1]:
+                if attr['stride'][0] > 1 and attr['padding'][0] > 0:
+                    layer.pooling_param.pad = attr['padding'][0] - 1
+            else:
+                if attr['stride'][0] > 1 and attr['padding'][0] > 0:
+                    layer.pooling_param.pad_h = attr['padding'][0] - 1
+                if attr['stride'][1] > 1 and attr['padding'][1] > 0:
+                    layer.pooling_param.pad_w = attr['padding'][1] - 1
+        else:
+            if attr['ceil_mode'] != 1:
+                if attr['padding'][0] == attr['padding'][1]:
+                    if attr['stride'][0] > 1 and attr['padding'][0] > 0:
+                        layer.pooling_param.pad = attr['padding'][0] - 1
+                else:
+                    if attr['stride'][0] > 1 and attr['padding'][0] > 0:
+                        layer.pooling_param.pad_h = attr['padding'][0] - 1
+                    if attr['stride'][1] > 1 and attr['padding'][1] > 0:
+                        layer.pooling_param.pad_w = attr['padding'][1] - 1
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_AvgPooling(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Pooling"
+
+        layer.pooling_param.pool = pb2.PoolingParameter.AVE
+
+        if len(attr['pads']) == 4:
+            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.pooling_param.pad = attr['pads'][0]
+            else:
+                layer.pooling_param.pad_h = attr['pads'][0]
+                layer.pooling_param.pad_w = attr['pads'][1]
+        elif len(attr['pads']) == 2:
+            kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.pooling_param.pad = attr['pads'][0]
+            else:
+                layer.pooling_param.pad_h = attr['pads'][0]
+                layer.pooling_param.pad_w = attr['pads'][1]
+
+        if 'strides' not in attr:
+            kwargs['strides'] = [1] + [1, 1] + [1]
+            layer.pooling_param.stride = 1
+        else:
+            kwargs['strides'] = [1] + attr['strides'] + [1]
+            if attr['strides'][0] == attr['strides'][1]:
+                layer.pooling_param.stride = attr['strides'][0]
+            else:
+                layer.pooling_param.stride_h = attr['strides'][0]
+                layer.pooling_param.stride_w = attr['strides'][1]
+
+        if 'kernel_shape' not in attr:
+            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
+            layer.pooling_param.kernel_size.extend(1)
+        else:
+            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
+            if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
+                layer.pooling_param.kernel_size = attr['kernel_shape'][0]
+            else:
+                layer.pooling_param.kernel_h = attr['kernel_shape'][0]
+                layer.pooling_param.kernel_w = attr['kernel_shape'][1]
+
+        if 'ceil_mode' not in attr:
+            kwargs['ceil_mode'] = 0
         else:
             if attr['ceil_mode'] != 1:
                 layer.pooling_param.stride_h = attr['strides'][0]
@@ -318,6 +395,307 @@ class PytorchParser(Parser):
     def rename_Sigmoid(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Sigmoid"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_BatchNormalization(self, source_node):
+        attr = source_node.attrs
+
+        layer_bn = pb2.LayerParameter()
+        layer_bn.type = "BatchNorm"
+
+        layer_bn.batch_norm_param.use_global_stats = 1
+        layer_bn.batch_norm_param.eps = attr['epsilon']
+
+        mean_name = '{0}.running_mean'.format(source_node.weights_name)
+        var_name = '{0}.running_var'.format(source_node.weights_name)
+
+        mean = self.state_dict[mean_name].numpy()
+        variance = self.state_dict[var_name].numpy()
+
+        layer_bn.blobs.extend([as_blob(mean), as_blob(variance), as_blob(np.array([1.]))])
+
+        for b in source_node.in_edges:
+            layer_bn.bottom.append(b)
+
+        layer_bn.top.append(source_node.name)
+
+        layer_bn.name = source_node.real_name + '_bn'
+
+        layer_scale = pb2.LayerParameter()
+        layer_scale.type = "Scale"
+
+        bias_name = '{0}.bias'.format(source_node.weights_name)
+        weights_name = '{0}.weight'.format(source_node.weights_name)
+
+        weight = self.state_dict[weights_name].numpy()
+
+        if bias_name in self.state_dict:
+            bias = self.state_dict[bias_name].numpy()
+            layer_scale.scale_param.bias_term = True
+            layer_scale.blobs.extend([as_blob(weight), as_blob(bias)])
+        else:
+            layer_scale.scale_param.bias_term = False
+            layer_scale.blobs.extend([as_blob(weight)])
+
+        layer_scale.bottom.append(source_node.real_name)
+
+        layer_scale.top.append(source_node.name)
+
+        layer_scale.name = source_node.real_name + "_scale"
+
+        return [layer_bn, layer_scale]
+        # return layer_bn
+
+    def rename_Relu(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "ReLU"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_MaxPool(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Pooling"
+
+        layer.pooling_param.pool = pb2.PoolingParameter.MAX
+
+        if len(attr['pads']) == 4:
+            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.pooling_param.pad = attr['pads'][0]
+            else:
+                layer.pooling_param.pad_h = attr['pads'][0]
+                layer.pooling_param.pad_w = attr['pads'][1]
+        elif len(attr['pads']) == 2:
+            kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.pooling_param.pad = attr['pads'][0]
+            else:
+                layer.pooling_param.pad_h = attr['pads'][0]
+                layer.pooling_param.pad_w = attr['pads'][1]
+
+        if 'dilations' not in attr:
+            kwargs['strides'] = [1] + [1, 1] + [1]
+            layer.pooling_param.stride = 1
+        else:
+            kwargs['strides'] = [1] + attr['strides'] + [1]
+            if attr['strides'][0] == attr['strides'][1]:
+                layer.pooling_param.stride = attr['strides'][0]
+            else:
+                layer.pooling_param.stride_h = attr['strides'][0]
+                layer.pooling_param.stride_w = attr['strides'][1]
+
+        if 'strides' not in attr:
+            kwargs['strides'] = [1] + [1, 1] + [1]
+            layer.pooling_param.stride = 1
+        else:
+            kwargs['strides'] = [1] + attr['strides'] + [1]
+            if attr['strides'][0] == attr['strides'][1]:
+                layer.pooling_param.stride = attr['strides'][0]
+            else:
+                layer.pooling_param.stride_h = attr['strides'][0]
+                layer.pooling_param.stride_w = attr['strides'][1]
+
+        if 'kernel_shape' not in attr:
+            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
+            layer.pooling_param.kernel_size.extend(1)
+        else:
+            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
+            if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
+                layer.pooling_param.kernel_size = attr['kernel_shape'][0]
+            else:
+                layer.pooling_param.kernel_h = attr['kernel_shape'][0]
+                layer.pooling_param.kernel_w = attr['kernel_shape'][1]
+
+        if 'ceil_mode' not in attr:
+            kwargs['ceil_mode'] = 0
+            if attr['pads'][0] == attr['pads'][1]:
+                if attr['strides'][0] > 1 and attr['pads'][0] > 0:
+                    layer.pooling_param.pad = attr['pads'][0] - 1
+            else:
+                if attr['strides'][0] > 1 and attr['pads'][0] > 0:
+                    layer.pooling_param.pad_h = attr['pads'][0] - 1
+                if attr['strides'][1] > 1 and attr['pads'][1] > 0:
+                    layer.pooling_param.pad_w = attr['pads'][1] - 1
+        else:
+            if attr['ceil_mode'] != 1:
+                if attr['padding'][0] == attr['pads'][1]:
+                    if attr['strides'][0] > 1 and attr['pads'][0] > 0:
+                        layer.pooling_param.pad = attr['pads'][0] - 1
+                else:
+                    if attr['strides'][0] > 1 and attr['pads'][0] > 0:
+                        layer.pooling_param.pad_h = attr['pads'][0] - 1
+                    if attr['strides'][1] > 1 and attr['pads'][1] > 0:
+                        layer.pooling_param.pad_w = attr['pads'][1] - 1
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Add(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = "Eltwise"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_AvgPool(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Pooling"
+
+        layer.pooling_param.pool = pb2.PoolingParameter.AVE
+
+        if len(attr['pads']) == 4:
+            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.pooling_param.pad = attr['pads'][0]
+            else:
+                layer.pooling_param.pad_h = attr['pads'][0]
+                layer.pooling_param.pad_w = attr['pads'][1]
+        elif len(attr['pads']) == 2:
+            kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.pooling_param.pad = attr['pads'][0]
+            else:
+                layer.pooling_param.pad_h = attr['pads'][0]
+                layer.pooling_param.pad_w = attr['pads'][1]
+
+        if 'strides' not in attr:
+            kwargs['strides'] = [1] + [1, 1] + [1]
+            layer.pooling_param.stride = 1
+        else:
+            kwargs['strides'] = [1] + attr['strides'] + [1]
+            if attr['strides'][0] == attr['strides'][1]:
+                layer.pooling_param.stride = attr['strides'][0]
+            else:
+                layer.pooling_param.stride_h = attr['strides'][0]
+                layer.pooling_param.stride_w = attr['strides'][1]
+
+        if 'kernel_shape' not in attr:
+            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
+            layer.pooling_param.kernel_size.extend(1)
+        else:
+            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
+            if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
+                layer.pooling_param.kernel_size = attr['kernel_shape'][0]
+            else:
+                layer.pooling_param.kernel_h = attr['kernel_shape'][0]
+                layer.pooling_param.kernel_w = attr['kernel_shape'][1]
+
+        if 'ceil_mode' not in attr:
+            kwargs['ceil_mode'] = 0
+        else:
+            if attr['ceil_mode'] != 1:
+                layer.pooling_param.stride_h = attr['strides'][0]
+                layer.pooling_param.stride_w = attr['strides'][1]
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Flatten(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Flatten"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_FullyConnected(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = "InnerProduct"
+
+        bias_name = '{0}.bias'.format(source_node.weights_name)
+        weights_name = '{0}.weight'.format(source_node.weights_name)
+
+        W = self.state_dict[weights_name].numpy().transpose()
+
+        input_channels, output_channels = W.shape
+
+        weight = self.state_dict[weights_name].numpy()
+
+        # weights
+        self.set_weight(source_node.name, 'weights', W )
+
+        # use_bias
+        if bias_name in self.state_dict:
+            bias = self.state_dict[bias_name].numpy()
+            layer.inner_product_param.bias_term = True
+            layer.blobs.extend([as_blob(weight), as_blob(bias)])
+        else:
+            layer.inner_product_param.bias_term = False
+            layer.blobs.extend([as_blob(weight)])
+
+        layer.inner_product_param.num_output = output_channels
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Dropout(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Dropout"
+        layer.dropout_param.dropout_ratio = attr['ratio']
+        # train_only = pb2.NetStateRule()
+        # train_only.phase = pb2.TEST
+        # layer.exclude.extend([train_only])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Softmax(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = 'Softmax'
 
         for b in source_node.in_edges:
             layer.bottom.append(b)

@@ -7,22 +7,44 @@ import sys
 import torch
 import caffe
 import numpy as np
+import torch.nn as nn
+from torchsummary import summary
+from converter.resnet import *
 
 from converter.pytorch.pytorch_parser import PytorchParser
 
-model_file = "model/pnet_epoch_model_10.pkl"
+model_file = "model/resnet.pkl"
 
-parser = PytorchParser("model/pnet_epoch_model_10.pkl", [3, 12, 12])
+model = resnet18(pretrained=True)
+model.eval()
 
-parser.run(model_file)
+# model.bn1.weight.data.fill_(1)
+# model.bn1.bias.data.fill_(0)
 
-model = torch.load(model_file, map_location='cpu')
+dummy_input = torch.autograd.Variable(torch.ones([1, 3, 224, 224]), requires_grad=False)
 
-dummy_input = torch.autograd.Variable(torch.ones([1, 3, 12, 12]), requires_grad=False)
+outputs = []
+def hook(module, input, output):
+    outputs.append(output)
+
+model.maxpool.register_forward_hook(hook)
 
 output = model(dummy_input)
 
+print(outputs)
+
+torch.save(model, 'model/resnet.pkl')
+
+model = torch.load(model_file, map_location='cpu')
+
 print(output)
+
+parser = PytorchParser(model_file, [3, 224, 224])
+#
+parser.run(model_file)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # PyTorch v0.4.0
+summary(model.to(device), (3, 224, 224))
 
 Model_FILE = model_file + '.prototxt'
 
@@ -38,7 +60,7 @@ caffe.set_mode_cpu()
 
 # caffe.set_mode_gpu()
 
-img = np.ones((3, 12, 12))
+img = np.ones((3, 224, 224))
 
 input_data = net.blobs["data"].data[...]
 
@@ -46,4 +68,32 @@ net.blobs['data'].data[...] = img
 
 prediction = net.forward()
 
-print('predicted calss: ', prediction[0].argmax())
+# W = net.params['ResNetnBatchNorm2dnbn1n104_bn'][0].data[...]
+# b = net.params['ResNetnBatchNorm2dnbn1n104_bn'][1].data[...]
+# b2 = net.params['ResNetnBatchNorm2dnbn1n104_bn'][2].data[...]
+#
+# W = net.params['ResNetnBatchNorm2dnbn1n104_scale'][0].data[...]
+# b = net.params['ResNetnBatchNorm2dnbn1n104_scale'][1].data[...]
+
+def print_CNNfeaturemap(net, output_dir):
+    params = list(net.blobs.keys())
+    print (params)
+    for pr in params[0:]:
+        print (pr)
+        res = net.blobs[pr].data[...]
+        pr = pr.replace('/', '_')
+        print (res.shape)
+        for index in range(0,res.shape[0]):
+           if len(res.shape) == 4:
+              filename = os.path.join(output_dir, "%s_output%d_%d_%d_%d_caffe.linear.float"%(pr,index,res.shape[1],res.shape[2],res.shape[3]))
+           elif len(res.shape) == 3:
+              filename = os.path.join(output_dir, "%s_output%d_%d_%d_caffe.linear.float"%(pr, index,res.shape[1],res.shape[2]))
+           elif len(res.shape) == 2:
+              filename = os.path.join(output_dir, "%s_output%d_%d_caffe.linear.float"%(pr,index,res.shape[1]))
+           elif len(res.shape) == 1:
+              filename = os.path.join(output_dir, "%s_output%d_caffe.linear.float"%(pr,index))
+           f = open(filename, 'wb')
+
+           np.savetxt(f, list(res.reshape(-1, 1)))
+
+print_CNNfeaturemap(net, "model/cnn_result")
