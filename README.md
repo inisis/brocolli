@@ -14,6 +14,15 @@ Curently supported layers
 > * PRelu
 > * MaxPooling
 > * Sigmoid
+> * BatchNormalization
+> * Relu
+> * Add
+> * AvgPool
+> * Flatten
+> * FullyConnected
+> * Dropout
+> * Softmax
+
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
