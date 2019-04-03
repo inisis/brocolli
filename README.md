@@ -4,7 +4,7 @@ a pytorch to caffe model converter, it learns from [MMdnn](https://github.com/Mi
 
 # How to
 
-> * pip install torch=0.4.0 torchvision
+> * pip install torch==0.4.0 torchvision
 > * export PYTHONPATH=$PYTHONPATH:/home/desmond/Github/brocolli/
 > * python test_pytorch.py
 
