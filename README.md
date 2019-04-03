@@ -4,7 +4,8 @@ a pytorch to caffe model converter, it learns from [MMdnn](https://github.com/Mi
 
 # How to
 
-> * export PYTHONPATH=$PYTHONPATH:/home/desmond/Github/brocolli/:/home/desmond/Github/DFace/
+> * pip install torch==0.4.0 torchvision
+> * export PYTHONPATH=$PYTHONPATH:/home/desmond/Github/brocolli/
 > * python test_pytorch.py
 
 # Notice 
@@ -14,6 +15,15 @@ Curently supported layers
 > * PRelu
 > * MaxPooling
 > * Sigmoid
+> * BatchNormalization
+> * Relu
+> * Add
+> * AvgPool
+> * Flatten
+> * FullyConnected
+> * Dropout
+> * Softmax
+
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
