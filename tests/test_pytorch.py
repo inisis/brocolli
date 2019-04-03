@@ -10,41 +10,61 @@ import numpy as np
 import torch.nn as nn
 from torchsummary import summary
 from converter.resnet import *
+from converter.ssd import *
 
 from converter.pytorch.pytorch_parser import PytorchParser
 
-model_file = "model/resnet.pkl"
+# model_file = "model/resnet.pkl"
+#
+# model = resnet18(pretrained=True)
+#
+# model.eval()
+#
+# # model.bn1.weight.data.fill_(1)
+# # model.bn1.bias.data.fill_(0)
+#
+# dummy_input = torch.autograd.Variable(torch.ones([1, 3, 224, 224]), requires_grad=False)
+#
+# outputs = []
+# def hook(module, input, output):
+#     outputs.append(output)
+#
+# model.maxpool.register_forward_hook(hook)
+#
+# output = model(dummy_input)
+#
+# print(outputs)
+#
+# torch.save(model, 'model/resnet.pkl')
+#
+# model = torch.load(model_file, map_location='cpu')
+#
+# print(output)
 
-model = resnet18(pretrained=True)
-model.eval()
+model_file = "model/VOC.pkl"
+#
+device = torch.device("cpu") # PyTorch v0.4.0
+ssd_net = build_ssd('train', 300, 21)
+ssd_net.to(device)
 
-# model.bn1.weight.data.fill_(1)
-# model.bn1.bias.data.fill_(0)
+print(ssd_net)
+net = ssd_net
+# ssd_net.load_weights("model/ssd300_COCO_50.pth")
+net.eval()
 
-dummy_input = torch.autograd.Variable(torch.ones([1, 3, 224, 224]), requires_grad=False)
+dummy_input = torch.autograd.Variable(torch.ones([1, 3, 300, 300]), requires_grad=False)
 
-outputs = []
-def hook(module, input, output):
-    outputs.append(output)
+net.to(device)
+output = net(dummy_input)
 
-model.maxpool.register_forward_hook(hook)
+device = torch.device("cuda") # PyTorch v0.4.0
+summary(net.to(device), (3, 300, 300))
 
-output = model(dummy_input)
+torch.save(ssd_net, 'model/VOC.pkl')
 
-print(outputs)
-
-torch.save(model, 'model/resnet.pkl')
-
-model = torch.load(model_file, map_location='cpu')
-
-print(output)
-
-parser = PytorchParser(model_file, [3, 224, 224])
+parser = PytorchParser(model_file, [3, 300, 300])
 #
 parser.run(model_file)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # PyTorch v0.4.0
-summary(model.to(device), (3, 224, 224))
 
 Model_FILE = model_file + '.prototxt'
 
@@ -60,7 +80,7 @@ caffe.set_mode_cpu()
 
 # caffe.set_mode_gpu()
 
-img = np.ones((3, 224, 224))
+img = np.ones((3, 300, 300))
 
 input_data = net.blobs["data"].data[...]
 

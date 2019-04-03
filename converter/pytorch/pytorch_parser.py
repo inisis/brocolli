@@ -37,6 +37,8 @@ class PytorchParser(Parser):
     'onnx::Gemm': 'FullyConnected',
     'onnx::Dropout': 'Dropout',
     'onnx::LogSoftmax': 'Softmax',
+    'onnx::Transpose': 'Permute',
+    'onnx::Constant': 'Constant',
 
     'aten::max_pool2d': 'MaxPooling',
     'aten::adaptive_avg_pool2d': 'AvgPooling'
@@ -701,6 +703,57 @@ class PytorchParser(Parser):
             layer.bottom.append(b)
 
         layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Permute(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Permute"
+
+        if len(attr['perm']) == 4:
+            layer.permute_param.order.extend([attr['perm'][0]])
+            layer.permute_param.order.extend([attr['perm'][1]])
+            layer.permute_param.order.extend([attr['perm'][2]])
+            layer.permute_param.order.extend([attr['perm'][3]])
+
+        weights_name = '{0}.weight'.format(source_node.weights_name)
+
+        weight = self.state_dict[weights_name]
+
+        weight = weight.numpy()
+
+        layer.blobs.extend([as_blob(weight[0])])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Constant(self, source_node):
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Normalize"
+
+        weights_name = '{0}.weight'.format(source_node.weights_name)
+
+        weight = self.state_dict[weights_name]
+
+        weight = weight.numpy()
+
+        layer.blobs.extend([as_blob(weight[0])])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
         layer.name = source_node.real_name
 
         return layer

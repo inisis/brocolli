@@ -119,7 +119,7 @@ class Graph(object):
                 print ("Warning: Graph Construct a self-loop node {}. Ignored.".format(src))
                 return
 
-        # print ('{} --> {}'.format(src, dst))
+        print ('{} --> {}'.format(src, dst))
         if not dst in self.layer_map[src].out_edges:
             self.layer_map[src].out_edges.append(dst)
         if not src in self.layer_map[dst].in_edges:
