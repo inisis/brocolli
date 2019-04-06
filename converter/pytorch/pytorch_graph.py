@@ -160,7 +160,7 @@ class PytorchGraph(Graph):
 
                 # input
                 if flag_l2norm:
-                    self._make_connection('SSDnL2NormnL2Normn96', node_name)
+                    self._make_connection('SSDnSequentialnvggnfrontnnReLUn22n95', node_name)
                     flag_l2norm = False
                     continue
 

@@ -44,15 +44,23 @@ from converter.pytorch.pytorch_parser import PytorchParser
 model_file = "model/VOC.pkl"
 #
 device = torch.device("cpu") # PyTorch v0.4.0
-ssd_net = build_ssd('train', 300, 21)
-ssd_net.to(device)
-
-print(ssd_net)
-net = ssd_net
-# ssd_net.load_weights("model/ssd300_COCO_50.pth")
+# ssd_net = build_ssd('train', 300, 21)
+# ssd_net.to(device)
+#
+# print(ssd_net)
+# net = ssd_net
+# ssd_net.load_weights("model/VOC.pkl")
+net = torch.load("model/VOC.pkl")
 net.eval()
 
 dummy_input = torch.autograd.Variable(torch.ones([1, 3, 300, 300]), requires_grad=False)
+
+outputs = []
+def hook(module, input, output):
+    outputs.append(output)
+
+# net.L2Norm.register_forward_hook(hook)
+net.vgg_back[0].register_forward_hook(hook)
 
 net.to(device)
 output = net(dummy_input)
@@ -60,7 +68,7 @@ output = net(dummy_input)
 device = torch.device("cuda") # PyTorch v0.4.0
 summary(net.to(device), (3, 300, 300))
 
-torch.save(ssd_net, 'model/VOC.pkl')
+# torch.save(net, 'model/VOC.pkl')
 
 parser = PytorchParser(model_file, [3, 300, 300])
 #

@@ -741,13 +741,18 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Normalize"
 
+        layer.norm_param.across_spatial = False
+        layer.norm_param.scale_filler.type = "constant"
+        layer.norm_param.scale_filler.value = 20
+        layer.norm_param.channel_shared = False
+
         weights_name = '{0}.weight'.format(source_node.weights_name)
 
         weight = self.state_dict[weights_name]
 
         weight = weight.numpy()
 
-        layer.blobs.extend([as_blob(weight[0])])
+        layer.blobs.extend([as_blob(weight)])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
