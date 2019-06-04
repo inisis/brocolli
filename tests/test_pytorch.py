@@ -3,16 +3,21 @@ from __future__ import print_function
 
 import os
 import sys
+import argparse
+import json
+from easydict import EasyDict as edict
 
 import torch
-import caffe
 import numpy as np
 import torch.nn as nn
 from torchsummary import summary
-from converter.resnet import *
-from converter.ssd import *
 
+sys.path.append('/home/yaojin/github/caffe/python')
+sys.path.append('/home/yaojin/github/caffe/python/caffe')
+
+import caffe
 from converter.pytorch.pytorch_parser import PytorchParser
+from model.classifier import Classifier
 
 # model_file = "model/resnet.pkl"
 #
@@ -40,37 +45,31 @@ from converter.pytorch.pytorch_parser import PytorchParser
 # model = torch.load(model_file, map_location='cpu')
 #
 # print(output)
+parser = argparse.ArgumentParser(description='test converter')
+parser.add_argument('model_path', default=None, metavar='MODEL_PATH', type=str,
+                    help="Path to the trained models")
+args = parser.parse_args()
+with open(args.model_path+'cfg.json') as f:
+        cfg = edict(json.load(f))
 
-model_file = "model/VOC.pkl"
-#
+model_file = "model/best.pth"
 device = torch.device("cpu") # PyTorch v0.4.0
-# ssd_net = build_ssd('train', 300, 21)
-# ssd_net.to(device)
-#
-# print(ssd_net)
-# net = ssd_net
-# ssd_net.load_weights("model/VOC.pkl")
-net = torch.load("model/VOC.pkl")
+net = Classifier(cfg)
+ckpt = torch.load("model/best.ckpt", map_location=device)
+net.load_state_dict(ckpt['state_dict'], strict=False)
+torch.save(net, model_file)
+
 net.eval()
 
-dummy_input = torch.autograd.Variable(torch.ones([1, 3, 300, 300]), requires_grad=False)
-
-outputs = []
-def hook(module, input, output):
-    outputs.append(output)
-
-# net.L2Norm.register_forward_hook(hook)
-net.vgg_back[0].register_forward_hook(hook)
+dummy_input = torch.autograd.Variable(torch.ones([1, 3, 1024, 1024]), requires_grad=False)
 
 net.to(device)
 output = net(dummy_input)
 
 device = torch.device("cuda") # PyTorch v0.4.0
-summary(net.to(device), (3, 300, 300))
+summary(net.to(device), (3, 1024, 1024))
 
-# torch.save(net, 'model/VOC.pkl')
-
-parser = PytorchParser(model_file, [3, 300, 300])
+parser = PytorchParser(model_file, [3, 1024, 1024])
 #
 parser.run(model_file)
 
