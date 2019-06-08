@@ -4,6 +4,7 @@
 #----------------------------------------------------------------------------------------------
 
 import os
+import math
 import numpy as np
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
@@ -22,6 +23,26 @@ def as_blob(array):
     blob.data.extend(array.astype(float).flat)
     return blob
 
+
+def FillBilinear(ch, k):
+    blob = np.zeros(shape=(ch, 1, k, k))
+
+    """ Create bilinear weights in numpy array """
+    bilinear_kernel = np.zeros([k, k], dtype=np.float32)
+    scale_factor = (k + 1) // 2
+    if k % 2 == 1:
+        center = scale_factor - 1
+    else:
+        center = scale_factor - 0.5
+    for x in range(k):
+        for y in range(k):
+            bilinear_kernel[x, y] = (1 - abs(x - center) / scale_factor) * (1 - abs(y - center) / scale_factor)
+
+    for i in range(ch):
+        blob[i, 0, :, :] = bilinear_kernel
+    return blob
+
+
 class PytorchParser(Parser):
 
     layer_map = {
@@ -39,6 +60,7 @@ class PytorchParser(Parser):
     'onnx::LogSoftmax': 'Softmax',
     'onnx::Transpose': 'Permute',
     'onnx::Constant': 'Constant',
+    'onnx::Upsample': 'Upsample',
 
     'aten::max_pool2d': 'MaxPooling',
     'aten::adaptive_avg_pool2d': 'AvgPooling'
@@ -73,7 +95,6 @@ class PytorchParser(Parser):
             model = torch.load(model_file_name, map_location='cpu')
 
         self.weight_loaded = True
-
         # Build network graph
         self.pytorch_graph = PytorchGraph(model)
         self.input_shape = tuple([1] + input_shape)
@@ -761,4 +782,39 @@ class PytorchParser(Parser):
 
         layer.name = source_node.real_name
 
+        return layer
+
+    def rename_Upsample(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Deconvolution"
+
+        assert attr['height_scale'] == attr['width_scale']
+        factor = int(attr['height_scale'])
+        c = int(attr['channel'])
+        k = 2 * factor - factor % 2
+
+        layer.convolution_param.num_output = c
+        layer.convolution_param.kernel_size.extend([k])
+        layer.convolution_param.stride.extend([factor])
+        layer.convolution_param.pad.extend([int(math.ceil((factor - 1) / 2.))])
+        layer.convolution_param.group = c
+        layer.convolution_param.weight_filler.type = 'bilinear'
+        layer.convolution_param.bias_term = False
+
+        learning_param = pb2.ParamSpec()
+        learning_param.lr_mult = 0
+        learning_param.decay_mult = 0
+        layer.param.extend([learning_param])
+
+        """ Init weight blob of filter kernel """
+        blobs_weight = FillBilinear(c, k)
+        layer.blobs.extend([as_blob(blobs_weight)])
+        
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
         return layer

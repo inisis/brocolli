@@ -54,12 +54,12 @@ class Parser(object):
 
     def save_to_proto(self, net, filename):
         import google.protobuf.text_format
-        with open(filename, 'w') as f:
-            f.write(google.protobuf.text_format.MessageToString(net))
+        with open(filename, 'wb') as f:
+            f.write(google.protobuf.text_format.MessageToString(net).encode())
 
     def save_weights(self, weights, filename):
         import google.protobuf.text_format
-        with open(filename, 'w') as f:
+        with open(filename, 'wb') as f:
             f.write(weights.SerializeToString())
 
 
