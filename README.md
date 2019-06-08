@@ -23,6 +23,7 @@ Curently supported layers
 > * FullyConnected
 > * Dropout
 > * Softmax
+> * Upsample
 
 
 # Contact
