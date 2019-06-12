@@ -40,7 +40,6 @@ dummy_input = torch.ones([1, 3, 1024, 1024])
 outputs = []
 
 def hook(module, input, output):
-        #print(output.data)
         outputs.append(output)
 
 def PrintTorch(net,outputdir="model/torch_result"):
@@ -60,6 +59,7 @@ def PrintTorch(net,outputdir="model/torch_result"):
 
 net.to(device)
 output = net(dummy_input)
+
 device = torch.device("cuda")  # PyTorch v0.4.0
 summary(net.to(device), (3, 1024, 1024))
 
@@ -114,8 +114,7 @@ def print_CNNfeaturemap(net, output_dir):
                                         "%s_output%d_caffe.linear.float"
                                         % (pr, index))
             f = open(filename, 'wb')
-            #print(res.shape)
             np.savetxt(f, list(res.reshape(-1, 1)))
             f.close()
 
-print_CNNfeaturemap(net, "model/cnn_result")
+#print_CNNfeaturemap(net, "model/cnn_result")
