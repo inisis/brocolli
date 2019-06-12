@@ -37,10 +37,29 @@ torch.save(net, model_file)
 net.eval()
 
 dummy_input = torch.ones([1, 3, 1024, 1024])
+outputs = []
+
+def hook(module, input, output):
+        #print(output.data)
+        outputs.append(output)
+
+def PrintTorch(net,outputdir="model/torch_result"):
+
+    for name,moudel in net.named_children():
+        print(name)
+        ff= open(os.path.join(outputdir,name),'wb')
+        handle = moudel.register_forward_hook(hook) 
+        net.to(device)                                                                                   
+        _ = net(dummy_input)
+        handle.remove()
+        out=outputs[0].cpu().detach().numpy()
+        outputs.pop()
+        np.savetxt(ff,list(out.reshape(-1,1)))
+        ff.close()
+#PrintTorch(net)
 
 net.to(device)
 output = net(dummy_input)
-
 device = torch.device("cuda")  # PyTorch v0.4.0
 summary(net.to(device), (3, 1024, 1024))
 
@@ -95,6 +114,8 @@ def print_CNNfeaturemap(net, output_dir):
                                         "%s_output%d_caffe.linear.float"
                                         % (pr, index))
             f = open(filename, 'wb')
+            #print(res.shape)
             np.savetxt(f, list(res.reshape(-1, 1)))
+            f.close()
 
-# print_CNNfeaturemap(net, "model/cnn_result")
+print_CNNfeaturemap(net, "model/cnn_result")
