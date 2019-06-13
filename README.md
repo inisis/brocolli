@@ -28,6 +28,9 @@ Curently supported layers
 > * Softmax
 > * Upsample
 
+Curently supported network
+> * SSD
+> * ResNet
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
