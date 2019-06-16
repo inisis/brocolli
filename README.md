@@ -4,9 +4,9 @@ a pytorch to caffe model converter, it learns from [MMdnn](https://github.com/Mi
 
 # How to
 ## run local
-> * pip install torch==0.4.0 torchvision
+> * pip3 install torch==0.4.0 torchvision==0.2.0
 > * export PYTHONPATH=$PYTHONPATH:/home/desmond/Github/brocolli/
-> * python test_pytorch.py
+> * python3 pytorch_model_converter.py
 
 ## run container
 > * docker pull yaphets4desmond/pytorch_converter_stable
@@ -34,3 +34,4 @@ Curently supported network
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
+- qq group: 597059928
