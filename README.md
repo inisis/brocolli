@@ -27,6 +27,8 @@ Curently supported layers
 > * Dropout
 > * Softmax
 > * Upsample
+> * Permute
+> * Concat
 
 Curently supported network
 > * SSD
