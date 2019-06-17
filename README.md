@@ -33,7 +33,7 @@ Curently supported layers
 > * Concat
 
 Curently supported network
-> * SSD
+> * SSD[https://github.com/inisis/ssd.pytorch]
 > * ResNet
 
 # Contact
