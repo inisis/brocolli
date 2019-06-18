@@ -2,7 +2,6 @@ import os
 import sys
 import argparse
 import json
-import collections
 from easydict import EasyDict as edict
 
 import torch
@@ -10,23 +9,27 @@ torch.set_printoptions(precision=10)
 import numpy as np
 from torchsummary import summary
 
-sys.path.append('/tool/caffe/python')
-sys.path.append('/tool/caffe/python/caffe')
+sys.path.append('/home/desmond/Github/caffe/python')
+sys.path.append('/home/desmond/Github/caffe/python/caffe')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 
-import caffe  # noqa
+from model.classifier import Classifier  # noqa
 from converter.pytorch.pytorch_parser import PytorchParser  # noqa
-from ssd import *
 
 model_file = "pytorch_model/best.pth"
 
 device = torch.device('cpu')  # PyTorch v0.4.0
 
-net = build_ssd('test', size=300, num_classes=21)
+parser = argparse.ArgumentParser(description='Convert model')
+parser.add_argument('cfg_path', default=None, metavar='CFG_PATH', type=str,
+                    help="Path to the config file in yaml format")
 
-model_weights = torch.load('pytorch_model/ssd_300_VOC.pth')
+args = parser.parse_args()
 
-net.load_state_dict(model_weights)
+with open(args.cfg_path) as f:
+    cfg = edict(json.load(f))
+
+net = Classifier(cfg)
 
 torch.save(net, model_file)
 
@@ -39,18 +42,20 @@ net.eval()
 
 # net.backbone.norm1.register_forward_hook(hook)
 
-dummy_input = torch.ones([1, 3, 300, 300])
+dummy_input = torch.ones([1, 3, cfg.long_side, cfg.long_side])
 
 net.to(device)
 output = net(dummy_input)
 
 # print(hook_result)
 
-summary(net, (3, 300, 300), device='cpu')
+summary(net, (3, cfg.long_side, cfg.long_side), device='cpu')
 
 pytorch_parser = PytorchParser(model_file, [3, 300, 300])
 #
 pytorch_parser.run(model_file)
+
+input()
 
 Model_FILE = model_file + '.prototxt'
 
@@ -60,7 +65,7 @@ net = caffe.Classifier(Model_FILE, PRETRAINED)
 
 caffe.set_mode_cpu()
 
-img = np.ones((3, 300, 300))
+img = np.ones((3, cfg.long_side, cfg.long_side))
 
 input_data = net.blobs["data"].data[...]
 

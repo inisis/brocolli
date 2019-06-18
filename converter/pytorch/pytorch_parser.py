@@ -9,9 +9,7 @@ import numpy as np
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
-# import caffe_pb2 as pb2
 import torch
-import torchvision
 
 global caffe_net
 
@@ -62,7 +60,10 @@ class PytorchParser(Parser):
     'onnx::Constant': 'Constant',
     'onnx::Upsample': 'Upsample',
     'onnx::Concat': 'Concat',
-    
+    'onnx::MatMul': 'MatMul',
+    "onnx::ReduceSum": "ReduceSum",
+    "onnx::Div": "Div",
+    "onnx::Mul": "Mul",
 
     'aten::reshape': 'Reshape',
     'aten::max_pool2d': 'MaxPooling',
@@ -801,4 +802,63 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        return layer
+
+    def rename_MatMul(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = "Eltwise"
+        layer.eltwise_param.operation = 0
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_ReduceSum(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Reduction"
+        layer.reduction_param.operation = 1
+        layer.reduction_param.axis = attr['axes'][0]
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+
+    def rename_Div(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Eltwise"
+        layer.eltwise_param.operation = 0
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer
+
+    def rename_Mul(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Eltwise"
+        layer.eltwise_param.operation = 0
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
         return layer
