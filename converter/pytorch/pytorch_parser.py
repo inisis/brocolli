@@ -61,7 +61,10 @@ class PytorchParser(Parser):
     'onnx::Transpose': 'Permute',
     'onnx::Constant': 'Constant',
     'onnx::Upsample': 'Upsample',
+    'onnx::Concat': 'Concat',
+    
 
+    'aten::reshape': 'Reshape',
     'aten::max_pool2d': 'MaxPooling',
     'aten::adaptive_avg_pool2d': 'AvgPooling'
 
@@ -362,51 +365,7 @@ class PytorchParser(Parser):
         layer.type = "Pooling"
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
-
-        if len(attr['pads']) == 4:
-            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
-            if attr['pads'][0] == attr['pads'][1]:
-                layer.pooling_param.pad = attr['pads'][0]
-            else:
-                layer.pooling_param.pad_h = attr['pads'][0]
-                layer.pooling_param.pad_w = attr['pads'][1]
-        elif len(attr['pads']) == 2:
-            kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
-            if attr['pads'][0] == attr['pads'][1]:
-                layer.pooling_param.pad = attr['pads'][0]
-            else:
-                layer.pooling_param.pad_h = attr['pads'][0]
-                layer.pooling_param.pad_w = attr['pads'][1]
-
-        if 'strides' not in attr:
-            kwargs['strides'] = [1] + [1, 1] + [1]
-            layer.pooling_param.stride = 1
-        else:
-            kwargs['strides'] = [1] + attr['strides'] + [1]
-            if attr['strides'][0] == attr['strides'][1]:
-                layer.pooling_param.stride = attr['strides'][0]
-            else:
-                layer.pooling_param.stride_h = attr['strides'][0]
-                layer.pooling_param.stride_w = attr['strides'][1]
-
-        if 'kernel_shape' not in attr:
-            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
-            layer.pooling_param.kernel_size.extend(1)
-        else:
-            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
-            if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
-                layer.pooling_param.kernel_size = attr['kernel_shape'][0]
-            else:
-                layer.pooling_param.kernel_h = attr['kernel_shape'][0]
-                layer.pooling_param.kernel_w = attr['kernel_shape'][1]
-
-        if 'ceil_mode' not in attr:
-            kwargs['ceil_mode'] = 0
-        else:
-            if attr['ceil_mode'] != 1:
-                layer.pooling_param.stride_h = attr['strides'][0]
-                layer.pooling_param.stride_w = attr['strides'][1]
-
+        layer.pooling_param.global_pooling = True
         for b in source_node.in_edges:
             layer.bottom.append(b)
 
@@ -548,7 +507,8 @@ class PytorchParser(Parser):
             kwargs['ceil_mode'] = 0
             if attr['pads'][0] == attr['pads'][1]:
                 if attr['strides'][0] > 1 and attr['pads'][0] > 0:
-                    layer.pooling_param.pad = attr['pads'][0] - 1
+                    # layer.pooling_param.pad = attr['pads'][0] - 1
+                    layer.pooling_param.pad = attr['pads'][0]
             else:
                 if attr['strides'][0] > 1 and attr['pads'][0] > 0:
                     layer.pooling_param.pad_h = attr['pads'][0] - 1
@@ -740,14 +700,6 @@ class PytorchParser(Parser):
             layer.permute_param.order.extend([attr['perm'][2]])
             layer.permute_param.order.extend([attr['perm'][3]])
 
-        weights_name = '{0}.weight'.format(source_node.weights_name)
-
-        weight = self.state_dict[weights_name]
-
-        weight = weight.numpy()
-
-        layer.blobs.extend([as_blob(weight[0])])
-
         for b in source_node.in_edges:
             layer.bottom.append(b)
 
@@ -811,6 +763,38 @@ class PytorchParser(Parser):
         blobs_weight = FillBilinear(c, k)
         layer.blobs.extend([as_blob(blobs_weight)])
         
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer
+
+    def rename_Concat(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Concat"
+        layer.concat_param.axis = attr['axis']
+        
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer
+
+    def rename_Reshape(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        print(attr)
+        layer.type = "Reshape"
+
+        for each in attr['shape']:
+            layer.reshape_param.shape.dim.extend([each])
+            # print(each)
+
         for b in source_node.in_edges:
             layer.bottom.append(b)
 

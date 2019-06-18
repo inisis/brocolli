@@ -1,69 +1,54 @@
-from __future__ import absolute_import
-from __future__ import print_function
-
 import os
 import sys
 import argparse
 import json
+import collections
 from easydict import EasyDict as edict
 
 import torch
+torch.set_printoptions(precision=10)
 import numpy as np
 from torchsummary import summary
 
-sys.path.append('/home/yaojin/github/caffe/python')
-sys.path.append('/home/yaojin/github/caffe/python/caffe')
+sys.path.append('/tool/caffe/python')
+sys.path.append('/tool/caffe/python/caffe')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 
 import caffe  # noqa
 from converter.pytorch.pytorch_parser import PytorchParser  # noqa
-from model.classifier import Classifier  # noqa
+from ssd import *
 
-parser = argparse.ArgumentParser(description='test converter')
-parser.add_argument('model_path', default=None, metavar='MODEL_PATH', type=str,
-                    help="Path to the trained models")
-args = parser.parse_args()
+model_file = "pytorch_model/best.pth"
 
-with open(args.model_path+'cfg.json') as f:
-    cfg = edict(json.load(f))
-
-model_file = "model/best.pth"
 device = torch.device('cpu')  # PyTorch v0.4.0
-net = Classifier(cfg)
-ckpt = torch.load("model/best.ckpt")
-net.load_state_dict(ckpt['state_dict'], strict=False)
+
+net = build_ssd('test', size=300, num_classes=21)
+
+model_weights = torch.load('pytorch_model/ssd_300_VOC.pth')
+
+net.load_state_dict(model_weights)
+
 torch.save(net, model_file)
+
+hook_result = []
+
+def hook(module, input, output):
+    hook_result.append(output)
 
 net.eval()
 
-dummy_input = torch.ones([1, 3, 1024, 1024])
-outputs = []
+# net.backbone.norm1.register_forward_hook(hook)
 
-def hook(module, input, output):
-        outputs.append(output)
-
-def PrintTorch(net,outputdir="model/torch_result"):
-
-    for name,moudel in net.named_children():
-        print(name)
-        ff= open(os.path.join(outputdir,name),'wb')
-        handle = moudel.register_forward_hook(hook) 
-        net.to(device)                                                                                   
-        _ = net(dummy_input)
-        handle.remove()
-        out=outputs[0].cpu().detach().numpy()
-        outputs.pop()
-        np.savetxt(ff,list(out.reshape(-1,1)))
-        ff.close()
-#PrintTorch(net)
+dummy_input = torch.ones([1, 3, 300, 300])
 
 net.to(device)
 output = net(dummy_input)
 
-device = torch.device("cuda")  # PyTorch v0.4.0
-summary(net.to(device), (3, 1024, 1024))
+# print(hook_result)
 
-pytorch_parser = PytorchParser(model_file, [3, 1024, 1024])
+summary(net, (3, 300, 300), device='cpu')
+
+pytorch_parser = PytorchParser(model_file, [3, 300, 300])
 #
 pytorch_parser.run(model_file)
 
@@ -75,9 +60,7 @@ net = caffe.Classifier(Model_FILE, PRETRAINED)
 
 caffe.set_mode_cpu()
 
-# caffe.set_mode_gpu()
-
-img = np.ones((3, 1024, 1024))
+img = np.ones((3, 300, 300))
 
 input_data = net.blobs["data"].data[...]
 
@@ -87,7 +70,6 @@ prediction = net.forward()
 
 print(output)
 print(prediction)
-
 
 def print_CNNfeaturemap(net, output_dir):
     params = list(net.blobs.keys())
@@ -115,6 +97,5 @@ def print_CNNfeaturemap(net, output_dir):
                                         % (pr, index))
             f = open(filename, 'wb')
             np.savetxt(f, list(res.reshape(-1, 1)))
-            f.close()
 
-#print_CNNfeaturemap(net, "model/cnn_result")
+# print_CNNfeaturemap(net, "pytorch_model/cnn_result")

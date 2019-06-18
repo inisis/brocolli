@@ -151,8 +151,11 @@ class PytorchGraph(Graph):
                 node_scope = node.scopeName()
                 node_name = node_scope + node_id
                 node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
-                output_shape_str = re.findall(r'[^()!]+', node.__str__())[1]
-                output_shape = [int(x.replace('!', '')) for x in output_shape_str.split(',')]
+                if 'Dynamic' in node.__str__():
+                    output_shape = [0, 0, 0, 0]
+                else:
+                    output_shape_str = re.findall(r'[^()!]+', node.__str__())[1]
+                    output_shape = [int(x.replace('!', '')) for x in output_shape_str.split(',')]
 
                 self.shape_dict[node_name] = output_shape
                 self.layer_map[node_name] = PytorchGraphNode(node)

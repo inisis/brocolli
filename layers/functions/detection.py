@@ -1,7 +1,8 @@
 import torch
 from torch.autograd import Function
 from ..box_utils import decode, nms
-from converter.data import voc as cfg
+from data import voc as cfg
+
 
 class Detect(Function):
     """At test time, Detect is the final layer of SSD.  Decode location preds,

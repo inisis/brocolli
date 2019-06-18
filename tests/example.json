@@ -1,0 +1,22 @@
+{
+    "conf_layer": "SSD173",
+    "loc_layer": "SSD166",
+    "mbox_source_layers": [
+	"SSDnL2NormnL2Normn96",
+	"SSDnSequentialnvggnbacknnReLUn11n119",
+	"SSDnSequentialnextra2nnReLUn1n123",
+	"SSDnSequentialnextra4nnReLUn1n127",
+	"SSDnSequentialnextra6nnReLUn1n131",
+	"SSDnSequentialnextra8nnReLUn1n135"],
+    "min_sizes": [30, 60, 111, 162, 213, 264],
+    "max_sizes": [60, 111, 162, 213, 264, 315],
+
+    "steps": [8, 16, 32, 64, 100, 300],
+    "aspect_ratios": [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+    "normalizations": [-1, -1, -1, -1, -1, -1],
+    "prior_variance": [0.1, 0.1, 0.2, 0.2],
+    "flip": false,
+    "clip": true,
+    "num_classes": 21,
+    "share_location": true
+}
