@@ -10,6 +10,10 @@ a pytorch to caffe model converter, it learns from [MMdnn](https://github.com/Mi
 > * export PYTHONPATH=$PYTHONPATH:/your/path/to/brocolli/
 > * put your pytorch model in tests/pytorch_model folder
 > * python3 pytorch_model_converter.py
+> * python3 ssd_layer.py example.json pytorch_model/best.pth.prototxt new.prototxt
+> * python3 caffe_test.py
+> * python3 pytorch_test.py
+
 
 ## run container
 > * docker pull yaphets4desmond/pytorch_converter_stable
