@@ -8,6 +8,7 @@ a pytorch to caffe model converter, it learns from [MMdnn](https://github.com/Mi
 > * cd caffe && (revise your dependency to caffe 3) && make pycaffe
 > * pip3 install torch==0.4.0 torchvision==0.2.0
 > * export PYTHONPATH=$PYTHONPATH:/your/path/to/brocolli/
+> * put your pytorch model in tests/pytorch_model folder
 > * python3 pytorch_model_converter.py
 
 ## run container
