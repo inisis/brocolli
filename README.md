@@ -1,6 +1,6 @@
 # brocolli
 
-a pytorch to caffe model converter, it learns from [MMdnn](https://github.com/Microsoft/MMdnn) && [PytorchConverter](https://github.com/starimeL/PytorchConverter). MMdnn only provides tools for pytorch to onnx conversion, but our tool provides direct conversion from pytorch to caffe
+a pytorch to caffe && tensorrt model converter, it learns from [MMdnn](https://github.com/Microsoft/MMdnn) && [PytorchConverter](https://github.com/starimeL/PytorchConverter). MMdnn only provides tools for pytorch to onnx conversion, but our tool provides direct conversion from pytorch to caffe && tensorrt
 
 # How to
 ## run local
