@@ -41,6 +41,7 @@ Curently supported network
 > * [SSD](https://github.com/inisis/ssd.pytorch) [Pretrained Weights](https://pan.baidu.com/s/1SqAt-BldJSffZR_1tuQmIw) 
 提取码：kiaf
 > * ResNet
+> * [MTCNN](https://github.com/inisis/DFace) [Pretrained Weights](https://github.com/inisis/DFace/tree/master/model_store) 
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
