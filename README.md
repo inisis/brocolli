@@ -27,6 +27,7 @@ Curently supported layers
 > * Sigmoid
 > * BatchNormalization
 > * Relu
+> * LeakyRelu
 > * Add
 > * AvgPool
 > * Flatten
@@ -42,6 +43,7 @@ Curently supported network
 提取码：kiaf
 > * ResNet
 > * [MTCNN](https://github.com/inisis/DFace) [Pretrained Weights](https://github.com/inisis/DFace/tree/master/model_store) 
+> * [YOLOV3](https://github.com/eriklindernoren/PyTorch-YOLOv3)
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
