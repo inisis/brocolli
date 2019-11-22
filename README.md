@@ -44,6 +44,7 @@ Curently supported network
 > * ResNet
 > * [MTCNN](https://github.com/inisis/DFace) [Pretrained Weights](https://github.com/inisis/DFace/tree/master/model_store) 
 > * [YOLOV3](https://github.com/eriklindernoren/PyTorch-YOLOv3)
+> * [retinanet](https://github.com/yhenon/pytorch-retinanet)
 
 # Contact
 - Desmond desmond.yao@buaa.edu.cn
