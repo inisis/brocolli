@@ -9,8 +9,6 @@ class Parser(object):
 
     def __init__(self):
         self.weight_loaded = False
-
-        # name --> (weight_name --> ndarray)
         self.weights = dict()
 
 

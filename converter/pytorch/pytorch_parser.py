@@ -54,6 +54,7 @@ class PytorchParser(Parser):
     'onnx::MaxPool': 'MaxPool',
     'onnx::Add': 'Add',
     'onnx::AveragePool': 'AvgPool',
+    'onnx::GlobalAveragePool': 'AvgPooling',
     'onnx::Flatten': 'Flatten',
     'onnx::Gemm': 'FullyConnected',
     'onnx::Dropout': 'Dropout',
@@ -127,7 +128,6 @@ class PytorchParser(Parser):
                 if(node_type == "BatchNormalization"):
                     caffe_net.append(layer_data[0])
                     caffe_net.append(layer_data[1])
-                    # caffe_net.append(layer_data)
                 else:
                     caffe_net.append(layer_data)
 
@@ -224,7 +224,6 @@ class PytorchParser(Parser):
 
         bias_name = '{0}.bias'.format(source_node.weights_name)
         weights_name = '{0}.weight'.format(source_node.weights_name)
-
         weight = self.state_dict[weights_name]
 
         weight = weight.numpy()
@@ -718,14 +717,6 @@ class PytorchParser(Parser):
         layer.norm_param.scale_filler.type = "constant"
         layer.norm_param.scale_filler.value = 20
         layer.norm_param.channel_shared = False
-
-        weights_name = '{0}.weight'.format(source_node.weights_name)
-
-        weight = self.state_dict[weights_name]
-
-        weight = weight.numpy()
-
-        layer.blobs.extend([as_blob(weight)])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)

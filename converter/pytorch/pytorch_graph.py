@@ -2,7 +2,7 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
-
+import re
 from converter.core.graph import GraphNode, Graph
 import torch
 import torch.jit
@@ -13,27 +13,18 @@ from torch.jit import _unique_state_dict
 
 class PytorchGraphNode(GraphNode):
 
-    def __init__(self, layer):
+    def __init__(self, layer, node_id, weights_name):
         self._name = layer.scopeName()
         self._kind = layer.kind()
-        import re
-        node_id = re.search(r"[\d]+", layer.__str__())
-        self.id = node_id.group(0)
-
+        self.id = node_id
         super(PytorchGraphNode, self).__init__(layer)
-        if "L2Norm" not in self.name:
-            self.attrs = {k : layer[k] for k in layer.attributeNames()}
 
-        self.weights_name = '.'.join(
-            re.findall(r'\[([\w\d.]+)\]', self._name)
-        )
+        self.attrs = {k : layer[k] for k in layer.attributeNames()}
+        self.weights_name = weights_name
 
     @property
     def name(self):
         name = self._name + self.id
-        # Scopes created in a nested scope may have initial characters
-        # that are illegal as the initial character of an op name
-        # (viz. '-', '\', '/', and '_').
         name = name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
         return name
 
@@ -46,139 +37,128 @@ class PytorchGraphNode(GraphNode):
         return self.layer
 
 
+class scope_name_workaround(object):
+    def __init__(self):
+        self.backup = None
+
+    def __enter__(self):
+        def _tracing_name(self_, tracing_state):
+            if not tracing_state._traced_module_stack:
+                return None
+            module = tracing_state._traced_module_stack[-1]
+            for name, child in module.named_children():
+                if child is self_:
+                    return name
+            return None
+
+        def _slow_forward(self_, *input, **kwargs):
+            tracing_state = torch._C._get_tracing_state()
+            if not tracing_state or isinstance(self_.forward, torch._C.ScriptMethod):
+                return self_.forward(*input, **kwargs)
+            if not hasattr(tracing_state, '_traced_module_stack'):
+                tracing_state._traced_module_stack = []
+            name = _tracing_name(self_, tracing_state)
+            if name:
+                tracing_state.push_scope('%s[%s]' % (self_._get_name(), name))
+            else:
+                tracing_state.push_scope(self_._get_name())
+            tracing_state._traced_module_stack.append(self_)
+            try:
+                result = self_.forward(*input, **kwargs)
+            finally:
+                tracing_state.pop_scope()
+                tracing_state._traced_module_stack.pop()
+            return result
+
+        self.backup = torch.nn.Module._slow_forward
+        setattr(torch.nn.Module, '_slow_forward', _slow_forward)
+
+    def __exit__(self, type, value, tb):
+        setattr(torch.nn.Module, '_slow_forward', self.backup)
+
+
 class PytorchGraph(Graph):
 
     def __init__(self, model):
-        # sanity check.
         super(PytorchGraph, self).__init__(model)
         self.model = model
+        self.model.eval()
         self.state_dict = _unique_state_dict(self.model)
         self.shape_dict = dict()
+        self.weights_names = list()
+        self.ids = list()
 
-    @staticmethod
-    def _optimize_graph(graph, aten, export_raw_ir=False):
-        # run dce first to eliminate dead parts of the graph that might have been
-        # left behind by things like symbolic_override
+    def get_node_id(self, node):
 
-        torch._C._jit_pass_dce(graph)
-        torch._C._jit_pass_lint(graph)
-
-        torch._C._jit_pass_peephole(graph)
-        torch._C._jit_pass_lint(graph)
-        if not export_raw_ir:
-            graph = torch._C._jit_pass_onnx(graph, aten)
-            torch._C._jit_pass_lint(graph)
-            torch._C._jit_pass_onnx_peephole(graph)
-            torch._C._jit_pass_lint(graph)
-        torch._C._jit_pass_dce(graph)
-        torch._C._jit_pass_lint(graph)
-        graph = torch._C._jit_pass_canonicalize(graph)
-        torch._C._jit_pass_lint(graph)
-        return graph
-
-
-    @staticmethod
-    def get_node_id(node):
-        import re
         node_id = re.search(r"[\d]+", node.__str__())
         return node_id.group(0)
 
-    @contextlib.contextmanager
-    def set_training(self, model, mode):
-        r"""
-        A context manager to temporarily set the training mode of 'model'
-        to 'mode', resetting it when we exit the with-block.  A no-op if
-        mode is None.
-        """
-        if mode is None:
-            yield
-            return
-        old_mode = model.training
-        if old_mode != mode:
-            model.train(mode)
-        try:
-            yield
-        finally:
-            if old_mode != mode:
-                model.train(old_mode)
+    def rename_nodes(self, node, node_id):
+        node_scope = node.scopeName()
+        node_name = node_scope + node_id
+        node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
+        return node_name
 
+    def extract(self, dummy_input):
+        with scope_name_workaround():           
+            trace_graph, torch_out, inputs_states = \
+                torch.jit._get_trace_graph(self.model, (dummy_input, ),  strict=False, _force_outplace=False, _return_inputs_states=True)
+            torch.onnx.utils.warn_on_static_input_change(inputs_states)
+
+            nodes = list(trace_graph.nodes())
+            scopename = []
+            for node in nodes:
+                scopename.append('.'.join(
+                        re.findall(r'\[([\w\d.]+)\]', node.scopeName())
+                    ))
+            self.scope_name = list(dict.fromkeys(scopename))
+
+            trace_graph = torch.onnx.utils._optimize_graph(trace_graph, torch.onnx.OperatorExportTypes.ONNX, params_dict={})
+
+        nodes = list(trace_graph.nodes())
+        for idx, node in enumerate(nodes):
+            node_id = self.get_node_id(node)
+            self.ids.append(node_id)
+            node_name = 'node' + node_id
+            if '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())) == '':
+                self.weights_names.append(self.scope_name[self.scope_name.index(self.weights_names[-1]) + 1])
+            else:
+                self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
+
+        return trace_graph, nodes
 
     def build(self, shape):
-        """
-        build graph for pytorch 0.4.0
-        """
-        import re
-        # construct graph
         dummy_input = torch.autograd.Variable(torch.randn(shape), requires_grad=False)
+        graph, nodes = self.extract(dummy_input)
+        print(nodes)
 
-        with self.set_training(self.model, False):
-            trace, output = torch.jit.get_trace_graph(self.model, (dummy_input, ))
-
-        trace.set_graph(PytorchGraph._optimize_graph(trace.graph(), False))
-        # nodes
-        nodes = list(trace.graph().nodes())
-
-        # input layer
-        # TODO
-
-        # build each layer
-        flag_l2norm = False
-
-        for node in nodes:
-
-            if "L2Norm" in node.__str__():
-                if 'SSDnL2NormnL2Normn96' in self.shape_dict.keys():  # exist
-                    continue
-
-                for k in self.shape_dict.keys():
-                    node_id = PytorchGraph.get_node_id(node)
-                    if str(int(node_id) - 1) in k:
-                        output_shape = self.shape_dict[k]
-                        node_input_name = k
-
-                node_scope = node.scopeName()
-                node_name = node_scope + node_id
-                node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
-
-                self.shape_dict[node_name] = output_shape
-                self.layer_map[node_name] = PytorchGraphNode(node)
-                self.layer_name_map[node_name] = node_name
-
-                self._make_connection(node_input_name, node_name)
-                flag_l2norm = True
+        for node, node_id, weight_name in zip(nodes, self.ids, self.weights_names):
+            node_name = self.rename_nodes(node, node_id)
+            output_str = node.__str__().split('=')[0]
+            output_shape_str = re.findall(r'[^()!]+', output_str)
+            if len(output_shape_str) > 1:
+                output_shape = [int(x.replace('!', '')) if x.strip().isdigit() else None for x in output_shape_str[1].split(',')]
+                output_shape = list(filter(None, output_shape))
             else:
-                node_id = PytorchGraph.get_node_id(node)
-                node_scope = node.scopeName()
-                node_name = node_scope + node_id
-                node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
-                if 'Dynamic' in node.__str__():
-                    output_shape = [0, 0, 0, 0]
-                else:
-                    output_shape_str = re.findall(r'[^()!]+', node.__str__())[1]
-                    output_shape = [int(x.replace('!', '')) for x in output_shape_str.split(',')]
+                output_shape = None
+            self.shape_dict[node_name] = output_shape
+            self.layer_map[node_name] = PytorchGraphNode(node, node_id, weight_name)
+            self.layer_name_map[node_name] = node_name
+            # make connection
+            self.node_connection(graph, node, node_name)       
 
-                self.shape_dict[node_name] = output_shape
-                self.layer_map[node_name] = PytorchGraphNode(node)
-                self.layer_name_map[node_name] = node_name
+        super(PytorchGraph, self).build() 
 
-                # input
-                if flag_l2norm:
-                    self._make_connection('SSDnSequentialnvggnfrontnnReLUn22n95', node_name)
-                    flag_l2norm = False
-                    continue
-
-                for node_input in list(node.inputs()):
-                    if PytorchGraph.get_node_id(node_input.node()) == '107':
-                        self._make_connection('SSDnL2NormnL2Normn96', node_name)
+    def node_connection(self, graph, node, node_name):
+        for node_input in list(node.inputs()):
+            if self.get_node_id(node_input.node()):
+                if node_input.node().scopeName() == '':
+                    if self.get_node_id(node_input.node()) != '1':
+                        node_input_name = self.get_node_id(node_input.node())
+                    else:
                         continue
-
-                for node_input in list(node.inputs()):
-
-                    if PytorchGraph.get_node_id(node_input.node()) and node_input.node().scopeName():
-                        node_input_name = node_input.node().scopeName() + PytorchGraph.get_node_id(node_input.node())
-                        node_input_name = node_input_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
-                        self._make_connection(node_input_name, node_name)
-                        # print(node_input_name ,'->', node_name)
-
-
-        super(PytorchGraph, self).build()
+                else:
+                    node_input_name = node_input.node().scopeName() + self.get_node_id(node_input.node())
+                    node_input_name = node_input_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
+                
+                self._make_connection(node_input_name, node_name)
