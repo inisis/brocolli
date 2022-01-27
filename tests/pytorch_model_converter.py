@@ -2,8 +2,6 @@ import os
 import sys
 import argparse
 import json
-import collections
-from easydict import EasyDict as edict
 
 import torch
 torch.set_printoptions(precision=10)
@@ -45,3 +43,15 @@ prediction = net.forward()
 
 print(output)
 print(prediction)
+
+assert len(output) == len(prediction)
+
+caffe_outname = net.outputs
+
+for idx in range(len(output)):
+    np.testing.assert_allclose(
+        prediction[caffe_outname[idx]].squeeze(),
+        output[idx].detach().numpy(),
+        atol=1e-03,
+    )
+print("accuracy test passed")

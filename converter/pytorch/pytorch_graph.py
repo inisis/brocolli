@@ -130,7 +130,6 @@ class PytorchGraph(Graph):
     def build(self, shape):
         dummy_input = torch.autograd.Variable(torch.randn(shape), requires_grad=False)
         graph, nodes = self.extract(dummy_input)
-        print(nodes)
 
         for node, node_id, weight_name in zip(nodes, self.ids, self.weights_names):
             node_name = self.rename_nodes(node, node_id)
