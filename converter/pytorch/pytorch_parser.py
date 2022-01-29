@@ -554,20 +554,23 @@ class PytorchParser(Parser):
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
 
-        if len(attr['pads']) == 4:
-            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
-            if attr['pads'][0] == attr['pads'][1]:
-                layer.pooling_param.pad = attr['pads'][0]
-            else:
-                layer.pooling_param.pad_h = attr['pads'][0]
-                layer.pooling_param.pad_w = attr['pads'][1]
-        elif len(attr['pads']) == 2:
-            kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
-            if attr['pads'][0] == attr['pads'][1]:
-                layer.pooling_param.pad = attr['pads'][0]
-            else:
-                layer.pooling_param.pad_h = attr['pads'][0]
-                layer.pooling_param.pad_w = attr['pads'][1]
+        if 'pads' not in attr:
+            layer.pooling_param.pad = 0
+        else:
+            if len(attr['pads']) == 4:
+                kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
+                if attr['pads'][0] == attr['pads'][1]:
+                    layer.pooling_param.pad = attr['pads'][0]
+                else:
+                    layer.pooling_param.pad_h = attr['pads'][0]
+                    layer.pooling_param.pad_w = attr['pads'][1]
+            elif len(attr['pads']) == 2:
+                kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
+                if attr['pads'][0] == attr['pads'][1]:
+                    layer.pooling_param.pad = attr['pads'][0]
+                else:
+                    layer.pooling_param.pad_h = attr['pads'][0]
+                    layer.pooling_param.pad_w = attr['pads'][1]
 
         if 'strides' not in attr:
             kwargs['strides'] = [1] + [1, 1] + [1]
