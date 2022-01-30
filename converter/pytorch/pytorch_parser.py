@@ -285,6 +285,7 @@ class PytorchParser(Parser):
 
     def rename_MaxPooling(self, source_node):
         attr = source_node.attrs
+
         kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
@@ -447,7 +448,7 @@ class PytorchParser(Parser):
         return layer
 
     def rename_MaxPool(self, source_node):
-        attr = source_node.attrs
+        attr = source_node.attrs      
         kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
@@ -503,26 +504,9 @@ class PytorchParser(Parser):
                 layer.pooling_param.kernel_w = attr['kernel_shape'][1]
 
         if 'ceil_mode' not in attr:
-            kwargs['ceil_mode'] = 0
-            if attr['pads'][0] == attr['pads'][1]:
-                if attr['strides'][0] > 1 and attr['pads'][0] > 0:
-                    # layer.pooling_param.pad = attr['pads'][0] - 1
-                    layer.pooling_param.pad = attr['pads'][0]
-            else:
-                if attr['strides'][0] > 1 and attr['pads'][0] > 0:
-                    layer.pooling_param.pad_h = attr['pads'][0] - 1
-                if attr['strides'][1] > 1 and attr['pads'][1] > 0:
-                    layer.pooling_param.pad_w = attr['pads'][1] - 1
+            layer.pooling_param.ceil_mode = 0
         else:
-            if attr['ceil_mode'] != 1:
-                if attr['padding'][0] == attr['pads'][1]:
-                    if attr['strides'][0] > 1 and attr['pads'][0] > 0:
-                        layer.pooling_param.pad = attr['pads'][0] - 1
-                else:
-                    if attr['strides'][0] > 1 and attr['pads'][0] > 0:
-                        layer.pooling_param.pad_h = attr['pads'][0] - 1
-                    if attr['strides'][1] > 1 and attr['pads'][1] > 0:
-                        layer.pooling_param.pad_w = attr['pads'][1] - 1
+            layer.pooling_param.ceil_mode = 1
 
         for b in source_node.in_edges:
             layer.bottom.append(b)

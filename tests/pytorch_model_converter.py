@@ -18,7 +18,7 @@ import torchvision.models as models
 model_file = "pytorch_model/best.pth"
 
 device = torch.device('cpu')
-net = models.googlenet(pretrained=False)
+net = models.resnet18(pretrained=False)
 net.eval()
 torch.save(net, model_file)
 
