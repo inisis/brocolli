@@ -25,29 +25,28 @@ class Runner(object):
         self.model = self.model.eval().to(device)
 
         dummy_input = torch.ones(self.shape).to(device)
-        output = self.model(dummy_input)
+        pytorch_output = self.model(dummy_input)
 
         pytorch_parser = PytorchParser(self.model, self.shape)
         pytorch_parser.run(model_file)
 
         prototxt = "tmp/" + self.name + '.prototxt'
         caffemodel = "tmp/" + self.name + '.caffemodel'
-        print(prototxt)
-        print(caffemodel)
+
         self.net = caffe.Net(prototxt, caffe.TEST, weights=caffemodel)
 
         img = np.ones(self.shape)
         self.net.blobs['data'].data[...] = img
-        prediction = self.net.forward()
+        caffe_output = self.net.forward()
 
-        assert len(output) == len(prediction)
+        assert len(pytorch_output) == len(caffe_output)
 
-        caffe_outname = net.outputs
+        caffe_outname = self.net.outputs
 
-        for idx in range(len(output)):
+        for idx in range(len(caffe_output)):
             np.testing.assert_allclose(
-                prediction[caffe_outname[idx]].squeeze(),
-                output[idx].detach().numpy(),
+                caffe_output[caffe_outname[idx]].squeeze(),
+                pytorch_output[idx].detach().numpy(),
                 atol=1e-03,
             )
         print("accuracy test passed")
