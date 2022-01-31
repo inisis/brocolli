@@ -4,6 +4,7 @@
 #----------------------------------------------------------------------------------------------
 
 import numpy as np
+import google.protobuf.text_format
 
 class Parser(object):
 
@@ -16,7 +17,6 @@ class Parser(object):
         text_net, binary_weights = self.gen_IR()
         self.save_to_proto(text_net, dest_path + ".prototxt")
         self.save_weights(binary_weights, dest_path + ".caffemodel")
-        print("succeed")
 
     @property
     def src_graph(self):
@@ -51,12 +51,10 @@ class Parser(object):
 
 
     def save_to_proto(self, net, filename):
-        import google.protobuf.text_format
         with open(filename, 'wb') as f:
             f.write(google.protobuf.text_format.MessageToString(net).encode())
 
     def save_weights(self, weights, filename):
-        import google.protobuf.text_format
         with open(filename, 'wb') as f:
             f.write(weights.SerializeToString())
 

@@ -13,10 +13,6 @@ import caffe.proto.caffe_pb2 as pb2
 import torch
 import torchvision
 
-global caffe_net
-
-caffe_net = []
-
 def as_blob(array):
     blob = pb2.BlobProto()
     blob.shape.dim.extend(array.shape)
@@ -85,19 +81,8 @@ class PytorchParser(Parser):
     # Public Functions #
     ####################
 
-    def __init__(self, model_file_name, input_shape):
-        super(PytorchParser, self).__init__()
-        if not os.path.exists(model_file_name):
-            print("Pytorch model file [{}] is not found.".format(model_file_name))
-            assert False
-        # test
-
-        # cpu: https://github.com/pytorch/pytorch/issues/5286
-        try:
-            model = torch.load(model_file_name, map_location='cpu')
-        except:
-            model = torch.load(model_file_name, map_location='cpu')
-
+    def __init__(self, model, input_shape):
+        super(PytorchParser, self).__init__()     
         self.weight_loaded = True
         # Build network graph
         self.pytorch_graph = PytorchGraph(model)
@@ -105,7 +90,7 @@ class PytorchParser(Parser):
         self.pytorch_graph.build(self.input_shape)
         self.state_dict = self.pytorch_graph.state_dict
         self.shape_dict = self.pytorch_graph.shape_dict
-
+        self.caffe_net = []
 
     def gen_IR(self):
 
@@ -119,17 +104,17 @@ class PytorchParser(Parser):
             if len(bottoms) == 0:
                 func = getattr(self, "rename_Data")
                 layer_data = func()
-                caffe_net.append(layer_data)
+                self.caffe_net.append(layer_data)
                 bottoms.append('data')
 
             if hasattr(self, "rename_" + node_type):
                 func = getattr(self, "rename_" + node_type)
                 layer_data = func(current_node)
                 if(node_type == "BatchNormalization"):
-                    caffe_net.append(layer_data[0])
-                    caffe_net.append(layer_data[1])
+                    self.caffe_net.append(layer_data[0])
+                    self.caffe_net.append(layer_data[1])
                 else:
-                    caffe_net.append(layer_data)
+                    self.caffe_net.append(layer_data)
 
             else:
                 self.rename_UNKNOWN(current_node)
@@ -138,7 +123,7 @@ class PytorchParser(Parser):
 
         binary_weights = pb2.NetParameter()
         binary_weights.CopyFrom(text_net)
-        for layer in caffe_net:
+        for layer in self.caffe_net:
             binary_weights.layer.extend([layer])
             layer_proto = pb2.LayerParameter()
             layer_proto.CopyFrom(layer)
