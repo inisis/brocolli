@@ -20,7 +20,6 @@ def as_blob(array):
     return blob
 
 class PytorchParser(Parser):
-
     layer_map = {
     'onnx::Conv': 'Conv',
     'onnx::Sigmoid': 'Sigmoid',
@@ -45,12 +44,8 @@ class PytorchParser(Parser):
     'onnx::HardSwish': "HardSwish",
     'onnx::HardSigmoid': "HardSigmoid",
     'onnx::Mul': 'Mul',    
-
-    'aten::reshape': 'Reshape',
-    'aten::max_pool2d': 'MaxPooling',
-    'aten::adaptive_avg_pool2d': 'AvgPooling'
-
-    # TODO
+    'onnx::Slice': 'Slice', 
+    'onnx::Softmax': 'Softmax'
 }
 
     ############
@@ -76,21 +71,26 @@ class PytorchParser(Parser):
         self.state_dict = self.pytorch_graph.state_dict
         self.shape_dict = self.pytorch_graph.shape_dict
         self.caffe_net = []
+        self.bottoms = list()
 
     def gen_IR(self):
+        if isinstance(self.input_shape, tuple):
+            for idx, shape in enumerate(self.input_shape):
+                name = "data_" + str(idx)
+                func = getattr(self, "rename_Data")
+                layer_data = func(shape, name)
+                self.caffe_net.append(layer_data)
+                self.bottoms.append(name)
+        else:                                    
+            func = getattr(self, "rename_Data")
+            layer_data = func(self.input_shape, "data")
+            self.caffe_net.append(layer_data)  
+            self.bottoms.append("data") 
 
-        bottoms = []
-        top = []
         for layer in self.src_graph.topological_sort:
             current_node = self.src_graph.get_node(layer)
             onnx_node_type = current_node.type
             node_type = PytorchParser.layer_map[onnx_node_type]
-
-            if len(bottoms) == 0:
-                func = getattr(self, "rename_Data")
-                layer_data = func()
-                self.caffe_net.append(layer_data)
-                bottoms.append('data')
 
             if hasattr(self, "rename_" + node_type):
                 func = getattr(self, "rename_" + node_type)
@@ -100,7 +100,6 @@ class PytorchParser(Parser):
                     self.caffe_net.append(layer_data[1])
                 else:
                     self.caffe_net.append(layer_data)
-
             else:
                 self.rename_UNKNOWN(current_node)
 
@@ -128,14 +127,14 @@ class PytorchParser(Parser):
         print("PyTorch parser has not supported operator [%s] with name [%s]."
               % (source_node.type, source_node.name))
 
-    def rename_Data(self):
+    def rename_Data(self, shape, name):
         layer = pb2.LayerParameter()
         layer.type = 'Input'
         input_shape = pb2.BlobShape()
-        input_shape.dim.extend(self.input_shape)
+        input_shape.dim.extend(shape)
         layer.input_param.shape.extend([input_shape])
-        layer.top.append("data")
-        layer.name = "data"
+        layer.top.append(name)
+        layer.name = name
         return layer
 
     def rename_Conv(self, source_node):
@@ -219,7 +218,7 @@ class PytorchParser(Parser):
             layer.bottom.append(b)
 
         if len(source_node.in_edges) == 0:
-            layer.bottom.append("data")
+            layer.bottom.append(self.bottoms.pop(0))
 
         layer.top.append(source_node.name)
 
@@ -249,81 +248,6 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
 
-        layer.name = source_node.real_name
-
-        return layer
-
-    def rename_MaxPooling(self, source_node):
-        attr = source_node.attrs
-
-        kwargs = dict()
-        layer = pb2.LayerParameter()
-        layer.type = "Pooling"
-
-        layer.pooling_param.pool = pb2.PoolingParameter.MAX
-
-        if len(attr['padding']) == 4:
-            kwargs['padding'] = [0] + attr['padding'][0:2] + [0, 0] + attr['padding'][2:] + [0]
-            if attr['padding'][0] == attr['padding'][1]:
-                layer.pooling_param.pad = [attr['padding'][0]]
-            else:
-                layer.pooling_param.pad_h = attr['padding'][0]
-                layer.pooling_param.pad_w = attr['padding'][1]
-        elif len(attr['padding']) == 2:
-            kwargs['padding'] = ([0] + attr['padding'][0:2] + [0]) * 2
-            if attr['padding'][0] == attr['padding'][1]:
-                layer.pooling_param.pad = attr['padding'][0]
-            else:
-                layer.pooling_param.pad_h = attr['padding'][0]
-                layer.pooling_param.pad_w = attr['padding'][1]
-
-        if 'stride' not in attr:
-            kwargs['stride'] = [1] + [1, 1] + [1]
-            layer.pooling_param.stride = 1
-        else:
-            kwargs['stride'] = [1] + attr['stride'] + [1]
-            if attr['stride'][0] == attr['stride'][1]:
-                layer.pooling_param.stride = attr['stride'][0]
-            else:
-                layer.pooling_param.stride_h = attr['stride'][0]
-                layer.pooling_param.stride_w = attr['stride'][1]
-
-        if 'kernel_size' not in attr:
-            kwargs['kernel_size'] = [1] + [1, 1] + [1]
-            layer.pooling_param.kernel_size.extend(1)
-        else:
-            kwargs['kernel_size'] = [1] + attr['kernel_size'] + [1]
-            if attr['kernel_size'][0] == attr['kernel_size'][1]:
-                layer.pooling_param.kernel_size = attr['kernel_size'][0]
-            else:
-                layer.pooling_param.kernel_h = attr['kernel_size'][0]
-                layer.pooling_param.kernel_w = attr['kernel_size'][1]
-
-        if 'ceil_mode' not in attr:
-            kwargs['ceil_mode'] = 0
-            if attr['padding'][0] == attr['padding'][1]:
-                if attr['stride'][0] > 1 and attr['padding'][0] > 0:
-                    layer.pooling_param.pad = attr['padding'][0] - 1
-            else:
-                if attr['stride'][0] > 1 and attr['padding'][0] > 0:
-                    layer.pooling_param.pad_h = attr['padding'][0] - 1
-                if attr['stride'][1] > 1 and attr['padding'][1] > 0:
-                    layer.pooling_param.pad_w = attr['padding'][1] - 1
-        else:
-            if attr['ceil_mode'] != 1:
-                if attr['padding'][0] == attr['padding'][1]:
-                    if attr['stride'][0] > 1 and attr['padding'][0] > 0:
-                        layer.pooling_param.pad = attr['padding'][0] - 1
-                else:
-                    if attr['stride'][0] > 1 and attr['padding'][0] > 0:
-                        layer.pooling_param.pad_h = attr['padding'][0] - 1
-                    if attr['stride'][1] > 1 and attr['padding'][1] > 0:
-                        layer.pooling_param.pad_w = attr['padding'][1] - 1
-
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
-
-        layer.top.append(source_node.name)
         layer.name = source_node.real_name
 
         return layer
@@ -476,7 +400,7 @@ class PytorchParser(Parser):
         if 'ceil_mode' not in attr:
             layer.pooling_param.ceil_mode = 0
         else:
-            layer.pooling_param.ceil_mode = 1
+            layer.pooling_param.ceil_mode = attr['ceil_mode']
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -666,6 +590,7 @@ class PytorchParser(Parser):
         return layer
 
     def rename_Constant(self, source_node):
+        attr = source_node.attrs
         kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Normalize"
@@ -736,7 +661,6 @@ class PytorchParser(Parser):
     def rename_Reshape(self, source_node):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
-        print(attr)
         layer.type = "Reshape"
 
         for each in attr['shape']:
@@ -757,7 +681,10 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Unsqueeze"
 
-        layer.unsqueeze_param.dim = attr['axes'][0]
+        if 'axes' in attr:
+            layer.unsqueeze_param.dim = attr['axes'][0]
+        else:
+            layer.unsqueeze_param.dim = 0            
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -849,3 +776,16 @@ class PytorchParser(Parser):
         layer.name = source_node.real_name
 
         return layer
+
+    def rename_Slice(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Slice"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer        
