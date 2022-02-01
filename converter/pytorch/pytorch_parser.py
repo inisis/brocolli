@@ -35,7 +35,6 @@ class PytorchParser(Parser):
     'onnx::Dropout': 'Dropout',
     'onnx::LogSoftmax': 'Softmax',
     'onnx::Transpose': 'Permute',
-    'onnx::Constant': 'Constant',
     'onnx::Upsample': 'Upsample',
     'onnx::Concat': 'Concat',
     'onnx::Unsqueeze': "Unsqueeze",
@@ -61,13 +60,14 @@ class PytorchParser(Parser):
     # Public Functions #
     ####################
 
-    def __init__(self, model, input_shape):
+    def __init__(self, model, input_shape, opset_version):
         super(PytorchParser, self).__init__()     
         self.weight_loaded = True
         # Build network graph
         self.pytorch_graph = PytorchGraph(model)
         self.input_shape = input_shape
-        self.pytorch_graph.build(self.input_shape)
+        self.opset_version = opset_version
+        self.pytorch_graph.build(self.input_shape, self.opset_version)
         self.state_dict = self.pytorch_graph.state_dict
         self.shape_dict = self.pytorch_graph.shape_dict
         self.caffe_net = []
@@ -589,26 +589,6 @@ class PytorchParser(Parser):
 
         return layer
 
-    def rename_Constant(self, source_node):
-        attr = source_node.attrs
-        kwargs = dict()
-        layer = pb2.LayerParameter()
-        layer.type = "Normalize"
-
-        layer.norm_param.across_spatial = False
-        layer.norm_param.scale_filler.type = "constant"
-        layer.norm_param.scale_filler.value = 20
-        layer.norm_param.channel_shared = False
-
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
-
-        layer.top.append(source_node.name)
-
-        layer.name = source_node.real_name
-
-        return layer
-
     def rename_Upsample(self, source_node):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
@@ -699,7 +679,8 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "ReLU6"
 
-        layer.relu6_param.threshold = attr['max']
+        if 'max' in attr:
+            layer.relu6_param.threshold = attr['max']
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -714,12 +695,12 @@ class PytorchParser(Parser):
 
         layer = pb2.LayerParameter()
         layer.type = "Pad"
-
+        if 'pads' in attr:
         # pad order [x1_begin, x2_begin, ..., x1_end, x2_end, ...]
-        layer.pad_param.pad_u = attr['pads'][2]
-        layer.pad_param.pad_d = attr['pads'][6]
-        layer.pad_param.pad_l = attr['pads'][3]
-        layer.pad_param.pad_r = attr['pads'][7]
+            layer.pad_param.pad_u = attr['pads'][2]
+            layer.pad_param.pad_d = attr['pads'][6]
+            layer.pad_param.pad_l = attr['pads'][3]
+            layer.pad_param.pad_r = attr['pads'][7]
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
