@@ -42,10 +42,10 @@ def test_googlenet(shape = [1, 3, 224, 224]):
     runner = Runner("googlenet", net, shape)
     runner.inference()
 
-# def test_shufflenet(shape = [1, 3, 224, 224]):
-#     net = models.shufflenet_v2_x1_0(pretrained=False)
-#     runner = Runner("shufflenet", net, shape)
-#     runner.inference()
+def test_mobilenet(shape = [1, 3, 224, 224]):
+    net = models.mobilenet_v2(pretrained=False)
+    runner = Runner("mobilenet", net, shape)
+    runner.inference()
 
 
 if __name__ == '__main__':

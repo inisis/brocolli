@@ -59,7 +59,8 @@ class PytorchParser(Parser):
     'onnx::Constant': 'Constant',
     'onnx::Upsample': 'Upsample',
     'onnx::Concat': 'Concat',
-    
+    'onnx::Unsqueeze': "Unsqueeze",
+    'onnx::Clip': "Relu6",
 
     'aten::reshape': 'Reshape',
     'aten::max_pool2d': 'MaxPooling',
@@ -765,3 +766,34 @@ class PytorchParser(Parser):
 
         layer.name = source_node.real_name
         return layer
+
+
+    def rename_Unsqueeze(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Unsqueeze"
+
+        layer.unsqueeze_param.dim = attr['axes'][0]
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer
+
+    def rename_Relu6(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "ReLU6"
+
+        layer.relu6_param.threshold = attr['max']
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer        
