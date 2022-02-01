@@ -42,7 +42,7 @@ def test_googlenet(shape = [1, 3, 224, 224]):
     runner = Runner("googlenet", net, shape)
     runner.inference()
 
-def test_mobilenet(shape = [1, 3, 224, 224]):
+def test_mobilenet_v2(shape = [1, 3, 224, 224]):
     net = models.mobilenet_v2(pretrained=False)
     runner = Runner("mobilenet", net, shape)
     runner.inference()
@@ -57,6 +57,10 @@ def test_densenet161(shape = [1, 3, 224, 224]):
     runner = Runner("densenet161", net, shape)
     runner.inference()    
 
+def test_inception_v3(shape = [1, 3, 299, 299]):
+    net = models.inception_v3(pretrained=False)
+    runner = Runner("inception_v3", net, shape)
+    runner.inference()   
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')

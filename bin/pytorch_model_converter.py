@@ -42,11 +42,10 @@ class Runner(object):
         assert len(pytorch_output) == len(caffe_output)
 
         caffe_outname = self.net.outputs
-
         for idx in range(len(caffe_output)):
             np.testing.assert_allclose(
                 caffe_output[caffe_outname[idx]].squeeze(),
                 pytorch_output[idx].detach().numpy(),
-                atol=1e-03,
+                rtol=1e-03,
             )
         print("accuracy test passed")

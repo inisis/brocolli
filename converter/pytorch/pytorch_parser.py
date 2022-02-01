@@ -805,6 +805,12 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Pad"
 
+        # pad order [x1_begin, x2_begin, ..., x1_end, x2_end, ...]
+        layer.pad_param.pad_u = attr['pads'][2]
+        layer.pad_param.pad_d = attr['pads'][6]
+        layer.pad_param.pad_l = attr['pads'][3]
+        layer.pad_param.pad_r = attr['pads'][7]
+
         for b in source_node.in_edges:
             layer.bottom.append(b)
 
