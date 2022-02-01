@@ -40,3 +40,4 @@ Curently supported network
 > * MobileNet
 > * DenseNet
 > * Inception
+> * VGG
