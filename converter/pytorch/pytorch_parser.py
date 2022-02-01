@@ -61,6 +61,7 @@ class PytorchParser(Parser):
     'onnx::Concat': 'Concat',
     'onnx::Unsqueeze': "Unsqueeze",
     'onnx::Clip': "Relu6",
+    'onnx::Pad': "Pad",
 
     'aten::reshape': 'Reshape',
     'aten::max_pool2d': 'MaxPooling',
@@ -796,4 +797,18 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-        return layer        
+        return layer     
+
+    def rename_Pad(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = "Pad"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer             

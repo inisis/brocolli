@@ -121,7 +121,10 @@ class PytorchGraph(Graph):
             self.ids.append(node_id)
             node_name = 'node' + node_id
             if '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())) == '':
-                self.weights_names.append(self.scope_name[self.scope_name.index(self.weights_names[-1]) + 1])
+                if (self.scope_name.index(self.weights_names[-1])) == len(self.scope_name) - 1:
+                    self.weights_names.append(self.scope_name[self.scope_name.index(self.weights_names[-1])])
+                else:
+                    self.weights_names.append(self.scope_name[self.scope_name.index(self.weights_names[-1]) + 1])
             else:
                 self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
 

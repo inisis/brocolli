@@ -47,6 +47,16 @@ def test_mobilenet(shape = [1, 3, 224, 224]):
     runner = Runner("mobilenet", net, shape)
     runner.inference()
 
+def test_densenet121(shape = [1, 3, 224, 224]):
+    net = models.densenet121(pretrained=False)
+    runner = Runner("densenet121", net, shape)
+    runner.inference()
+
+def test_densenet161(shape = [1, 3, 224, 224]):
+    net = models.densenet161(pretrained=False)
+    runner = Runner("densenet161", net, shape)
+    runner.inference()    
+
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
