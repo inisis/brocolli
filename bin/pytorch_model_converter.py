@@ -23,8 +23,14 @@ class Runner(object):
         model_file = "tmp/" + self.name
         device = torch.device('cpu')
         self.model = self.model.eval().to(device)
+        if isinstance(self.shape, tuple):
+            dummy_input = []
+            for each in self.shape:
+                dummy = torch.ones(each)
+                dummy_input.append(dummy)
+        else:
+            dummy_input = torch.ones(self.shape)
 
-        dummy_input = torch.ones(self.shape).to(device)
         pytorch_output = self.model(dummy_input)
 
         pytorch_parser = PytorchParser(self.model, self.shape)
@@ -35,8 +41,14 @@ class Runner(object):
 
         self.net = caffe.Net(prototxt, caffe.TEST, weights=caffemodel)
 
-        img = np.ones(self.shape)
-        self.net.blobs['data'].data[...] = img
+        if isinstance(self.shape, tuple):
+            for idx, each in enumerate(self.shape):
+                img = np.ones(each)
+                self.net.blobs['data_' + str(idx)].data[...] = img
+        else:
+            img = np.ones(self.shape)
+            self.net.blobs['data'].data[...] = img
+
         caffe_output = self.net.forward()
 
         assert len(pytorch_output) == len(caffe_output)
