@@ -46,6 +46,7 @@ class Runner(object):
             np.testing.assert_allclose(
                 caffe_output[caffe_outname[idx]].squeeze(),
                 pytorch_output[idx].detach().numpy(),
-                rtol=1e-03,
+                rtol=1e-7,
+                atol=1e-03,
             )
         print("accuracy test passed")

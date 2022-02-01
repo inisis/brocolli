@@ -19,26 +19,6 @@ def as_blob(array):
     blob.data.extend(array.astype(float).flat)
     return blob
 
-
-def FillBilinear(ch, k):
-    blob = np.zeros(shape=(ch, 1, k, k))
-
-    """ Create bilinear weights in numpy array """
-    bilinear_kernel = np.zeros([k, k], dtype=np.float32)
-    scale_factor = (k + 1) // 2
-    if k % 2 == 1:
-        center = scale_factor - 1
-    else:
-        center = scale_factor - 0.5
-    for x in range(k):
-        for y in range(k):
-            bilinear_kernel[x, y] = (1 - abs(x - center) / scale_factor) * (1 - abs(y - center) / scale_factor)
-
-    for i in range(ch):
-        blob[i, 0, :, :] = bilinear_kernel
-    return blob
-
-
 class PytorchParser(Parser):
 
     layer_map = {
@@ -62,6 +42,9 @@ class PytorchParser(Parser):
     'onnx::Unsqueeze': "Unsqueeze",
     'onnx::Clip': "Relu6",
     'onnx::Pad': "Pad",
+    'onnx::HardSwish': "HardSwish",
+    'onnx::HardSigmoid': "HardSigmoid",
+    'onnx::Mul': 'Mul',    
 
     'aten::reshape': 'Reshape',
     'aten::max_pool2d': 'MaxPooling',
@@ -817,4 +800,52 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-        return layer             
+        return layer   
+
+    def rename_HardSwish(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = "HardSwish"
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer      
+
+    def rename_HardSigmoid(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "HardSigmoid"
+
+        if 'alpha' in attr:
+            layer.hardsigmoid_param.alpha = attr['alpha']
+        if 'beta' in attr:
+            layer.hardsigmoid_param.beta = attr['beta']
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer            
+
+    def rename_Mul(self, source_node):
+        attr = source_node.attrs
+
+        layer = pb2.LayerParameter()
+        layer.type = "Eltwise"
+
+        layer.eltwise_param.operation = 0
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer

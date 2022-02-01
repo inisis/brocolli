@@ -12,14 +12,6 @@ import warnings
 
 import torchvision.models as models
 
-
-
-import os
-
-os.environ[
-    "GLOG_minloglevel"
-] = "3"  # 0 - debug 1 - info (still a LOT of outputs) 2 - warnings 3 - errors
-
 from bin.pytorch_model_converter import Runner
 
 def test_alexnet(shape = [1, 3, 224, 224]):
@@ -45,6 +37,11 @@ def test_googlenet(shape = [1, 3, 224, 224]):
 def test_mobilenet_v2(shape = [1, 3, 224, 224]):
     net = models.mobilenet_v2(pretrained=False)
     runner = Runner("mobilenet", net, shape)
+    runner.inference()
+
+def test_mobilenet_v3(shape = [1, 3, 224, 224]):
+    net = models.mobilenet_v3_small(pretrained=False)
+    runner = Runner("mobilenet_v3", net, shape)
     runner.inference()
 
 def test_densenet121(shape = [1, 3, 224, 224]):

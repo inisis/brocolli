@@ -100,7 +100,8 @@ class PytorchGraph(Graph):
         return node_name
 
     def extract(self, dummy_input):
-        with scope_name_workaround():           
+        with scope_name_workaround():
+            torch.onnx.symbolic_helper._set_opset_version(13)        
             trace_graph, torch_out, inputs_states = \
                 torch.jit._get_trace_graph(self.model, (dummy_input, ),  strict=False, _force_outplace=False, _return_inputs_states=True)
             torch.onnx.utils.warn_on_static_input_change(inputs_states)
