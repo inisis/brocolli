@@ -132,8 +132,15 @@ class PytorchGraph(Graph):
         return trace_graph, nodes
 
     def build(self, shape):
-        dummy_input = torch.autograd.Variable(torch.randn(shape), requires_grad=False)
-        graph, nodes = self.extract(dummy_input)
+        if isinstance(shape, tuple):
+            dummy_input = []
+            for each in shape:
+                dummy = torch.ones(each)
+                dummy_input.append(dummy)
+            graph, nodes = self.extract(dummy_input)
+        else:
+            dummy_input = torch.ones(shape)
+            graph, nodes = self.extract(dummy_input)
 
         for node, node_id, weight_name in zip(nodes, self.ids, self.weights_names):
             node_name = self.rename_nodes(node, node_id)
