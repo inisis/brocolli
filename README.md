@@ -23,13 +23,20 @@ Curently supported layers
 > * Upsample
 > * Permute
 > * Concat
-
+> * Unsqueeze
+> * Relu6
+> * Pad
+> * HardSwish
+> * HardSigmoid
+> * Mul    
 
 Curently supported network
 > * [SSD](https://github.com/inisis/ssd.pytorch) [Pretrained Weights](https://pan.baidu.com/s/1SqAt-BldJSffZR_1tuQmIw) 
 提取码：kiaf
+> * AlexNet
 > * ResNet
 > * GoogleNet
-> * [MTCNN](https://github.com/inisis/DFace) [Pretrained Weights](https://github.com/inisis/DFace/tree/master/model_store) 
-> * [YOLOV3](https://github.com/eriklindernoren/PyTorch-YOLOv3)
-> * [retinanet](https://github.com/yhenon/pytorch-retinanet)
+> * SqueezeNet
+> * MobileNet
+> * DenseNet
+> * Inception
