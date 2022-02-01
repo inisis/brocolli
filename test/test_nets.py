@@ -59,6 +59,12 @@ def test_inception_v3(shape = [1, 3, 299, 299]):
     runner = Runner("inception_v3", net, shape)
     runner.inference()   
 
+def test_vgg16(shape = [1, 3, 224, 224]):
+    net = models.vgg16(pretrained=False)
+    runner = Runner("vgg16", net, shape)
+    runner.inference()  
+
+
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
     pytest.main(['-p', 'no:warnings', '-v', 'test'])
