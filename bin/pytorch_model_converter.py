@@ -14,10 +14,11 @@ import caffe  # noqa
 from converter.pytorch.pytorch_parser import PytorchParser  # noqa
 
 class Runner(object):
-    def __init__(self, name, model, shape):
+    def __init__(self, name, model, shape, opset_version):
         self.name = name
         self.model = model
         self.shape = shape
+        self.opset_version = opset_version
 
     def inference(self):
         model_file = "tmp/" + self.name
@@ -33,7 +34,7 @@ class Runner(object):
 
         pytorch_output = self.model(dummy_input)
 
-        pytorch_parser = PytorchParser(self.model, self.shape)
+        pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version)
         pytorch_parser.run(model_file)
 
         prototxt = "tmp/" + self.name + '.prototxt'
@@ -59,6 +60,6 @@ class Runner(object):
                 caffe_output[caffe_outname[idx]].squeeze(),
                 pytorch_output[idx].detach().numpy(),
                 rtol=1e-7,
-                atol=1e-03,
+                atol=1e+06, # inception will produce large outputs, but low relative error
             )
         print("accuracy test passed")

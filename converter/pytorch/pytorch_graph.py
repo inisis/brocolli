@@ -99,9 +99,9 @@ class PytorchGraph(Graph):
         node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
         return node_name
 
-    def extract(self, dummy_input):
+    def extract(self, dummy_input, opset_version):
         with scope_name_workaround():
-            torch.onnx.symbolic_helper._set_opset_version(13)        
+            torch.onnx.symbolic_helper._set_opset_version(opset_version)        
             trace_graph, torch_out, inputs_states = \
                 torch.jit._get_trace_graph(self.model, (dummy_input, ),  strict=False, _force_outplace=False, _return_inputs_states=True)
             torch.onnx.utils.warn_on_static_input_change(inputs_states)
@@ -131,16 +131,16 @@ class PytorchGraph(Graph):
 
         return trace_graph, nodes
 
-    def build(self, shape):
+    def build(self, shape, opset_version):
         if isinstance(shape, tuple):
             dummy_input = []
             for each in shape:
                 dummy = torch.ones(each)
                 dummy_input.append(dummy)
-            graph, nodes = self.extract(dummy_input)
+            graph, nodes = self.extract(dummy_input, opset_version)
         else:
             dummy_input = torch.ones(shape)
-            graph, nodes = self.extract(dummy_input)
+            graph, nodes = self.extract(dummy_input, opset_version)
 
         for node, node_id, weight_name in zip(nodes, self.ids, self.weights_names):
             node_name = self.rename_nodes(node, node_id)
