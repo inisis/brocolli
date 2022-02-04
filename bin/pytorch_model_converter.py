@@ -4,9 +4,9 @@ import argparse
 import json
 
 import torch
-torch.set_printoptions(precision=10)
+torch.manual_seed(0)
 import numpy as np
-from torchsummary import summary
+np.random.seed(0)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 
@@ -20,10 +20,10 @@ class Runner(object):
         self.shape = shape
         self.opset_version = opset_version
 
-    def inference(self):
-        model_file = "tmp/" + self.name
-        device = torch.device('cpu')
-        self.model = self.model.eval().to(device)
+    def pyotrch_inference(self):
+        self.model_file = "tmp/" + self.name
+        self.device = torch.device('cpu')
+        self.model = self.model.eval().to(self.device)
         if isinstance(self.shape, tuple):
             dummy_input = []
             for each in self.shape:
@@ -32,11 +32,17 @@ class Runner(object):
         else:
             dummy_input = torch.ones(self.shape)
 
-        pytorch_output = self.model(dummy_input)
+        self.pytorch_output = self.model(dummy_input)
+        
+    def convert(self, model=None):
+        if model == None:
+            pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version)
+            pytorch_parser.run(self.model_file)
+        else:
+            pytorch_parser = PytorchParser(model.eval().to(self.device), self.shape, self.opset_version)
+            pytorch_parser.run(self.model_file)                        
 
-        pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version)
-        pytorch_parser.run(model_file)
-
+    def caffe_inference(self):
         prototxt = "tmp/" + self.name + '.prototxt'
         caffemodel = "tmp/" + self.name + '.caffemodel'
 
@@ -50,15 +56,16 @@ class Runner(object):
             img = np.ones(self.shape)
             self.net.blobs['data'].data[...] = img
 
-        caffe_output = self.net.forward()
+        self.caffe_output = self.net.forward()
 
-        assert len(pytorch_output) == len(caffe_output)
+    def check_result(self):
+        assert len(self.pytorch_output) == len(self.caffe_output)
 
         caffe_outname = self.net.outputs
-        for idx in range(len(caffe_output)):
+        for idx in range(len(self.caffe_output)):
             np.testing.assert_allclose(
-                caffe_output[caffe_outname[idx]].squeeze(),
-                pytorch_output[idx].detach().numpy(),
+                self.caffe_output[caffe_outname[idx]].flatten(),
+                self.pytorch_output[idx].detach().numpy().flatten(),
                 rtol=1e-7,
                 atol=1e+06, # inception will produce large outputs, but low relative error
             )
