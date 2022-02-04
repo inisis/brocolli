@@ -44,7 +44,11 @@ class PytorchParser(Parser):
     'onnx::HardSigmoid': "HardSigmoid",
     'onnx::Mul': 'Mul',    
     'onnx::Slice': 'Slice', 
-    'onnx::Softmax': 'Softmax'
+    'onnx::Softmax': 'Softmax',
+    'onnx::Constant': 'Constant',
+    'onnx::Reshape': 'Reshape',
+    'onnx::Split': 'Split',
+    'onnx::LpNormalization': 'LpNormalization'
 }
 
     ############
@@ -351,7 +355,7 @@ class PytorchParser(Parser):
 
         if len(attr['pads']) == 4:
             kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
-            if attr['pads'][0] == attr['pads'][1]:
+            if attr['pads'][0] == attr['pads'][1] and attr['pads'][2] == attr['pads'][3]:
                 layer.pooling_param.pad = attr['pads'][0]
             else:
                 layer.pooling_param.pad_h = attr['pads'][0]
@@ -542,9 +546,6 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Dropout"
         layer.dropout_param.dropout_ratio = attr['ratio']
-        # train_only = pb2.NetStateRule()
-        # train_only.phase = pb2.TEST
-        # layer.exclude.extend([train_only])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -645,7 +646,6 @@ class PytorchParser(Parser):
 
         for each in attr['shape']:
             layer.reshape_param.shape.dim.extend([each])
-            # print(each)
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -770,3 +770,86 @@ class PytorchParser(Parser):
         layer.name = source_node.real_name
 
         return layer        
+
+    def rename_Constant(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Normalize"
+
+        layer.norm_param.across_spatial = False
+        layer.norm_param.scale_filler.type = "constant"
+        layer.norm_param.scale_filler.value = 20
+        layer.norm_param.channel_shared = False
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+
+        return layer   
+
+    def rename_Reshape(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Reshape"
+
+        if 'shape' in attr:
+            for each in attr['shape']:
+                layer.reshape_param.shape.dim.extend([each])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer        
+
+    def rename_Split(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Slice"
+
+        layer.slice_param.axis = attr['axis']
+        sum_ = 0
+        for each in attr['split']:
+            sum_ = sum_ + each
+            layer.slice_param.slice_point.extend([sum_])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer                          
+
+    def rename_LpNormalization(self, source_node):
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Normalize"
+
+        layer.norm_param.across_spatial = False
+        layer.norm_param.scale_filler.type = "constant"
+        layer.norm_param.scale_filler.value = 20
+        layer.norm_param.channel_shared = False
+
+        weights_name = '{0}.weight'.format(source_node.weights_name)
+
+        weight = self.state_dict[weights_name]
+
+        weight = weight.numpy().squeeze()
+
+        layer.blobs.extend([as_blob(weight)])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+
+        return layer             
