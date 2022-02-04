@@ -54,6 +54,12 @@ def test_mobilenet_v2(shape = [1, 3, 224, 224], opset_version=9):
     runner.check_result()
 
 def test_mobilenet_v3(shape = [1, 3, 224, 224], opset_version=13):
+    '''
+    symbolic_opset13.py
+    @parse_args("v")
+    def hardswish(g, self):
+        return g.op("HardSwish", self)
+    '''
     net = models.mobilenet_v3_small(pretrained=False)
     runner = Runner("mobilenet_v3", net, shape, opset_version)
     runner.pyotrch_inference()
@@ -94,6 +100,12 @@ def test_vgg16(shape = [1, 3, 224, 224], opset_version=9):
     runner.check_result()
 
 def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13):
+    '''
+    symbolic_opset13.py
+    @parse_args('v', 'v', 'v', 'i', 'i', 'i')
+    def linalg_norm(g, self):
+        return g.op("LpNormalization", self)
+    '''    
     from models.ssd import build_ssd
     net = build_ssd("export")
     # import torch
