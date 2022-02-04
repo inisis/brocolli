@@ -29,6 +29,7 @@ Curently supported layers
 > * HardSwish
 > * HardSigmoid
 > * Mul    
+> * Slice 
 
 Curently supported network
 > * [SSD](https://github.com/inisis/ssd.pytorch) [Pretrained Weights](https://pan.baidu.com/s/1SqAt-BldJSffZR_1tuQmIw) 
