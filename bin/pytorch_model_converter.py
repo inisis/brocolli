@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import argparse
 import json
@@ -20,7 +21,7 @@ class Runner(object):
         self.shape = shape
         self.opset_version = opset_version
 
-    def pyotrch_inference(self):
+    def pyotrch_inference(self, generate_onnx=False):
         self.model_file = "tmp/" + self.name
         self.device = torch.device('cpu')
         self.model = self.model.eval().to(self.device)
@@ -33,6 +34,9 @@ class Runner(object):
             dummy_input = torch.ones(self.shape)
 
         self.pytorch_output = self.model(dummy_input)
+ 
+        if generate_onnx:
+            torch.onnx.export(self.model, dummy_input, self.name + ".onnx")
         
     def convert(self, model=None):
         if model == None:
@@ -62,6 +66,8 @@ class Runner(object):
         assert len(self.pytorch_output) == len(self.caffe_output)
 
         caffe_outname = self.net.outputs
+        caffe_outname = sorted(caffe_outname, key=lambda x: re.findall(r'\d+', x)[-1])
+
         for idx in range(len(self.caffe_output)):
             np.testing.assert_allclose(
                 self.caffe_output[caffe_outname[idx]].flatten(),
