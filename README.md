@@ -43,3 +43,9 @@ Curently supported network
 > * Inception
 > * VGG
 > * YoloV3
+
+
+# Contact
+ QQ Group: 597059928
+ 
+ ![image](imgs/QGRPOUP.png)
