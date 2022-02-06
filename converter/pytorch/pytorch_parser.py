@@ -9,7 +9,7 @@ import numpy as np
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
-# import caffe_pb2 as pb2
+
 import torch
 import torchvision
 
@@ -48,7 +48,10 @@ class PytorchParser(Parser):
     'onnx::Constant': 'Constant',
     'onnx::Reshape': 'Reshape',
     'onnx::Split': 'Split',
-    'onnx::LpNormalization': 'LpNormalization'
+    'onnx::LpNormalization': 'LpNormalization',
+    'prim::Constant': 'Constant',
+    'onnx::LeakyRelu': 'LeakyRelu',
+    'onnx::Resize': 'Upsample'
 }
 
     ############
@@ -76,6 +79,7 @@ class PytorchParser(Parser):
         self.shape_dict = self.pytorch_graph.shape_dict
         self.caffe_net = []
         self.bottoms = list()
+        self.skip_layer = dict()
 
     def gen_IR(self):
         if isinstance(self.input_shape, tuple):
@@ -99,7 +103,9 @@ class PytorchParser(Parser):
             if hasattr(self, "rename_" + node_type):
                 func = getattr(self, "rename_" + node_type)
                 layer_data = func(current_node)
-                if(node_type == "BatchNormalization"):
+                if layer_data == None:
+                    continue
+                elif(node_type == "BatchNormalization"):
                     self.caffe_net.append(layer_data[0])
                     self.caffe_net.append(layer_data[1])
                 else:
@@ -593,33 +599,14 @@ class PytorchParser(Parser):
     def rename_Upsample(self, source_node):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
-        layer.type = "Deconvolution"
+        layer.type = "Upsample"
 
-        assert attr['height_scale'] == attr['width_scale']
-        factor = int(attr['height_scale'])
-        c = int(attr['channel'])
-        k = 2 * factor - factor % 2
-
-        layer.convolution_param.num_output = c
-        layer.convolution_param.kernel_size.extend([k])
-        layer.convolution_param.stride.extend([factor])
-        layer.convolution_param.pad.extend([int(math.ceil((factor - 1) / 2.))])
-        layer.convolution_param.group = c
-        layer.convolution_param.weight_filler.type = 'bilinear'
-        layer.convolution_param.bias_term = False
-
-        learning_param = pb2.ParamSpec()
-        learning_param.lr_mult = 0
-        learning_param.decay_mult = 0
-        layer.param.extend([learning_param])
-
-        """ Init weight blob of filter kernel """
-        blobs_weight = FillBilinear(c, k)
-        layer.blobs.extend([as_blob(blobs_weight)])
-        
         for b in source_node.in_edges:
+            if b in self.skip_layer.keys():
+                if not isinstance(self.skip_layer[b], type(None)):
+                    layer.upsample_param.scale = int(self.skip_layer[b][0])
+                continue
             layer.bottom.append(b)
-
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
@@ -631,12 +618,24 @@ class PytorchParser(Parser):
         layer.type = "Concat"
         layer.concat_param.axis = attr['axis']
         
+        skip_all = False
         for b in source_node.in_edges:
-            layer.bottom.append(b)
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            from itertools import chain
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None                
 
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+
         return layer
 
     def rename_Reshape(self, source_node):
@@ -654,7 +653,6 @@ class PytorchParser(Parser):
 
         layer.name = source_node.real_name
         return layer
-
 
     def rename_Unsqueeze(self, source_node):
         attr = source_node.attrs
@@ -773,23 +771,13 @@ class PytorchParser(Parser):
 
     def rename_Constant(self, source_node):
         attr = source_node.attrs
-        kwargs = dict()
-        layer = pb2.LayerParameter()
-        layer.type = "Normalize"
 
-        layer.norm_param.across_spatial = False
-        layer.norm_param.scale_filler.type = "constant"
-        layer.norm_param.scale_filler.value = 20
-        layer.norm_param.channel_shared = False
+        if 'value' in attr:
+            self.skip_layer[source_node.real_name] = attr['value'].numpy()
+        else:    
+            self.skip_layer[source_node.real_name] = None        
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
-
-        layer.top.append(source_node.name)
-
-        layer.name = source_node.real_name
-
-        return layer   
+        return None
 
     def rename_Reshape(self, source_node):
         attr = source_node.attrs
@@ -828,7 +816,6 @@ class PytorchParser(Parser):
         return layer                          
 
     def rename_LpNormalization(self, source_node):
-        kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Normalize"
 
@@ -838,11 +825,8 @@ class PytorchParser(Parser):
         layer.norm_param.channel_shared = False
 
         weights_name = '{0}.weight'.format(source_node.weights_name)
-
         weight = self.state_dict[weights_name]
-
         weight = weight.numpy().squeeze()
-
         layer.blobs.extend([as_blob(weight)])
 
         for b in source_node.in_edges:
@@ -853,3 +837,17 @@ class PytorchParser(Parser):
         layer.name = source_node.real_name
 
         return layer             
+
+    def rename_LeakyRelu(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "ReLU"
+        layer.relu_param.negative_slope = attr['alpha']
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer        
