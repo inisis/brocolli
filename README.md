@@ -30,10 +30,10 @@ Curently supported layers
 > * HardSigmoid
 > * Mul    
 > * Slice 
+> * L2Normalization
 
 Curently supported network
-> * [SSD](https://github.com/inisis/ssd.pytorch) [Pretrained Weights](https://pan.baidu.com/s/1SqAt-BldJSffZR_1tuQmIw) 
-提取码：kiaf
+> * SSD
 > * AlexNet
 > * ResNet
 > * GoogleNet
@@ -42,3 +42,4 @@ Curently supported network
 > * DenseNet
 > * Inception
 > * VGG
+> * YoloV3
