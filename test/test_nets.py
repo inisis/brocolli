@@ -120,6 +120,15 @@ def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13):
     runner.caffe_inference()
     runner.check_result()
 
+def test_yolov3(shape = [1, 3, 416, 416], opset_version=13):
+    from models.yolov3 import Darknet
+    net = Darknet('models/yolov3.cfg', 416)
+    runner = Runner("yolov3", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.caffe_inference()
+    runner.check_result()
+
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
