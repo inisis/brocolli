@@ -46,7 +46,7 @@ class scope_name_workaround(object):
             if not tracing_state._traced_module_stack:
                 return None
             module = tracing_state._traced_module_stack[-1]
-            for name, child in module.named_children():
+            for name, child in module.named_modules():
                 if child is self_:
                     return name
             return None
@@ -113,7 +113,6 @@ class PytorchGraph(Graph):
                         re.findall(r'\[([\w\d.]+)\]', node.scopeName())
                     ))
             self.scope_name = list(dict.fromkeys(scopename))
-
             trace_graph = torch.onnx.utils._optimize_graph(trace_graph, torch.onnx.OperatorExportTypes.ONNX, params_dict={})
 
         nodes = list(trace_graph.nodes())
