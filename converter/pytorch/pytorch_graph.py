@@ -160,11 +160,10 @@ class PytorchGraph(Graph):
 
     def node_connection(self, graph, node, node_name):
         for node_input in list(node.inputs()):
-            if self.get_node_id(node_input.node()):
+            node_input_name = self.get_node_id(node_input.node())
+            if node_input_name:
                 if node_input.node().scopeName() == '':
-                    if self.get_node_id(node_input.node()) != '1':
-                        node_input_name = self.get_node_id(node_input.node())
-                    else:
+                    if node_input_name == '1':
                         continue
                 else:
                     node_input_name = node_input.node().scopeName() + self.get_node_id(node_input.node())
