@@ -114,7 +114,6 @@ class PytorchParser(Parser):
                 self.rename_UNKNOWN(current_node)
 
         text_net = pb2.NetParameter()
-
         binary_weights = pb2.NetParameter()
         binary_weights.CopyFrom(text_net)
         for layer in self.caffe_net:
@@ -638,22 +637,6 @@ class PytorchParser(Parser):
 
         return layer
 
-    def rename_Reshape(self, source_node):
-        attr = source_node.attrs
-        layer = pb2.LayerParameter()
-        layer.type = "Reshape"
-
-        for each in attr['shape']:
-            layer.reshape_param.shape.dim.extend([each])
-
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
-
-        layer.top.append(source_node.name)
-
-        layer.name = source_node.real_name
-        return layer
-
     def rename_Unsqueeze(self, source_node):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
@@ -789,6 +772,11 @@ class PytorchParser(Parser):
                 layer.reshape_param.shape.dim.extend([each])
 
         for b in source_node.in_edges:
+            if b in self.skip_layer.keys():
+                if not isinstance(self.skip_layer[b], type(None)):
+                    for each in self.skip_layer[b]:
+                        layer.reshape_param.shape.dim.extend([each])
+                continue
             layer.bottom.append(b)
 
         layer.top.append(source_node.name)

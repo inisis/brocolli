@@ -277,8 +277,11 @@ class SSD(nn.Module):
         conf.append(self.conf_conv6(sources[5]).permute(0, 2, 3, 1).contiguous())
         
         # (N, A*K, H, W) to (N, H, W, A*K) to (N, HWAK)
-        loc = torch.cat([torch.flatten(o, start_dim=1) for o in loc], 1)
-        conf = torch.cat([torch.flatten(o, start_dim=1) for o in conf], 1)
+        loc = torch.cat([o.view(int(o.size(0)), -1) for o in loc], 1)
+        conf = torch.cat([o.view(int(o.size(0)), -1) for o in conf], 1)
+        # alternative for the view function
+        # loc = torch.cat([torch.flatten(o, start_dim=1) for o in loc], 1)
+        # conf = torch.cat([torch.flatten(o, start_dim=1) for o in conf], 1)        
 
         if self.phase == "test":
             output = self.detect(
