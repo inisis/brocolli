@@ -89,7 +89,6 @@ class PytorchGraph(Graph):
         self.ids = list()
 
     def get_node_id(self, node):
-
         node_id = re.search(r"[\d]+", node.__str__())
         return node_id.group(0)
 
@@ -160,13 +159,14 @@ class PytorchGraph(Graph):
 
     def node_connection(self, graph, node, node_name):
         for node_input in list(node.inputs()):
-            node_input_name = self.get_node_id(node_input.node())
-            if node_input_name:
+            node_input_id = self.get_node_id(node_input.node())
+            if node_input_id:
                 if node_input.node().scopeName() == '':
-                    if node_input_name == '1':
+                    if node_input_id == '1':
                         continue
+                    else:
+                        node_input_name = self.rename_nodes(node_input.node(), node_input_id)
                 else:
-                    node_input_name = node_input.node().scopeName() + self.get_node_id(node_input.node())
-                    node_input_name = node_input_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
-                
+                    node_input_name = self.rename_nodes(node_input.node(), node_input_id)
+
                 self._make_connection(node_input_name, node_name)
