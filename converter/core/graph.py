@@ -2,10 +2,10 @@ import  collections
 
 class GraphNode(object):
 
-    def __init__(self, layer):
+    def __init__(self, node):
         self.in_edges = list()
         self.out_edges = list()
-        self.layer = layer
+        self.node = node
         self.covered = False
         self.real_name = self.name
 
