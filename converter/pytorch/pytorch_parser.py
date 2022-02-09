@@ -51,7 +51,8 @@ class PytorchParser(Parser):
     'onnx::LpNormalization': 'LpNormalization',
     'prim::Constant': 'Constant',
     'onnx::LeakyRelu': 'LeakyRelu',
-    'onnx::Resize': 'Upsample'
+    'onnx::Resize': 'Upsample',
+    'onnx::ReduceMean': 'ReduceMean'
 }
 
     ############
@@ -791,14 +792,16 @@ class PytorchParser(Parser):
 
         layer.slice_param.axis = attr['axis']
         sum_ = 0
-        for each in attr['split']:
-            sum_ = sum_ + each
+        for idx in range(len(attr['split']) - 1):
+            sum_ = sum_ + attr['split'][idx]
             layer.slice_param.slice_point.extend([sum_])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
-
-        layer.top.append(source_node.name)
+        
+        for output_id in source_node.output_ids:
+            output_id = source_node.output_ids[0] + ':' + output_id
+            layer.top.append(output_id)
 
         layer.name = source_node.real_name
         return layer                          
@@ -838,4 +841,20 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
 
-        return layer        
+        return layer
+
+    def rename_ReduceMean(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+        layer.type = "Pooling"
+
+        layer.pooling_param.pool = pb2.PoolingParameter.AVE
+        layer.pooling_param.global_pooling = True
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+
+        return layer       
