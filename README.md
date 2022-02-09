@@ -45,6 +45,7 @@ Curently supported network
 > * VGG
 > * YoloV3
 > * ShuffleNet
+> * SCNN
 
 
 # Contact

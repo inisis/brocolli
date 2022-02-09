@@ -148,6 +148,16 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9):
     runner.caffe_inference()
     runner.check_result()
 
+def test_scnn(shape = [1, 3, 512, 288], opset_version=9):
+    from models.scnn import SCNN
+    net = SCNN(input_size=[512, 288], pretrained=False)
+
+    runner = Runner("scnn", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.caffe_inference()
+    runner.check_result()
+
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
