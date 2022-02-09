@@ -13,13 +13,13 @@ from torch.jit import _unique_state_dict
 
 class PytorchGraphNode(GraphNode):
 
-    def __init__(self, layer, node_id, weights_name):
-        self._name = layer.scopeName()
-        self._kind = layer.kind()
+    def __init__(self, node, node_id, weights_name):
+        self._name = node.scopeName()
+        self._kind = node.kind()
         self.id = node_id
-        super(PytorchGraphNode, self).__init__(layer)
+        super(PytorchGraphNode, self).__init__(node)
 
-        self.attrs = {k : layer[k] for k in layer.attributeNames()}
+        self.attrs = {k : node[k] for k in node.attributeNames()}
         self.weights_name = weights_name
 
     @property
@@ -33,8 +33,9 @@ class PytorchGraphNode(GraphNode):
         return self._kind
 
     @property
-    def pytorch_layer(self):
-        return self.layer
+    def output_ids(self):
+        node_id = re.findall(r"%([\d]+) :", self.node.__str__())
+        return node_id
 
 
 class scope_name_workaround(object):
@@ -91,6 +92,10 @@ class PytorchGraph(Graph):
     def get_node_id(self, node):
         node_id = re.search(r"[\d]+", node.__str__())
         return node_id.group(0)
+
+    def get_input_id(self, node):
+        node_id = re.findall(r"%([\d]+) :", node.__str__())
+        return node_id
 
     def rename_nodes(self, node, node_id):
         node_scope = node.scopeName()
@@ -159,14 +164,25 @@ class PytorchGraph(Graph):
 
     def node_connection(self, graph, node, node_name):
         for node_input in list(node.inputs()):
-            node_input_id = self.get_node_id(node_input.node())
-            if node_input_id:
-                if node_input.node().scopeName() == '':
-                    if node_input_id == '1':
+            node_input = node_input.node()
+            node_id = self.get_node_id(node_input)
+            if node_id:
+                if node_input.scopeName() == '':
+                    if node_id == '1':
                         continue
                     else:
-                        node_input_name = self.rename_nodes(node_input.node(), node_input_id)
+                        input_ids = self.get_input_id(node_input)
+                        if len(input_ids) == 1:
+                            assert input_ids[0] in node_input.__str__()
+                            node_input_name = self.rename_nodes(node_input, input_ids[0])
+                            self._make_connection(node_input_name, node_name)
+                        else:
+                            for input_id in input_ids:
+                                if input_id in node.__str__():
+                                    input_id = input_ids[0] + ':' + input_id
+                                    node_input_name = self.rename_nodes(node_input, input_id)
+                                    self._make_connection(node_input_name, node_name)
                 else:
-                    node_input_name = self.rename_nodes(node_input.node(), node_input_id)
-
-                self._make_connection(node_input_name, node_name)
+                    node_input_name = self.rename_nodes(node_input, node_id)
+                    self._make_connection(node_input_name, node_name)
+                    
