@@ -31,6 +31,7 @@ Curently supported layers
 > * Mul    
 > * Slice 
 > * L2Normalization
+> * ReduceMean
 
 Curently supported network
 > * SSD
@@ -43,6 +44,7 @@ Curently supported network
 > * Inception
 > * VGG
 > * YoloV3
+> * ShuffleNet
 
 
 # Contact
