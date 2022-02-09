@@ -173,12 +173,12 @@ class PytorchGraph(Graph):
                     else:
                         input_ids = self.get_input_id(node_input)
                         if len(input_ids) == 1:
-                            assert input_ids[0] in node_input.__str__()
+                            assert ("%" + input_ids[0]) in node_input.__str__()
                             node_input_name = self.rename_nodes(node_input, input_ids[0])
                             self._make_connection(node_input_name, node_name)
                         else:
                             for input_id in input_ids:
-                                if input_id in node.__str__():
+                                if ("%" + input_id) in node.__str__():
                                     input_id = input_ids[0] + ':' + input_id
                                     node_input_name = self.rename_nodes(node_input, input_id)
                                     self._make_connection(node_input_name, node_name)
