@@ -32,16 +32,16 @@ class SCNN(nn.Module):
         x = self.backbone(img)
  
         x = self.layer1(x)
-      
-        x = self.message_passing_forward(x)
-        return x          
-        x = self.layer2(x)
 
+        x = self.message_passing_forward(x) 
+        x = self.layer2(x)
+ 
         seg_pred = F.interpolate(x, scale_factor=8, mode='bilinear', align_corners=True)
         x = self.layer3(x)
         x = x.view(-1, self.fc_input_feature)
         exist_pred = self.fc(x)
-        return exist_pred
+
+        return seg_pred, exist_pred
         if seg_gt is not None and exist_gt is not None:
             loss_seg = self.ce_loss(seg_pred, seg_gt)
             loss_exist = self.bce_loss(exist_pred, exist_gt)
