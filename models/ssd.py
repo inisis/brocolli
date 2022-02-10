@@ -130,23 +130,25 @@ class PriorBox(object):
         return output
 
 class L2Norm(nn.Module):
-    def __init__(self,n_channels, scale, export_mode):
+    def __init__(self,n_channels, scale):
         super(L2Norm,self).__init__()
         self.n_channels = n_channels
         self.gamma = scale or None
         self.eps = 1e-10
         self.weight = nn.Parameter(torch.Tensor(1, self.n_channels, 1, 1))
         self.reset_parameters()
-        self.export_mode = export_mode
 
     def reset_parameters(self):
         torch.nn.init.constant_(self.weight, self.gamma)
 
-    def forward(self, x):
-        if self.export_mode:
+    def forward(self, x, export_mode):
+        if export_mode:
             out = torch.linalg.norm(x, dim=0, keepdim=True)  
         else:
-            out = torch.linalg.norm(x, dim=0, keepdim=True) * self.weight  
+            norm = x.pow(2).sum(dim=1, keepdim=True).sqrt()+self.eps
+            #x /= norm
+            x = torch.div(x,norm)
+            out = self.weight * x
         return out
 
 class SSD(nn.Module):
@@ -181,7 +183,7 @@ class SSD(nn.Module):
         self.vgg_front = nn.Sequential(*list(base[:23]))
         self.vgg_back = nn.Sequential(*list(base[23:]))
         # Layer learns to scale the l2 normalized features from conv4_3
-        self.L2Norm = L2Norm(512, 20, export_mode)
+        self.L2Norm = L2Norm(512, 20)
         self.extra1 = nn.Sequential(*list(extras[0:2]))
         self.extra2 = nn.Sequential(*list(extras[2:4]))
         self.extra3 = nn.Sequential(*list(extras[4:6]))
@@ -233,9 +235,9 @@ class SSD(nn.Module):
         conf = list()
 
         x = self.vgg_front(x)
-
-        s = self.L2Norm(x)
-
+        
+        s = self.L2Norm(x, self.export_mode)
+ 
         sources.append(s)
 
         x = self.vgg_back(x)
