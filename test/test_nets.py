@@ -109,15 +109,9 @@ def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13):
     '''    
     from models.ssd import build_ssd
     net = build_ssd("export")
-    # import torch
-    # state_dict = torch.load("test/ssd_300_VOC.pth", map_location=torch.device("cpu"))
-    # state_dict["L2Norm.weight"] = state_dict["L2Norm.weight"].unsqueeze(0).unsqueeze(2).unsqueeze(3)
-    # net.load_state_dict(state_dict)
-
     runner = Runner("ssd300_vgg16", net, shape, opset_version)
-    runner.pyotrch_inference()
-    net_ = build_ssd("export", export_mode=True)
-    runner.convert(net_)
+    runner.pyotrch_inference()  
+    runner.convert(export_mode=True)
     runner.caffe_inference()
     runner.check_result()
 
