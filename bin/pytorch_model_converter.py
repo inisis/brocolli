@@ -38,13 +38,10 @@ class Runner(object):
         if generate_onnx:
             torch.onnx.export(self.model, dummy_input, self.name + ".onnx", opset_version=self.opset_version)
         
-    def convert(self, model=None):
-        if model == None:
-            pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version)
-            pytorch_parser.run(self.model_file)
-        else:
-            pytorch_parser = PytorchParser(model.eval().to(self.device), self.shape, self.opset_version)
-            pytorch_parser.run(self.model_file)                        
+    def convert(self, export_mode=False):
+        self.model.export_mode = export_mode
+        pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version)
+        pytorch_parser.run(self.model_file)
 
     def caffe_inference(self):
         prototxt = "tmp/" + self.name + '.prototxt'
@@ -72,7 +69,7 @@ class Runner(object):
             np.testing.assert_allclose(
                 self.caffe_output[caffe_outname[idx]].flatten(),
                 self.pytorch_output[idx].detach().numpy().flatten(),
-                rtol=1e-7,
-                atol=1e+06, # inception will produce large outputs, but low relative error
+                rtol=1e-3,
+                atol=1e-3, # inception will produce large outputs, but low relative error
             )
         print("accuracy test passed")
