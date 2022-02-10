@@ -80,10 +80,11 @@ class scope_name_workaround(object):
 
 class PytorchGraph(Graph):
 
-    def __init__(self, model):
-        super(PytorchGraph, self).__init__(model)
+    def __init__(self, model, opset_version):
+        super(PytorchGraph, self).__init__(model, opset_version)
         self.model = model
-        self.model.eval()
+        self.model.eval()        
+        self.opset_version = opset_version
         self.state_dict = _unique_state_dict(self.model)
         self.shape_dict = dict()
         self.weights_names = list()
