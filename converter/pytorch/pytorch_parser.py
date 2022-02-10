@@ -51,8 +51,9 @@ class PytorchParser(Parser):
     'onnx::LpNormalization': 'LpNormalization',
     'prim::Constant': 'Constant',
     'onnx::LeakyRelu': 'LeakyRelu',
-    'onnx::Resize': 'Upsample',
-    'onnx::ReduceMean': 'ReduceMean'
+    'onnx::Resize': 'Resize',
+    'onnx::ReduceMean': 'ReduceMean',
+    'onnx::BilinearInterpolate': 'BilinearInterpolate'
 }
 
     ############
@@ -72,7 +73,7 @@ class PytorchParser(Parser):
         super(PytorchParser, self).__init__()     
         self.weight_loaded = True
         # Build network graph
-        self.pytorch_graph = PytorchGraph(model)
+        self.pytorch_graph = PytorchGraph(model, opset_version)
         self.input_shape = input_shape
         self.opset_version = opset_version
         self.pytorch_graph.build(self.input_shape, self.opset_version)
@@ -829,6 +830,23 @@ class PytorchParser(Parser):
 
         return layer             
 
+    def rename_Resize(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "Upsample"
+
+        for b in source_node.in_edges:
+            if b in self.skip_layer.keys():
+                if not isinstance(self.skip_layer[b], type(None)):
+                    layer.upsample_param.scale = int(self.skip_layer[b][0])
+                continue
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+        return layer
+
     def rename_LeakyRelu(self, source_node):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
@@ -857,4 +875,28 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
 
-        return layer       
+        return layer      
+
+    def rename_BilinearInterpolate(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        if self.opset_version == 9:
+            layer.type = "BilinearInterpolate"
+            layer.bilinear_interpolate_param.align_corners = attr['align_corners']
+
+            for b in source_node.in_edges:
+                if b in self.skip_layer.keys():
+                    if not isinstance(self.skip_layer[b], type(None)):
+                        layer.bilinear_interpolate_param.scale_factor = int(self.skip_layer[b][0])
+                    continue
+                layer.bottom.append(b)
+
+            layer.top.append(source_node.name)
+            layer.name = source_node.real_name
+        
+            return layer  
+        else:
+            raise Exception('Unsupported opset_version: {}'.format(self.opset_versionc))
+
+
+     
