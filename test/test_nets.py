@@ -149,6 +149,21 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9):
     runner.check_result()
 
 def test_scnn(shape = [1, 3, 512, 288], opset_version=9):
+    '''
+    symbolic_opset9.py    
+    def upsample_bilinear2d(g, input, output_size, *args):
+        scales, align_corners = sym_help._get_interpolate_attributes(g, "linear", args)
+        sym_help._interpolate_warning("linear")
+        align_corners = sym_help._maybe_get_scalar(align_corners)    
+        if align_corners:
+            align_corners_ = True
+        else:
+            align_corners_ = False
+        if scales is None:
+            scales = sym_help._interpolate_size_to_scales(g, input, output_size, 4)
+
+    return g.op("BilinearInterpolate", input, scales, mode_s="linear", align_corners_i=align_corners_)    
+    '''
     from models.scnn import SCNN
     net = SCNN(input_size=[512, 288], pretrained=False)
 
