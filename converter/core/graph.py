@@ -25,13 +25,14 @@ class GraphNode(object):
 
 class Graph(object):
 
-    def __init__(self, model):
+    def __init__(self, model, opset_version):
         self.layer_map = collections.OrderedDict()
         self.input_layers = list()
         self.output_layers = list()
         self.layer_name_map = collections.OrderedDict()
         self.topological_sort = list()
         self.model = model
+        self.opset_version = opset_version
 
 
     def build(self):
