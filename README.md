@@ -4,6 +4,11 @@ a pytorch to caffe && tensorrt model converter, our tool provides direct convers
 
 Support 1.9.0 or higher Pytorch
 
+# How to use
+> * clone caffe from https://github.com/inisis/caffe and build
+> * export PYTHONPATH=/path/to/your/caffe/python:$PYTHONPATH
+> * python test/test_nets.py
+
 # Notice 
 
 Curently supported layers
