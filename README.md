@@ -36,7 +36,9 @@ Curently supported layers
 > * Mul    
 > * Slice 
 > * L2Normalization
+> * Resize
 > * ReduceMean
+> * BilinearInterpolate
 
 Curently supported network
 > * SSD
