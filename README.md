@@ -53,6 +53,7 @@ Curently supported network
 > * YoloV3
 > * ShuffleNet
 > * SCNN
+> * SegNet
 
 
 # Contact
