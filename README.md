@@ -39,6 +39,7 @@ Curently supported layers
 > * Resize
 > * ReduceMean
 > * BilinearInterpolate
+> * MaxUnPool
 
 Curently supported network
 > * SSD
