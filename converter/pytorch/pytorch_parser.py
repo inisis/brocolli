@@ -53,7 +53,11 @@ class PytorchParser(Parser):
     'onnx::LeakyRelu': 'LeakyRelu',
     'onnx::Resize': 'Resize',
     'onnx::ReduceMean': 'ReduceMean',
-    'onnx::BilinearInterpolate': 'BilinearInterpolate'
+    'onnx::BilinearInterpolate': 'BilinearInterpolate',
+    'onnx::Shape': 'Skip',
+    'onnx::Gather': 'Skip',
+    'onnx::Sub': 'Skip',
+    'onnx::MaxUnpool': 'MaxUnPool'
 }
 
     ############
@@ -130,13 +134,18 @@ class PytorchParser(Parser):
     ##########
     # Layers #
     ##########
+    def rename_Skip(self, source_node):
+        print("PyTorch parser will skip operator [%s] with name [%s]."
+              % (source_node.type, source_node.name)) 
+   
+        attr = source_node.attrs
 
-    def rename_UNKNOWN(self, source_node):
-        print (source_node.layer)
-        print (source_node.layer.data.size())
-        assert False
-        print("PyTorch parser has not supported operator [%s] with name [%s]."
-              % (source_node.type, source_node.name))
+        if 'value' in attr:
+            self.skip_layer[source_node.real_name] = attr['value'].numpy()
+        else:    
+            self.skip_layer[source_node.real_name] = None        
+
+        return None
 
     def rename_Data(self, shape, name):
         layer = pb2.LayerParameter()
@@ -355,25 +364,27 @@ class PytorchParser(Parser):
     def rename_MaxPool(self, source_node):
         attr = source_node.attrs      
         kwargs = dict()
+
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
         layer.pooling_param.pool = pb2.PoolingParameter.MAX
 
-        if len(attr['pads']) == 4:
-            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
-            if attr['pads'][0] == attr['pads'][1] and attr['pads'][2] == attr['pads'][3]:
-                layer.pooling_param.pad = attr['pads'][0]
-            else:
-                layer.pooling_param.pad_h = attr['pads'][0]
-                layer.pooling_param.pad_w = attr['pads'][1]
-        elif len(attr['pads']) == 2:
-            kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
-            if attr['pads'][0] == attr['pads'][1]:
-                layer.pooling_param.pad = attr['pads'][0]
-            else:
-                layer.pooling_param.pad_h = attr['pads'][0]
-                layer.pooling_param.pad_w = attr['pads'][1]
+        if 'pads' in attr:
+            if len(attr['pads']) == 4:
+                kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
+                if attr['pads'][0] == attr['pads'][1] and attr['pads'][2] == attr['pads'][3]:
+                    layer.pooling_param.pad = attr['pads'][0]
+                else:
+                    layer.pooling_param.pad_h = attr['pads'][0]
+                    layer.pooling_param.pad_w = attr['pads'][1]
+            elif len(attr['pads']) == 2:
+                kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
+                if attr['pads'][0] == attr['pads'][1]:
+                    layer.pooling_param.pad = attr['pads'][0]
+                else:
+                    layer.pooling_param.pad_h = attr['pads'][0]
+                    layer.pooling_param.pad_w = attr['pads'][1]
 
         if 'dilations' not in attr:
             kwargs['strides'] = [1] + [1, 1] + [1]
@@ -415,8 +426,14 @@ class PytorchParser(Parser):
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
+        
+        if len(source_node.output_ids) > 1:
+            for output_id in source_node.output_ids:
+                output_id = source_node.name + ':' + output_id
+                layer.top.append(output_id)
+        else:
+            layer.top.append(source_node.name)
 
-        layer.top.append(source_node.name)
         layer.name = source_node.real_name
 
         return layer
@@ -427,8 +444,18 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Eltwise"
 
+        skip_all = False
         for b in source_node.in_edges:
-            layer.bottom.append(b)
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None  
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
@@ -628,7 +655,6 @@ class PytorchParser(Parser):
                 layer.bottom.append(b)
 
         if skip_all:
-            from itertools import chain
             self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
 
             return None                
@@ -649,8 +675,18 @@ class PytorchParser(Parser):
         else:
             layer.unsqueeze_param.dim = 0            
 
+        skip_all = False
         for b in source_node.in_edges:
-            layer.bottom.append(b)
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None  
 
         layer.top.append(source_node.name)
 
@@ -733,8 +769,18 @@ class PytorchParser(Parser):
 
         layer.eltwise_param.operation = 0
 
+        skip_all = False
         for b in source_node.in_edges:
-            layer.bottom.append(b)
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None  
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
@@ -801,7 +847,7 @@ class PytorchParser(Parser):
             layer.bottom.append(b)
         
         for output_id in source_node.output_ids:
-            output_id = source_node.output_ids[0] + ':' + output_id
+            output_id = source_node.name + ':' + output_id
             layer.top.append(output_id)
 
         layer.name = source_node.real_name
@@ -898,5 +944,21 @@ class PytorchParser(Parser):
         else:
             raise Exception('Unsupported opset_version: {}'.format(self.opset_versionc))
 
+    def rename_MaxUnPool(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
 
+        layer.type = "MaxUnPool"
+        layer.max_unpool_param.dst_h = source_node.output_shape[2]
+        layer.max_unpool_param.dst_w = source_node.output_shape[3]
+
+        for b in source_node.in_edges:
+            if b in self.skip_layer.keys():
+                continue
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+    
+        return layer  
      
