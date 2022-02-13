@@ -13,10 +13,11 @@ from torch.jit import _unique_state_dict
 
 class PytorchGraphNode(GraphNode):
 
-    def __init__(self, node, node_id, weights_name):
+    def __init__(self, node, node_id, weights_name, output_shape):
         self._name = node.scopeName()
         self._kind = node.kind()
         self.id = node_id
+        self.output_shape = output_shape
         super(PytorchGraphNode, self).__init__(node)
 
         self.attrs = {k : node[k] for k in node.attributeNames()}
@@ -156,7 +157,7 @@ class PytorchGraph(Graph):
             else:
                 output_shape = None
             self.shape_dict[node_name] = output_shape
-            self.layer_map[node_name] = PytorchGraphNode(node, node_id, weight_name)
+            self.layer_map[node_name] = PytorchGraphNode(node, node_id, weight_name, output_shape)
             self.layer_name_map[node_name] = node_name
             # make connection
             self.node_connection(graph, node, node_name)       
@@ -184,6 +185,15 @@ class PytorchGraph(Graph):
                                     node_input_name = self.rename_nodes(node_input, input_id)
                                     self._make_connection(node_input_name, node_name)
                 else:
-                    node_input_name = self.rename_nodes(node_input, node_id)
-                    self._make_connection(node_input_name, node_name)
+                    input_ids = self.get_input_id(node_input)
+                    if len(input_ids) == 1:
+                        assert ("%" + input_ids[0]) in node_input.__str__()
+                        node_input_name = self.rename_nodes(node_input, input_ids[0])
+                        self._make_connection(node_input_name, node_name)
+                    else:
+                        for input_id in input_ids:
+                            if ("%" + input_id) in node.__str__():
+                                input_id = input_ids[0] + ':' + input_id
+                                node_input_name = self.rename_nodes(node_input, input_id)
+                                self._make_connection(node_input_name, node_name)
                     
