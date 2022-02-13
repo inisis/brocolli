@@ -2,10 +2,7 @@ import os
 os.environ[
     "GLOG_minloglevel"
 ] = "3"  # 0 - debug 1 - info (still a LOT of outputs) 2 - warnings 3 - errors
-import argparse
-import numpy as np
 
-import caffe
 import pytest
 import warnings
 
@@ -167,7 +164,20 @@ def test_scnn(shape = [1, 3, 512, 288], opset_version=9):
     runner.caffe_inference()
     runner.check_result()
 
+def test_segnet(shape = [1, 3, 360, 480], opset_version=13):
+    '''
+    symbolic_opset13.py  
+    def max_unpool2d(g, self, indices, output_size):
+        return g.op("MaxUnpool", self, indices, output_size)
+    '''
+    from models.segnet import SegNet
+    net = SegNet()
+    runner = Runner("segnet", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.caffe_inference()
+    runner.check_result()
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
-    pytest.main(['-p', 'no:warnings', '-v', 'test'])
+    pytest.main(['-p', 'no:warnings', '-v', 'test/test_nets.py'])
