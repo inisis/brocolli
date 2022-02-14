@@ -55,6 +55,7 @@ Curently supported network
 > * ShuffleNet
 > * SCNN
 > * SegNet
+> * YoloV5
 
 
 # Contact
