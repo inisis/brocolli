@@ -178,6 +178,23 @@ def test_segnet(shape = [1, 3, 360, 480], opset_version=13):
     runner.caffe_inference()
     runner.check_result()
 
+def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
+    '''
+    def parse_model(d, ch):
+
+    elif m is Detect:
+        continue
+    
+    '''
+    import torch
+    net = torch.hub.load('ultralytics/yolov5', 'yolov5l', autoshape=False, pretrained=False, device=torch.device('cpu'))
+    runner = Runner("yolov5", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.caffe_inference()
+    runner.check_result()
+
+
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
     pytest.main(['-p', 'no:warnings', '-v', 'test/test_nets.py'])
