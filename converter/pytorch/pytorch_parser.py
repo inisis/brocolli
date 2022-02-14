@@ -3,15 +3,13 @@
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
 
-import os
-import math
 import numpy as np
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
 
-import torch
-import torchvision
+import torch.nn as nn
+from torch.nn.utils.fusion import fuse_conv_bn_eval
 
 def as_blob(array):
     blob = pb2.BlobProto()
@@ -73,19 +71,35 @@ class PytorchParser(Parser):
     # Public Functions #
     ####################
 
-    def __init__(self, model, input_shape, opset_version):
-        super(PytorchParser, self).__init__()     
-        self.weight_loaded = True
-        # Build network graph
-        self.pytorch_graph = PytorchGraph(model, opset_version)
+    def __init__(self, model, input_shape, opset_version, fuse=False):
+        super(PytorchParser, self).__init__()
+        self.fuse = fuse
+        self.model = model
+        if self.fuse:
+            self.fuse_all_conv_bn(self.model)
+        self.pytorch_graph = PytorchGraph(self.model, opset_version)
         self.input_shape = input_shape
         self.opset_version = opset_version
         self.pytorch_graph.build(self.input_shape, self.opset_version)
         self.state_dict = self.pytorch_graph.state_dict
         self.shape_dict = self.pytorch_graph.shape_dict
+        self.named_type = dict()
         self.caffe_net = []
         self.bottoms = list()
         self.skip_layer = dict()
+
+    def fuse_all_conv_bn(self, model):
+        stack = []
+        for name, module in model.named_children():
+            if list(module.named_children()):
+                self.fuse_all_conv_bn(module)
+                
+            if isinstance(module, nn.BatchNorm2d):
+                if isinstance(stack[-1][1], nn.Conv2d):
+                    setattr(model, stack[-1][0], fuse_conv_bn_eval(stack[-1][1], module))
+                    setattr(model, name, nn.Identity())
+            else:
+                stack.append((name, module))
 
     def gen_IR(self):
         if isinstance(self.input_shape, tuple):
@@ -114,14 +128,24 @@ class PytorchParser(Parser):
                 elif(node_type == "BatchNormalization"):
                     self.caffe_net.append(layer_data[0])
                     self.caffe_net.append(layer_data[1])
+                    self.named_type[layer_data[0].name] = layer_data[0]
+                    self.named_type[layer_data[1].name] = layer_data[1]                  
                 else:
-                    self.caffe_net.append(layer_data)
+                    self.caffe_net.append(layer_data)                    
+                    self.named_type[layer_data.name] = layer_data
             else:
                 self.rename_UNKNOWN(current_node)
 
         text_net = pb2.NetParameter()
         binary_weights = pb2.NetParameter()
         binary_weights.CopyFrom(text_net)
+
+        if self.fuse:
+            for layer in self.caffe_net:
+                if layer.type in ["ReLU"] and self.named_type[layer.bottom[0]].type == "Convolution":
+                    self.named_type[layer.bottom[0]].top[0] = layer.top[0]                
+                    layer.bottom[0] = layer.top[0]
+
         for layer in self.caffe_net:
             binary_weights.layer.extend([layer])
             layer_proto = pb2.LayerParameter()

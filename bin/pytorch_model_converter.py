@@ -15,11 +15,12 @@ import caffe  # noqa
 from converter.pytorch.pytorch_parser import PytorchParser  # noqa
 
 class Runner(object):
-    def __init__(self, name, model, shape, opset_version):
+    def __init__(self, name, model, shape, opset_version, fuse=False):
         self.name = name
         self.model = model
         self.shape = shape
         self.opset_version = opset_version
+        self.fuse = fuse
 
     def pyotrch_inference(self, generate_onnx=False):
         self.model_file = "tmp/" + self.name
@@ -40,7 +41,7 @@ class Runner(object):
         
     def convert(self, export_mode=False):
         self.model.export_mode = export_mode
-        pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version)
+        pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version, self.fuse)
         pytorch_parser.run(self.model_file)
 
     def caffe_inference(self):

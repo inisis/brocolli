@@ -10,48 +10,49 @@ import torchvision.models as models
 
 from bin.pytorch_model_converter import Runner
 
+FUSE = True
 
-def test_alexnet(shape = [1, 3, 224, 224], opset_version=9):
+def test_alexnet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.alexnet(pretrained=False)
-    runner = Runner("alexnet", net, shape, opset_version)
+    runner = Runner("alexnet", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_resnet18(shape = [1, 3, 224, 224], opset_version=9):
+def test_resnet18(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.resnet18(pretrained=False)
-    runner = Runner("resnet18", net, shape, opset_version)
+    runner = Runner("resnet18", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_squeezenet(shape = [1, 3, 227, 227], opset_version=9):
+def test_squeezenet(shape = [1, 3, 227, 227], opset_version=9, fuse=FUSE):
     net = models.squeezenet1_0(pretrained=False)
-    runner = Runner("squeezenet", net, shape, opset_version)
+    runner = Runner("squeezenet", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_googlenet(shape = [1, 3, 224, 224], opset_version=9):
+def test_googlenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.googlenet(pretrained=False)
-    runner = Runner("googlenet", net, shape, opset_version)
+    runner = Runner("googlenet", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_mobilenet_v2(shape = [1, 3, 224, 224], opset_version=9):
+def test_mobilenet_v2(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.mobilenet_v2(pretrained=False)
-    runner = Runner("mobilenet", net, shape, opset_version)
+    runner = Runner("mobilenet", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_mobilenet_v3(shape = [1, 3, 224, 224], opset_version=13):
+def test_mobilenet_v3(shape = [1, 3, 224, 224], opset_version=13, fuse=False):
     '''
     symbolic_opset13.py
     @parse_args("v")
@@ -59,45 +60,45 @@ def test_mobilenet_v3(shape = [1, 3, 224, 224], opset_version=13):
         return g.op("HardSwish", self)
     '''
     net = models.mobilenet_v3_small(pretrained=False)
-    runner = Runner("mobilenet_v3", net, shape, opset_version)
+    runner = Runner("mobilenet_v3", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_densenet121(shape = [1, 3, 224, 224], opset_version=9):
+def test_densenet121(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.densenet121(pretrained=False)
-    runner = Runner("densenet121", net, shape, opset_version)
+    runner = Runner("densenet121", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_densenet161(shape = [1, 3, 224, 224], opset_version=9):
+def test_densenet161(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.densenet161(pretrained=False)
-    runner = Runner("densenet161", net, shape, opset_version)
+    runner = Runner("densenet161", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()   
 
-def test_inception_v3(shape = [1, 3, 299, 299], opset_version=9):
+def test_inception_v3(shape = [1, 3, 299, 299], opset_version=9, fuse=FUSE):
     net = models.inception_v3(pretrained=False)
-    runner = Runner("inception_v3", net, shape, opset_version)
+    runner = Runner("inception_v3", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()  
 
-def test_vgg16(shape = [1, 3, 224, 224], opset_version=9):
+def test_vgg16(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.vgg16(pretrained=False)
-    runner = Runner("vgg16", net, shape, opset_version)
+    runner = Runner("vgg16", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13):
+def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13, fuse=FUSE):
     '''
     symbolic_opset13.py
     @parse_args('v', 'v', 'v', 'i', 'i', 'i')
@@ -106,22 +107,22 @@ def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13):
     '''    
     from models.ssd import build_ssd
     net = build_ssd("export")
-    runner = Runner("ssd300_vgg16", net, shape, opset_version)
+    runner = Runner("ssd300_vgg16", net, shape, opset_version, fuse)
     runner.pyotrch_inference()  
     runner.convert(export_mode=True)
     runner.caffe_inference()
     runner.check_result()
 
-def test_yolov3(shape = [1, 3, 416, 416], opset_version=13):
+def test_yolov3(shape = [1, 3, 416, 416], opset_version=13, fuse=FUSE):
     from models.yolov3 import Darknet
     net = Darknet('models/yolov3.cfg', 416)
-    runner = Runner("yolov3", net, shape, opset_version)
+    runner = Runner("yolov3", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9):
+def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     '''
     shufflenetv2.py
     def channel_shuffle(x: Tensor, groups: int) -> Tensor:
@@ -133,13 +134,13 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9):
         return x
     '''       
     net = models.shufflenet_v2_x1_0(pretrained=False)
-    runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version)
+    runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_scnn(shape = [1, 3, 512, 288], opset_version=9):
+def test_scnn(shape = [1, 3, 512, 288], opset_version=9, fuse=FUSE):
     '''
     symbolic_opset9.py    
     def upsample_bilinear2d(g, input, output_size, *args):
@@ -158,13 +159,13 @@ def test_scnn(shape = [1, 3, 512, 288], opset_version=9):
     from models.scnn import SCNN
     net = SCNN(input_size=[512, 288], pretrained=False)
 
-    runner = Runner("scnn", net, shape, opset_version)
+    runner = Runner("scnn", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_segnet(shape = [1, 3, 360, 480], opset_version=13):
+def test_segnet(shape = [1, 3, 360, 480], opset_version=13, fuse=FUSE):
     '''
     symbolic_opset13.py  
     def max_unpool2d(g, self, indices, output_size):
@@ -172,13 +173,13 @@ def test_segnet(shape = [1, 3, 360, 480], opset_version=13):
     '''
     from models.segnet import SegNet
     net = SegNet()
-    runner = Runner("segnet", net, shape, opset_version)
+    runner = Runner("segnet", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()
 
-def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
+def test_yolov5(shape = [1, 3, 640, 640], opset_version=13, fuse=FUSE):
     '''
     def parse_model(d, ch):
 
@@ -188,7 +189,7 @@ def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
     '''
     import torch
     net = torch.hub.load('ultralytics/yolov5', 'yolov5l', autoshape=False, pretrained=False, device=torch.device('cpu'))
-    runner = Runner("yolov5", net, shape, opset_version)
+    runner = Runner("yolov5", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
