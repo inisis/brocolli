@@ -83,7 +83,7 @@ class PytorchParser(Parser):
         self.pytorch_graph.build(self.input_shape, self.opset_version)
         self.state_dict = self.pytorch_graph.state_dict
         self.shape_dict = self.pytorch_graph.shape_dict
-        self.named_type = dict()
+        self.named_layer = dict()
         self.caffe_net = []
         self.bottoms = list()
         self.skip_layer = dict()
@@ -95,6 +95,8 @@ class PytorchParser(Parser):
                 self.fuse_all_conv_bn(module)
                 
             if isinstance(module, nn.BatchNorm2d):
+                if not stack:
+                    continue
                 if isinstance(stack[-1][1], nn.Conv2d):
                     setattr(model, stack[-1][0], fuse_conv_bn_eval(stack[-1][1], module))
                     setattr(model, name, nn.Identity())
@@ -128,11 +130,10 @@ class PytorchParser(Parser):
                 elif(node_type == "BatchNormalization"):
                     self.caffe_net.append(layer_data[0])
                     self.caffe_net.append(layer_data[1])
-                    self.named_type[layer_data[0].name] = layer_data[0]
-                    self.named_type[layer_data[1].name] = layer_data[1]                  
+                    self.named_layer[layer_data[0].name[:-3]] = layer_data[0] # some batchnorm will not be eliminated
                 else:
                     self.caffe_net.append(layer_data)                    
-                    self.named_type[layer_data.name] = layer_data
+                    self.named_layer[layer_data.name] = layer_data
             else:
                 self.rename_UNKNOWN(current_node)
 
@@ -142,8 +143,8 @@ class PytorchParser(Parser):
 
         if self.fuse:
             for layer in self.caffe_net:
-                if layer.type in ["ReLU"] and self.named_type[layer.bottom[0]].type == "Convolution":
-                    self.named_type[layer.bottom[0]].top[0] = layer.top[0]                
+                if layer.type in ["ReLU"] and self.named_layer[layer.bottom[0]].type == "Convolution":
+                    self.named_layer[layer.bottom[0]].top[0] = layer.top[0]                
                     layer.bottom[0] = layer.top[0]
 
         for layer in self.caffe_net:

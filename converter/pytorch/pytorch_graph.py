@@ -11,6 +11,11 @@ import torch.serialization
 import contextlib
 from torch.jit import _unique_state_dict
 
+
+ATEN_OPS = ["aten::_convolution", "aten::batch_norm", "aten::prelu", "aten::linalg_norm", "aten::linear"]
+ONNX_OPS = ["onnx::Conv", "onnx::PRelu", "onnx::BatchNormalization", "onnx::LpNormalization", "onnx::Gemm"]
+
+
 class PytorchGraphNode(GraphNode):
 
     def __init__(self, node, node_id, weights_name, output_shape):
@@ -115,25 +120,25 @@ class PytorchGraph(Graph):
             nodes = list(trace_graph.nodes())
             scopename = []
             for node in nodes:
-                scopename.append('.'.join(
-                        re.findall(r'\[([\w\d.]+)\]', node.scopeName())
-                    ))
+                if node.kind() in ATEN_OPS:
+                    scopename.append('.'.join(
+                            re.findall(r'\[([\w\d.]+)\]', node.scopeName())
+                        ))
             self.scope_name = list(dict.fromkeys(scopename))
             trace_graph = torch.onnx.utils._optimize_graph(trace_graph, torch.onnx.OperatorExportTypes.ONNX, params_dict={})
 
         nodes = list(trace_graph.nodes())
-        for idx, node in enumerate(nodes):
+        for node in nodes:
             node_id = self.get_node_id(node)
             self.ids.append(node_id)
-            node_name = 'node' + node_id
-            if '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())) == '':
-                if (self.scope_name.index(self.weights_names[-1])) == len(self.scope_name) - 1:
-                    self.weights_names.append(self.scope_name[self.scope_name.index(self.weights_names[-1])])
+            if node.kind() in ONNX_OPS:
+                if node.scopeName() == '':
+                    value = next(x for x in reversed(self.weights_names) if x is not None)                    
+                    self.weights_names.append(self.scope_name[self.scope_name.index(value) + 1])
                 else:
-                    self.weights_names.append(self.scope_name[self.scope_name.index(self.weights_names[-1]) + 1])
+                    self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
             else:
-                self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
-
+                self.weights_names.append(None)
         return trace_graph, nodes
 
     def build(self, shape, opset_version):
