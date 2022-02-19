@@ -55,7 +55,8 @@ class PytorchParser(Parser):
     'onnx::Shape': 'Skip',
     'onnx::Gather': 'Skip',
     'onnx::Sub': 'Skip',
-    'onnx::MaxUnpool': 'MaxUnPool'
+    'onnx::MaxUnpool': 'MaxUnPool',
+    'onnx::ConvTranspose': 'ConvTranspose',
 }
 
     ############
@@ -84,6 +85,7 @@ class PytorchParser(Parser):
         self.state_dict = self.pytorch_graph.state_dict
         self.shape_dict = self.pytorch_graph.shape_dict
         self.named_layer = dict()
+        self.named_node = dict()
         self.caffe_net = []
         self.bottoms = list()
         self.skip_layer = dict()
@@ -117,8 +119,9 @@ class PytorchParser(Parser):
             self.caffe_net.append(layer_data)  
             self.bottoms.append("data") 
 
-        for layer in self.src_graph.topological_sort:
-            current_node = self.src_graph.get_node(layer)
+        for node in self.src_graph.topological_sort:
+            current_node = self.src_graph.get_node(node)
+            self.named_node[current_node.real_name] = current_node
             onnx_node_type = current_node.type
             node_type = PytorchParser.layer_map[onnx_node_type]
 
@@ -127,10 +130,10 @@ class PytorchParser(Parser):
                 layer_data = func(current_node)
                 if layer_data == None:
                     continue
-                elif(node_type == "BatchNormalization"):
+                elif(isinstance(layer_data, tuple)):
                     self.caffe_net.append(layer_data[0])
                     self.caffe_net.append(layer_data[1])
-                    self.named_layer[layer_data[0].name[:-3]] = layer_data[0] # some batchnorm will not be eliminated
+                    self.named_layer[layer_data[0].name.rsplit('_', 1)[0]] = layer_data[1] # some batchnorm will not be eliminated
                 else:
                     self.caffe_net.append(layer_data)                    
                     self.named_layer[layer_data.name] = layer_data
@@ -141,11 +144,11 @@ class PytorchParser(Parser):
         binary_weights = pb2.NetParameter()
         binary_weights.CopyFrom(text_net)
 
-        if self.fuse:
-            for layer in self.caffe_net:
-                if layer.type in ["ReLU"] and self.named_layer[layer.bottom[0]].type == "Convolution":
-                    self.named_layer[layer.bottom[0]].top[0] = layer.top[0]                
-                    layer.bottom[0] = layer.top[0]
+        # if self.fuse:
+        #     for layer in self.caffe_net:
+        #         if layer.type in ["ReLU"] and self.named_layer[layer.bottom[0]].type == "Convolution":
+        #             self.named_layer[layer.bottom[0]].top[0] = layer.top[0]                
+        #             layer.bottom[0] = layer.top[0]
 
         for layer in self.caffe_net:
             binary_weights.layer.extend([layer])
@@ -244,7 +247,6 @@ class PytorchParser(Parser):
 
         self.set_weight(source_node.name, 'weights', weight)
         kwargs['kernel_shape'] = list(weight.shape)
-
         layer.convolution_param.num_output = list(weight.shape)[0]
 
         # handle bias
@@ -643,6 +645,18 @@ class PytorchParser(Parser):
         for b in source_node.in_edges:
             layer.bottom.append(b)
 
+        for b in source_node.in_edges:
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None  
+
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
@@ -736,9 +750,14 @@ class PytorchParser(Parser):
 
     def rename_Pad(self, source_node):
         attr = source_node.attrs
-
         layer = pb2.LayerParameter()
         layer.type = "Pad"
+
+        if 'mode' in attr:
+            mode = attr['mode']
+            if mode == "reflect":
+                layer.pad_param.pad_type = pb2.PadParameter.REFLECT
+
         if 'pads' in attr:
         # pad order [x1_begin, x2_begin, ..., x1_end, x2_end, ...]
             layer.pad_param.pad_u = attr['pads'][2]
@@ -748,7 +767,10 @@ class PytorchParser(Parser):
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
-
+        
+        if len(source_node.in_edges) == 0:
+            layer.bottom.append(self.bottoms.pop(0))
+        
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
@@ -787,30 +809,62 @@ class PytorchParser(Parser):
         return layer            
 
     def rename_Mul(self, source_node):
-        attr = source_node.attrs
-
-        layer = pb2.LayerParameter()
-        layer.type = "Eltwise"
-
-        layer.eltwise_param.operation = 0
-
         skip_all = False
         for b in source_node.in_edges:
             if b in self.skip_layer:
                 skip_all = True
             else:
                 skip_all = False
-                layer.bottom.append(b)
 
         if skip_all:
             self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
 
             return None  
+        
+        if self.named_node[source_node.in_edges[0]].output_shape[2:] == self.named_node[source_node.in_edges[1]].output_shape[2:]:
+            layer = pb2.LayerParameter()
+            layer.type = "Scale"
+            layer.scale_param.axis = 0
+            layer.bottom.append(source_node.in_edges[0])
+            layer.bottom.append(source_node.in_edges[1])
+            layer.top.append(source_node.name)
+            layer.name = source_node.real_name
 
-        layer.top.append(source_node.name)
-        layer.name = source_node.real_name
+            return layer
+        elif self.named_node[source_node.in_edges[0]].output_shape[2:] == [1, 1]:
+            layer_flatten = pb2.LayerParameter()
+            layer_flatten.type = "Flatten"
+            layer_flatten.flatten_param.axis = 1
+            layer_flatten.bottom.append(source_node.in_edges[0])
+            layer_flatten.top.append(source_node.name + '_flatten')
+            layer_flatten.name = source_node.real_name + '_flatten'
 
-        return layer
+            layer_scale = pb2.LayerParameter()
+            layer_scale.type = "Scale"
+            layer_scale.scale_param.axis = 0
+            layer_scale.bottom.append(source_node.name + '_flatten')
+            layer_scale.bottom.append(source_node.in_edges[1])
+            layer_scale.top.append(source_node.name)
+            layer_scale.name = source_node.real_name
+
+            return layer_flatten, layer_scale
+
+        elif self.named_node[source_node.in_edges[1]].output_shape[2:] == [1, 1]:
+            layer_flatten = pb2.LayerParameter()
+            layer_flatten.type = "Flatten"
+            layer_flatten.bottom.append(source_node.in_edges[1])
+            layer_flatten.top.append(source_node.name + '_flatten')
+            layer_flatten.name = source_node.real_name + '_flatten'
+
+            layer_scale = pb2.LayerParameter()
+            layer_scale.type = "Scale"
+            layer_scale.scale_param.axis = 0
+            layer_scale.bottom.append(source_node.in_edges[0])            
+            layer_scale.bottom.append(source_node.name + '_flatten')
+            layer_scale.top.append(source_node.name)
+            layer_scale.name = source_node.real_name
+
+            return layer_flatten, layer_scale            
 
     def rename_Slice(self, source_node):
         attr = source_node.attrs
@@ -852,6 +906,18 @@ class PytorchParser(Parser):
                 continue
             layer.bottom.append(b)
 
+        for b in source_node.in_edges:
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None  
+
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
@@ -871,6 +937,18 @@ class PytorchParser(Parser):
         for b in source_node.in_edges:
             layer.bottom.append(b)
         
+        for b in source_node.in_edges:
+            if b in self.skip_layer:
+                skip_all = True
+            else:
+                skip_all = False
+                layer.bottom.append(b)
+
+        if skip_all:
+            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
+
+            return None          
+
         for output_id in source_node.output_ids:
             output_id = source_node.name + ':' + output_id
             layer.top.append(output_id)
@@ -987,3 +1065,89 @@ class PytorchParser(Parser):
     
         return layer  
      
+    def rename_ConvTranspose(self, source_node):
+        attr = source_node.attrs
+        kwargs = dict()
+        layer = pb2.LayerParameter()
+
+        layer.type = "Deconvolution"
+        # dilation
+        if 'dilations' in attr:
+            kwargs['dilations'] = [1] + attr['dilations'] + [1]
+            layer.convolution_param.dilation.extend([attr['dilations'][0]])
+        else:
+            kwargs['dilations'] = [1] + [1, 1] + [1]
+            layer.convolution_param.dilation.extend(1)
+
+        if len(attr['pads']) == 4:
+            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.convolution_param.pad.extend([attr['pads'][0]])
+            else:
+                layer.convolution_param.pad_h = attr['pads'][0]
+                layer.convolution_param.pad_w = attr['pads'][1]
+        elif len(attr['pads']) == 2:
+            kwargs['pads'] = ( [0] + attr['pads'][0:2] + [0] ) *2
+            if attr['pads'][0] == attr['pads'][1]:
+                layer.convolution_param.pad.extend([attr['pads'][0]])
+            else:
+                layer.convolution_param.pad_h = attr['pads'][0]
+                layer.convolution_param.pad_w = attr['pads'][1]
+
+        if 'strides' not in attr:
+            kwargs['strides'] = [1] + [1, 1] + [1]
+        else:
+            kwargs['strides'] = [1] + attr['strides'] + [1]
+            if attr['strides'][0] == attr['strides'][1]:
+                layer.convolution_param.stride.extend([attr['strides'][0]])
+            else:
+                layer.convolution_param.stride_h = attr['strides'][0]
+                layer.convolution_param.stride_w = attr['strides'][1]
+
+        if 'kernel_shape' not in attr:
+            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
+            layer.convolution_param.kernel_size.extend([1])
+        else:
+            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
+            if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
+                layer.convolution_param.kernel_size.extend([attr['kernel_shape'][0]])
+            else:
+                layer.convolution_param.kernel_h = attr['kernel_shape'][0]
+                layer.convolution_param.kernel_w = attr['kernel_shape'][1]
+
+        kwargs['group'] = attr['group']
+        layer.convolution_param.group = attr['group']
+
+        bias_name = '{0}.bias'.format(source_node.weights_name)
+        weights_name = '{0}.weight'.format(source_node.weights_name)
+        weight = self.state_dict[weights_name]
+
+        weight = weight.numpy()
+
+        self.set_weight(source_node.name, 'weights', weight)
+        kwargs['kernel_shape'] = list(weight.shape)
+        layer.convolution_param.num_output = list(weight.shape)[1]
+
+        # handle bias
+        if bias_name in self.state_dict:
+            bias = self.state_dict[bias_name].numpy()
+            self.set_weight(source_node.name, 'bias', bias)
+            kwargs['use_bias'] = True
+            layer.convolution_param.bias_term = True
+            layer.blobs.extend([as_blob(weight), as_blob(bias)])
+        else:
+            kwargs['use_bias'] = False
+            layer.convolution_param.bias_term = False
+            layer.blobs.extend([as_blob(weight)])
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        if len(source_node.in_edges) == 0:
+            layer.bottom.append(self.bottoms.pop(0))
+
+        layer.top.append(source_node.name)
+
+        layer.name = source_node.real_name
+
+        return layer     
