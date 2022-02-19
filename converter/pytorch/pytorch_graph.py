@@ -12,8 +12,17 @@ import contextlib
 from torch.jit import _unique_state_dict
 
 
-ATEN_OPS = ["aten::_convolution", "aten::batch_norm", "aten::prelu", "aten::linalg_norm", "aten::linear"]
-ONNX_OPS = ["onnx::Conv", "onnx::PRelu", "onnx::BatchNormalization", "onnx::LpNormalization", "onnx::Gemm"]
+ATEN_OPS = ["aten::_convolution",
+            "aten::batch_norm",
+            "aten::prelu",
+            "aten::linalg_norm",
+            "aten::linear"]
+ONNX_OPS = ["onnx::Conv",
+            "onnx::PRelu",
+            "onnx::BatchNormalization",
+            "onnx::LpNormalization",
+            "onnx::Gemm",
+            "onnx::ConvTranspose"]
 
 
 class PytorchGraphNode(GraphNode):
