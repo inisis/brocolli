@@ -373,8 +373,7 @@ class PytorchParser(Parser):
 
         layer_scale.name = source_node.real_name + "_scale"
 
-        return [layer_bn, layer_scale]
-        # return layer_bn
+        return layer_bn, layer_scale
 
     def rename_Relu(self, source_node):
         layer = pb2.LayerParameter()
@@ -645,12 +644,12 @@ class PytorchParser(Parser):
         for b in source_node.in_edges:
             layer.bottom.append(b)
 
+        skip_all = True
         for b in source_node.in_edges:
             if b in self.skip_layer:
-                skip_all = True
+                continue
             else:
                 skip_all = False
-                layer.bottom.append(b)
 
         if skip_all:
             self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
@@ -809,10 +808,10 @@ class PytorchParser(Parser):
         return layer            
 
     def rename_Mul(self, source_node):
-        skip_all = False
+        skip_all = True
         for b in source_node.in_edges:
             if b in self.skip_layer:
-                skip_all = True
+                continue
             else:
                 skip_all = False
 
@@ -820,8 +819,17 @@ class PytorchParser(Parser):
             self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
 
             return None  
-        
-        if self.named_node[source_node.in_edges[0]].output_shape[2:] == self.named_node[source_node.in_edges[1]].output_shape[2:]:
+        if self.named_node[source_node.in_edges[0]].output_shape == None or self.named_node[source_node.in_edges[1]].output_shape == None:
+            layer = pb2.LayerParameter()
+            layer.type = "Scale"
+            layer.scale_param.axis = 0
+            layer.bottom.append(source_node.in_edges[0])
+            layer.bottom.append(source_node.in_edges[1])
+            layer.top.append(source_node.name)
+            layer.name = source_node.real_name     
+
+            return layer     
+        elif self.named_node[source_node.in_edges[0]].output_shape[2:] == self.named_node[source_node.in_edges[1]].output_shape[2:]:
             layer = pb2.LayerParameter()
             layer.type = "Scale"
             layer.scale_param.axis = 0
@@ -842,8 +850,8 @@ class PytorchParser(Parser):
             layer_scale = pb2.LayerParameter()
             layer_scale.type = "Scale"
             layer_scale.scale_param.axis = 0
+            layer_scale.bottom.append(source_node.in_edges[1])            
             layer_scale.bottom.append(source_node.name + '_flatten')
-            layer_scale.bottom.append(source_node.in_edges[1])
             layer_scale.top.append(source_node.name)
             layer_scale.name = source_node.real_name
 
@@ -906,12 +914,12 @@ class PytorchParser(Parser):
                 continue
             layer.bottom.append(b)
 
+        skip_all = True
         for b in source_node.in_edges:
             if b in self.skip_layer:
-                skip_all = True
+                continue
             else:
                 skip_all = False
-                layer.bottom.append(b)
 
         if skip_all:
             self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
@@ -937,17 +945,17 @@ class PytorchParser(Parser):
         for b in source_node.in_edges:
             layer.bottom.append(b)
         
+        skip_all = True
         for b in source_node.in_edges:
             if b in self.skip_layer:
-                skip_all = True
+                continue
             else:
                 skip_all = False
-                layer.bottom.append(b)
 
         if skip_all:
             self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
 
-            return None          
+            return None         
 
         for output_id in source_node.output_ids:
             output_id = source_node.name + ':' + output_id
