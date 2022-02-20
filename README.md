@@ -57,6 +57,8 @@ Curently supported network
 > * SCNN
 > * SegNet
 > * YoloV5
+> * YoloV5
+> * Realcugan
 
 
 # Contact
