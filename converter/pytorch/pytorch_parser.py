@@ -43,7 +43,7 @@ class PytorchParser(Parser):
     'onnx::Mul': 'Mul',    
     'onnx::Slice': 'Slice', 
     'onnx::Softmax': 'Softmax',
-    'onnx::Constant': 'Constant',
+    'onnx::Constant': 'Common',
     'onnx::Reshape': 'Reshape',
     'onnx::Split': 'Split',
     'onnx::LpNormalization': 'LpNormalization',
@@ -52,25 +52,19 @@ class PytorchParser(Parser):
     'onnx::Resize': 'Resize',
     'onnx::ReduceMean': 'ReduceMean',
     'onnx::BilinearInterpolate': 'BilinearInterpolate',
-    'onnx::Shape': 'Skip',
-    'onnx::Gather': 'Skip',
-    'onnx::Sub': 'Skip',
+    'onnx::Shape': 'Common',
+    'onnx::Gather': 'Common',
+    'onnx::Sub': 'Common',
     'onnx::MaxUnpool': 'MaxUnPool',
     'onnx::ConvTranspose': 'ConvTranspose',
+    'onnx::Cast': 'Common',
+    'onnx::ConstantOfShape': 'Common',
 }
-
-    ############
-    # property #
-    ############
 
     @property
     def src_graph(self):
         return self.pytorch_graph
 
-
-    ####################
-    # Public Functions #
-    ####################
 
     def __init__(self, model, input_shape, opset_version, fuse=False):
         super(PytorchParser, self).__init__()
@@ -88,7 +82,7 @@ class PytorchParser(Parser):
         self.named_node = dict()
         self.caffe_net = []
         self.bottoms = list()
-        self.skip_layer = dict()
+        self.main_layers = []
 
     def fuse_all_conv_bn(self, model):
         stack = []
@@ -104,6 +98,19 @@ class PytorchParser(Parser):
                     setattr(model, name, nn.Identity())
             else:
                 stack.append((name, module))
+
+    def is_main(self, inputs):
+        for input in inputs:
+            find = False
+            for layer in self.main_layers:
+                if input in layer.top:
+                    find = True
+                    break
+
+            if find == False:
+                return False
+
+        return True
 
     def gen_IR(self):
         if isinstance(self.input_shape, tuple):
@@ -133,24 +140,26 @@ class PytorchParser(Parser):
                 elif(isinstance(layer_data, tuple)):
                     self.caffe_net.append(layer_data[0])
                     self.caffe_net.append(layer_data[1])
-                    self.named_layer[layer_data[0].name.rsplit('_', 1)[0]] = layer_data[1] # some batchnorm will not be eliminated
+                    self.named_layer[layer_data[0].name] = layer_data[0]
+                    self.named_layer[layer_data[1].name] = layer_data[1] # some batchnorm will not be eliminated
+                    # self.named_layer[layer_data[0].name.rsplit('_', 1)[0]] = layer_data[1]
                 else:
                     self.caffe_net.append(layer_data)                    
                     self.named_layer[layer_data.name] = layer_data
             else:
-                self.rename_UNKNOWN(current_node)
+                self.rename_Common(current_node)
 
         text_net = pb2.NetParameter()
         binary_weights = pb2.NetParameter()
         binary_weights.CopyFrom(text_net)
 
-        # if self.fuse:
-        #     for layer in self.caffe_net:
-        #         if layer.type in ["ReLU"] and self.named_layer[layer.bottom[0]].type == "Convolution":
-        #             self.named_layer[layer.bottom[0]].top[0] = layer.top[0]                
-        #             layer.bottom[0] = layer.top[0]
+        if self.fuse:
+            for layer in self.caffe_net:
+                if layer.type in ["ReLU"] and self.named_layer[layer.bottom[0]].type == "Convolution":
+                    self.named_layer[layer.bottom[0]].top[0] = layer.top[0]                
+                    layer.bottom[0] = layer.top[0]
 
-        for layer in self.caffe_net:
+        for layer in self.main_layers:
             binary_weights.layer.extend([layer])
             layer_proto = pb2.LayerParameter()
             layer_proto.CopyFrom(layer)
@@ -162,16 +171,9 @@ class PytorchParser(Parser):
     ##########
     # Layers #
     ##########
-    def rename_Skip(self, source_node):
+    def rename_Common(self, source_node):
         print("PyTorch parser will skip operator [%s] with name [%s]."
               % (source_node.type, source_node.name)) 
-   
-        attr = source_node.attrs
-
-        if 'value' in attr:
-            self.skip_layer[source_node.real_name] = attr['value'].numpy()
-        else:    
-            self.skip_layer[source_node.real_name] = None        
 
         return None
 
@@ -183,10 +185,11 @@ class PytorchParser(Parser):
         layer.input_param.shape.extend([input_shape])
         layer.top.append(name)
         layer.name = name
+        self.main_layers.append(layer)
+        self.named_layer[name] = layer
         return layer
 
     def rename_Conv(self, source_node):
-
         attr = source_node.attrs
         kwargs = dict()
         layer = pb2.LayerParameter()
@@ -271,6 +274,8 @@ class PytorchParser(Parser):
 
         layer.name = source_node.real_name
 
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_PRelu(self, source_node):
@@ -296,12 +301,11 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_AvgPooling(self, source_node):
-        attr = source_node.attrs
-        kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
@@ -312,7 +316,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_Sigmoid(self, source_node):
@@ -324,7 +329,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_BatchNormalization(self, source_node):
@@ -347,8 +353,7 @@ class PytorchParser(Parser):
         for b in source_node.in_edges:
             layer_bn.bottom.append(b)
 
-        layer_bn.top.append(source_node.name)
-
+        layer_bn.top.append(source_node.real_name + '_bn')
         layer_bn.name = source_node.real_name + '_bn'
 
         layer_scale = pb2.LayerParameter()
@@ -367,12 +372,14 @@ class PytorchParser(Parser):
             layer_scale.scale_param.bias_term = False
             layer_scale.blobs.extend([as_blob(weight)])
 
-        layer_scale.bottom.append(source_node.real_name)
+        layer_scale.bottom.append(source_node.real_name + '_bn')
 
         layer_scale.top.append(source_node.name)
 
-        layer_scale.name = source_node.real_name + "_scale"
-
+        layer_scale.name = source_node.real_name
+        if self.is_main(layer_bn.bottom):
+            self.main_layers.append(layer_bn)
+            self.main_layers.append(layer_scale)
         return layer_bn, layer_scale
 
     def rename_Relu(self, source_node):
@@ -384,7 +391,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_MaxPool(self, source_node):
@@ -461,31 +469,21 @@ class PytorchParser(Parser):
             layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_Add(self, source_node):
-        attr = source_node.attrs
-
         layer = pb2.LayerParameter()
         layer.type = "Eltwise"
 
-        skip_all = False
         for b in source_node.in_edges:
-            if b in self.skip_layer:
-                skip_all = True
-            else:
-                skip_all = False
-                layer.bottom.append(b)
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None  
+            layer.bottom.append(b)
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_AvgPool(self, source_node):
@@ -548,7 +546,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_Flatten(self, source_node):
@@ -561,7 +560,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_FullyConnected(self, source_node):
@@ -598,7 +598,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_Dropout(self, source_node):
@@ -626,7 +627,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_Permute(self, source_node):
@@ -644,22 +646,11 @@ class PytorchParser(Parser):
         for b in source_node.in_edges:
             layer.bottom.append(b)
 
-        skip_all = True
-        for b in source_node.in_edges:
-            if b in self.skip_layer:
-                continue
-            else:
-                skip_all = False
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None  
-
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_Upsample(self, source_node):
@@ -667,15 +658,16 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Upsample"
 
-        for b in source_node.in_edges:
-            if b in self.skip_layer.keys():
-                if not isinstance(self.skip_layer[b], type(None)):
-                    layer.upsample_param.scale = int(self.skip_layer[b][0])
-                continue
-            layer.bottom.append(b)
+        if 'scale_factor' in attr:
+            layer.upsample_param.scale = attr['scale_factor'][0]
+
+        layer.bottom.append(source_node.in_edges[0])
+
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)        
         return layer
 
     def rename_Concat(self, source_node):
@@ -683,23 +675,15 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Concat"
         layer.concat_param.axis = attr['axis']
-        
-        skip_all = False
+
         for b in source_node.in_edges:
-            if b in self.skip_layer:
-                skip_all = True
-            else:
-                skip_all = False
-                layer.bottom.append(b)
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None                
+            layer.bottom.append(b)           
 
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)   
 
         return layer
 
@@ -713,22 +697,14 @@ class PytorchParser(Parser):
         else:
             layer.unsqueeze_param.dim = 0            
 
-        skip_all = False
         for b in source_node.in_edges:
-            if b in self.skip_layer:
-                skip_all = True
-            else:
-                skip_all = False
-                layer.bottom.append(b)
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None  
+            layer.bottom.append(b)
 
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)        
         return layer
 
     def rename_Relu6(self, source_node):
@@ -745,6 +721,8 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)        
         return layer     
 
     def rename_Pad(self, source_node):
@@ -764,15 +742,24 @@ class PytorchParser(Parser):
             layer.pad_param.pad_l = attr['pads'][3]
             layer.pad_param.pad_r = attr['pads'][7]
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
-        
-        if len(source_node.in_edges) == 0:
-            layer.bottom.append(self.bottoms.pop(0))
+        if self.opset_version > 9:
+            if len(source_node.in_edges) == 1:
+                layer.bottom.append(self.bottoms.pop(0))
+            else:
+                layer.bottom.append(source_node.in_edges[0])   
+        else:
+            if len(source_node.in_edges) == 0:
+                layer.bottom.append(self.bottoms.pop(0))
+            else:
+                layer.bottom.append(source_node.in_edges[0])
         
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
+
         return layer   
 
     def rename_HardSwish(self, source_node):
@@ -787,6 +774,10 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
+
         return layer      
 
     def rename_HardSigmoid(self, source_node):
@@ -805,20 +796,12 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
+
         return layer            
 
     def rename_Mul(self, source_node):
-        skip_all = True
-        for b in source_node.in_edges:
-            if b in self.skip_layer:
-                continue
-            else:
-                skip_all = False
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None  
         if self.named_node[source_node.in_edges[0]].output_shape == None or self.named_node[source_node.in_edges[1]].output_shape == None:
             layer = pb2.LayerParameter()
             layer.type = "Scale"
@@ -827,9 +810,10 @@ class PytorchParser(Parser):
             layer.bottom.append(source_node.in_edges[1])
             layer.top.append(source_node.name)
             layer.name = source_node.real_name     
-
+            if self.is_main(layer.bottom):
+                self.main_layers.append(layer)
             return layer     
-        elif self.named_node[source_node.in_edges[0]].output_shape[2:] == self.named_node[source_node.in_edges[1]].output_shape[2:]:
+        elif self.named_node[source_node.in_edges[0]].output_shape[-2:] == self.named_node[source_node.in_edges[1]].output_shape[-2:]:
             layer = pb2.LayerParameter()
             layer.type = "Scale"
             layer.scale_param.axis = 0
@@ -837,9 +821,11 @@ class PytorchParser(Parser):
             layer.bottom.append(source_node.in_edges[1])
             layer.top.append(source_node.name)
             layer.name = source_node.real_name
-
+            if self.is_main(layer.bottom):
+                self.main_layers.append(layer)    
             return layer
-        elif self.named_node[source_node.in_edges[0]].output_shape[2:] == [1, 1]:
+
+        elif self.named_node[source_node.in_edges[0]].output_shape[-2:] == [1, 1]:
             layer_flatten = pb2.LayerParameter()
             layer_flatten.type = "Flatten"
             layer_flatten.flatten_param.axis = 1
@@ -855,9 +841,12 @@ class PytorchParser(Parser):
             layer_scale.top.append(source_node.name)
             layer_scale.name = source_node.real_name
 
+            if self.is_main(source_node.in_edges):
+                self.main_layers.append(layer_flatten)
+                self.main_layers.append(layer_scale)
             return layer_flatten, layer_scale
 
-        elif self.named_node[source_node.in_edges[1]].output_shape[2:] == [1, 1]:
+        elif self.named_node[source_node.in_edges[1]].output_shape[-2:] == [1, 1]:
             layer_flatten = pb2.LayerParameter()
             layer_flatten.type = "Flatten"
             layer_flatten.bottom.append(source_node.in_edges[1])
@@ -872,7 +861,21 @@ class PytorchParser(Parser):
             layer_scale.top.append(source_node.name)
             layer_scale.name = source_node.real_name
 
-            return layer_flatten, layer_scale            
+            if self.is_main(source_node.in_edges):
+                self.main_layers.append(layer_flatten)
+                self.main_layers.append(layer_scale)
+            return layer_flatten, layer_scale      
+        else:
+            layer = pb2.LayerParameter()
+            layer.type = "Scale"
+            layer.scale_param.axis = 0
+            layer.bottom.append(source_node.in_edges[0])
+            layer.bottom.append(source_node.in_edges[1])
+            layer.top.append(source_node.name)
+            layer.name = source_node.real_name     
+            if self.is_main(layer.bottom):
+                self.main_layers.append(layer)
+            return layer                
 
     def rename_Slice(self, source_node):
         attr = source_node.attrs
@@ -884,18 +887,9 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer        
-
-    def rename_Constant(self, source_node):
-        attr = source_node.attrs
-
-        if 'value' in attr:
-            self.skip_layer[source_node.real_name] = attr['value'].numpy()
-        else:    
-            self.skip_layer[source_node.real_name] = None        
-
-        return None
 
     def rename_Reshape(self, source_node):
         attr = source_node.attrs
@@ -905,30 +899,21 @@ class PytorchParser(Parser):
         if 'shape' in attr:
             for each in attr['shape']:
                 layer.reshape_param.shape.dim.extend([each])
+        elif source_node.output_shape is not None:
+             for each in source_node.output_shape:
+                 layer.reshape_param.shape.dim.extend([each])
+        else:
+            raise Exception('Shape get not be retrived')         
 
-        for b in source_node.in_edges:
-            if b in self.skip_layer.keys():
-                if not isinstance(self.skip_layer[b], type(None)):
-                    for each in self.skip_layer[b]:
-                        layer.reshape_param.shape.dim.extend([each])
-                continue
-            layer.bottom.append(b)
-
-        skip_all = True
-        for b in source_node.in_edges:
-            if b in self.skip_layer:
-                continue
-            else:
-                skip_all = False
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None  
+        layer.bottom.append(source_node.in_edges[0]) # one input
 
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)        
+
         return layer        
 
     def rename_Split(self, source_node):
@@ -943,25 +928,15 @@ class PytorchParser(Parser):
             layer.slice_param.slice_point.extend([sum_])
 
         for b in source_node.in_edges:
-            layer.bottom.append(b)
-        
-        skip_all = True
-        for b in source_node.in_edges:
-            if b in self.skip_layer:
-                continue
-            else:
-                skip_all = False
-
-        if skip_all:
-            self.skip_layer[source_node.real_name] = self.skip_layer[source_node.in_edges[-1]]
-
-            return None         
+            layer.bottom.append(b)     
 
         for output_id in source_node.output_ids:
             output_id = source_node.name + ':' + output_id
             layer.top.append(output_id)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)        
         return layer                          
 
     def rename_LpNormalization(self, source_node):
@@ -984,7 +959,8 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer             
 
     def rename_Resize(self, source_node):
@@ -992,16 +968,16 @@ class PytorchParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Upsample"
 
-        for b in source_node.in_edges:
-            if b in self.skip_layer.keys():
-                if not isinstance(self.skip_layer[b], type(None)):
-                    layer.upsample_param.scale = int(self.skip_layer[b][0])
-                continue
-            layer.bottom.append(b)
+        if 'scale_factor' in attr:
+            layer.upsample_param.scale = attr['scale_factor'][0]
+
+        layer.bottom.append(source_node.in_edges[0])
 
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)        
         return layer
 
     def rename_LeakyRelu(self, source_node):
@@ -1015,12 +991,11 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer
 
     def rename_ReduceMean(self, source_node):
-        attr = source_node.attrs
-        kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
@@ -1031,7 +1006,8 @@ class PytorchParser(Parser):
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer      
 
     def rename_BilinearInterpolate(self, source_node):
@@ -1040,17 +1016,13 @@ class PytorchParser(Parser):
         if self.opset_version == 9:
             layer.type = "BilinearInterpolate"
             layer.bilinear_interpolate_param.align_corners = attr['align_corners']
-
-            for b in source_node.in_edges:
-                if b in self.skip_layer.keys():
-                    if not isinstance(self.skip_layer[b], type(None)):
-                        layer.bilinear_interpolate_param.scale_factor = int(self.skip_layer[b][0])
-                    continue
-                layer.bottom.append(b)
+            layer.bilinear_interpolate_param.scale_factor = attr['scale'][0]
+            layer.bottom.append(source_node.in_edges[0])
 
             layer.top.append(source_node.name)
             layer.name = source_node.real_name
-        
+            if self.is_main(layer.bottom):
+                self.main_layers.append(layer)
             return layer  
         else:
             raise Exception('Unsupported opset_version: {}'.format(self.opset_versionc))
@@ -1063,14 +1035,15 @@ class PytorchParser(Parser):
         layer.max_unpool_param.dst_h = source_node.output_shape[2]
         layer.max_unpool_param.dst_w = source_node.output_shape[3]
 
-        for b in source_node.in_edges:
-            if b in self.skip_layer.keys():
-                continue
-            layer.bottom.append(b)
+        layer.bottom.append(source_node.in_edges[0])
+        layer.bottom.append(source_node.in_edges[1])
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
-    
+
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer) 
+              
         return layer  
      
     def rename_ConvTranspose(self, source_node):
@@ -1157,5 +1130,6 @@ class PytorchParser(Parser):
         layer.top.append(source_node.name)
 
         layer.name = source_node.real_name
-
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
         return layer     
