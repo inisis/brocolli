@@ -196,6 +196,17 @@ def test_segnet(shape = [1, 3, 360, 480], opset_version=13, fuse=FUSE):
     runner.caffe_inference()
     runner.check_result()
 
+def test_realcugan(shape = [1, 3, 200, 200], opset_version=13, fuse=FUSE):
+    from custom_models.upcunet_v3 import RealWaifuUpScaler
+    upscaler2x = RealWaifuUpScaler(2, "custom_models/up2x-latest-denoise3x.pth",
+                                half=False, device="cpu")
+ 
+    runner = Runner("Real_CUGAN", upscaler2x.model, shape, opset_version, fuse)
+    runner.pyotrch_inference(generate_onnx=True)
+    runner.convert()
+    runner.caffe_inference()
+    runner.check_result()   
+
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
