@@ -121,6 +121,7 @@ class PytorchGraph(Graph):
 
     def extract(self, dummy_input, opset_version):
         with scope_name_workaround():
+            torch.onnx.symbolic_helper._set_onnx_shape_inference(True)            
             torch.onnx.symbolic_helper._set_opset_version(opset_version)        
             trace_graph, torch_out, inputs_states = \
                 torch.jit._get_trace_graph(self.model, (dummy_input, ),  strict=False, _force_outplace=False, _return_inputs_states=True)
