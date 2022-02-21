@@ -62,7 +62,7 @@ class Runner(object):
 
     def check_result(self):
         assert len(self.pytorch_output) == len(self.caffe_output)
-
+        print(len(self.pytorch_output))
         caffe_outname = self.net.outputs
         caffe_outname = sorted(caffe_outname, key=lambda x: re.findall(r'\d+', x)[-1])
 
@@ -71,6 +71,6 @@ class Runner(object):
                 self.caffe_output[caffe_outname[idx]].flatten(),
                 self.pytorch_output[idx].detach().numpy().flatten(),
                 rtol=1e-3,
-                atol=1e+6, # inception will produce large outputs, but low relative error
+                atol=0, # inception will produce large outputs, but low relative error
             )
         print("accuracy test passed")
