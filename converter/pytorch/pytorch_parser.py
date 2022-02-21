@@ -26,8 +26,8 @@ class PytorchParser(Parser):
     'onnx::Relu': 'Relu',
     'onnx::MaxPool': 'MaxPool',
     'onnx::Add': 'Add',
-    'onnx::AveragePool': 'AvgPool',
-    'onnx::GlobalAveragePool': 'AvgPooling',
+    'onnx::AveragePool': 'AveragePool',
+    'onnx::GlobalAveragePool': 'GlobalAveragePool',
     'onnx::Flatten': 'Flatten',
     'onnx::Gemm': 'FullyConnected',
     'onnx::Dropout': 'Dropout',
@@ -305,7 +305,7 @@ class PytorchParser(Parser):
             self.main_layers.append(layer)
         return layer
 
-    def rename_AvgPooling(self, source_node):
+    def rename_GlobalAveragePool(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
@@ -486,7 +486,7 @@ class PytorchParser(Parser):
             self.main_layers.append(layer)
         return layer
 
-    def rename_AvgPool(self, source_node):
+    def rename_AveragePool(self, source_node):
         attr = source_node.attrs
         kwargs = dict()
         layer = pb2.LayerParameter()
@@ -621,6 +621,7 @@ class PytorchParser(Parser):
 
         layer = pb2.LayerParameter()
         layer.type = 'Softmax'
+        layer.softmax_param.axis = attr['axis']
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
