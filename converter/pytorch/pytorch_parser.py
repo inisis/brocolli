@@ -59,6 +59,7 @@ class PytorchParser(Parser):
     'onnx::ConvTranspose': 'ConvTranspose',
     'onnx::Cast': 'Common',
     'onnx::ConstantOfShape': 'Common',
+    'onnx::Div': 'Common'
 }
 
     @property
