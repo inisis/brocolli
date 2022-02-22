@@ -1,11 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 
 def parse_model_config(path):
     """Parses the yolo-v3 layer configuration file and returns module definitions"""
