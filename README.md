@@ -9,6 +9,14 @@ Support 1.9.0 or higher Pytorch
 > * export PYTHONPATH=/path/to/your/caffe/python:$PYTHONPATH
 > * python test/test_nets.py
 
+# Docker user
+for user who uses docker, you can use following command to get a stable development env.
+```
+docker pull yaphets4desmond/brocolli:v1.0
+```
+
+the source code is located in /root/brocolli, and a pre-compiled caffe is in /root/caffe
+
 # Notice 
 
 Curently supported layers
@@ -56,7 +64,6 @@ Curently supported network
 > * ShuffleNet
 > * SCNN
 > * SegNet
-> * YoloV5
 > * YoloV5
 > * Realcugan
 
