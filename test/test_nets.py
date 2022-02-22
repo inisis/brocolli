@@ -83,6 +83,24 @@ def test_densenet161(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.check_result()
 
 def test_inception_v3(shape = [1, 3, 299, 299], opset_version=13, fuse=FUSE):
+    '''
+    symbolic_opset11.py
+    def _avg_pool(name, tuple_fn):
+        @parse_args('v', 'is', 'is', 'is', 'i', 'i', 'none')
+        def symbolic_fn(g, input, kernel_size, stride, padding, ceil_mode, count_include_pad, divisor_override=None):
+            padding = sym_help._avgpool_helper(tuple_fn, padding, kernel_size, stride, divisor_override, name)
+
+            if not stride:
+                stride = kernel_size
+
+            output = g.op("AveragePool", input,
+                        kernel_shape_i=tuple_fn(kernel_size),
+                        strides_i=tuple_fn(stride),
+                        pads_i=padding * 2,
+                        ceil_mode_i=ceil_mode)                     
+            return output
+        return symbolic_fn    
+    '''
     net = models.inception_v3(pretrained=False, init_weights=True)
     runner = Runner("inception_v3", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
@@ -149,6 +167,20 @@ def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13, fuse=FUSE):
     runner.check_result()
 
 def test_yolov3(shape = [1, 3, 416, 416], opset_version=13, fuse=FUSE):
+    '''
+    symbolic_helper.py
+    size = _maybe_get_const(args[0:][0], 'is')
+    
+    return g.op("Resize",
+                input,
+                empty_roi,
+                scales,
+                coordinate_transformation_mode_s=coordinate_transformation_mode,
+                cubic_coeff_a_f=-0.75,  # only valid when mode="cubic"
+                mode_s=interpolate_mode,  # nearest, linear, or cubic
+                nearest_mode_s="floor",
+                scale_factor_i = size)  # only valid when mode="nearest"
+    '''    
     from custom_models.yolov3 import Darknet
     net = Darknet('custom_models/yolov3.cfg', 416)
     runner = Runner("yolov3", net, shape, opset_version, fuse)
@@ -187,6 +219,11 @@ def test_segnet(shape = [1, 3, 360, 480], opset_version=13, fuse=FUSE):
     symbolic_opset13.py  
     def max_unpool2d(g, self, indices, output_size):
         return g.op("MaxUnpool", self, indices, output_size)
+    
+    symbolic_opset10.py
+    if return_indices:
+        r, indices = g.op("MaxPool", input, outputs=2, **kwargs)
+        return r, indices        
     '''
     from custom_models.segnet import SegNet
     net = SegNet()
@@ -197,6 +234,25 @@ def test_segnet(shape = [1, 3, 360, 480], opset_version=13, fuse=FUSE):
     runner.check_result()
 
 def test_realcugan(shape = [1, 3, 200, 200], opset_version=13, fuse=FUSE):
+    '''
+    symbolic_opset11.py
+    def constant_pad_nd(g, input, padding, value=None):
+        mode = "constant"
+        value = sym_help._maybe_get_scalar(value)
+        value = sym_help._if_scalar_type_as(g, value, input)
+        pad = _prepare_onnx_paddings(g, sym_help._get_tensor_rank(input), padding)
+        padding = torch.onnx.symbolic_opset9._convert_padding_node(padding)
+        paddings_ = torch.onnx.symbolic_opset9._prepare_onnx_paddings(sym_help._get_tensor_rank(input), padding)   
+        return g.op("Pad", input, pad, value, mode_s=mode, pads_i=paddings_)
+
+
+    def reflection_pad(g, input, padding):
+        mode = "reflect"
+        paddings = _prepare_onnx_paddings(g, sym_help._get_tensor_rank(input), padding)
+        padding = torch.onnx.symbolic_opset9._convert_padding_node(padding)
+        paddings_ = torch.onnx.symbolic_opset9._prepare_onnx_paddings(sym_help._get_tensor_rank(input), padding)
+        return g.op("Pad", input, paddings, mode_s=mode, pads_i=paddings_)    
+    '''
     from custom_models.upcunet_v3 import RealWaifuUpScaler
     upscaler2x = RealWaifuUpScaler(2, "custom_models/up2x-latest-denoise3x.pth",
                                 half=False, device="cpu")
