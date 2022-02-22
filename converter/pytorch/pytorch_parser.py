@@ -2,7 +2,7 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
-
+import logging
 import numpy as np
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
@@ -142,7 +142,6 @@ class PytorchParser(Parser):
                     self.caffe_net.append(layer_data[1])
                     self.named_layer[layer_data[0].name] = layer_data[0]
                     self.named_layer[layer_data[1].name] = layer_data[1] # some batchnorm will not be eliminated
-                    # self.named_layer[layer_data[0].name.rsplit('_', 1)[0]] = layer_data[1]
                 else:
                     self.caffe_net.append(layer_data)                    
                     self.named_layer[layer_data.name] = layer_data
@@ -172,7 +171,7 @@ class PytorchParser(Parser):
     # Layers #
     ##########
     def rename_Common(self, source_node):
-        print("PyTorch parser will skip operator [%s] with name [%s]."
+        logging.warning("PyTorch parser will skip operator [%s] with name [%s]."
               % (source_node.type, source_node.name)) 
 
         return None
@@ -634,15 +633,13 @@ class PytorchParser(Parser):
 
     def rename_Permute(self, source_node):
         attr = source_node.attrs
-        kwargs = dict()
+
         layer = pb2.LayerParameter()
         layer.type = "Permute"
 
-        if len(attr['perm']) == 4:
-            layer.permute_param.order.extend([attr['perm'][0]])
-            layer.permute_param.order.extend([attr['perm'][1]])
-            layer.permute_param.order.extend([attr['perm'][2]])
-            layer.permute_param.order.extend([attr['perm'][3]])
+        if 'perm' in attr:
+            for order in attr['perm']:
+                layer.permute_param.order.extend([order])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
