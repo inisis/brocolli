@@ -70,7 +70,7 @@ class Runner(object):
             np.testing.assert_allclose(
                 self.caffe_output[caffe_outname[idx]].flatten(),
                 self.pytorch_output[idx].detach().numpy().flatten(),
-                rtol=1e-3,
-                atol=0, # inception will produce large outputs, but low relative error
+                rtol=1e-7,
+                atol=1e-3, # inception will produce large outputs, but low relative error
             )
         print("accuracy test passed")

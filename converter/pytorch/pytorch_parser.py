@@ -190,27 +190,22 @@ class PytorchParser(Parser):
 
     def rename_Conv(self, source_node):
         attr = source_node.attrs
-        kwargs = dict()
         layer = pb2.LayerParameter()
-
         layer.type = "Convolution"
+    
         # dilation
         if 'dilations' in attr:
-            kwargs['dilations'] = [1] + attr['dilations'] + [1]
             layer.convolution_param.dilation.extend([attr['dilations'][0]])
         else:
-            kwargs['dilations'] = [1] + [1, 1] + [1]
             layer.convolution_param.dilation.extend(1)
 
         if len(attr['pads']) == 4:
-            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
             if attr['pads'][0] == attr['pads'][1]:
                 layer.convolution_param.pad.extend([attr['pads'][0]])
             else:
                 layer.convolution_param.pad_h = attr['pads'][0]
                 layer.convolution_param.pad_w = attr['pads'][1]
         elif len(attr['pads']) == 2:
-            kwargs['pads'] = ( [0] + attr['pads'][0:2] + [0] ) *2
             if attr['pads'][0] == attr['pads'][1]:
                 layer.convolution_param.pad.extend([attr['pads'][0]])
             else:
@@ -218,9 +213,8 @@ class PytorchParser(Parser):
                 layer.convolution_param.pad_w = attr['pads'][1]
 
         if 'strides' not in attr:
-            kwargs['strides'] = [1] + [1, 1] + [1]
+            layer.convolution_param.stride.extend([1])
         else:
-            kwargs['strides'] = [1] + attr['strides'] + [1]
             if attr['strides'][0] == attr['strides'][1]:
                 layer.convolution_param.stride.extend([attr['strides'][0]])
             else:
@@ -228,17 +222,14 @@ class PytorchParser(Parser):
                 layer.convolution_param.stride_w = attr['strides'][1]
 
         if 'kernel_shape' not in attr:
-            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
             layer.convolution_param.kernel_size.extend([1])
         else:
-            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
             if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
                 layer.convolution_param.kernel_size.extend([attr['kernel_shape'][0]])
             else:
                 layer.convolution_param.kernel_h = attr['kernel_shape'][0]
                 layer.convolution_param.kernel_w = attr['kernel_shape'][1]
 
-        kwargs['group'] = attr['group']
         layer.convolution_param.group = attr['group']
 
         bias_name = '{0}.bias'.format(source_node.weights_name)
@@ -248,18 +239,15 @@ class PytorchParser(Parser):
         weight = weight.numpy()
 
         self.set_weight(source_node.name, 'weights', weight)
-        kwargs['kernel_shape'] = list(weight.shape)
         layer.convolution_param.num_output = list(weight.shape)[0]
 
         # handle bias
         if bias_name in self.state_dict:
             bias = self.state_dict[bias_name].numpy()
             self.set_weight(source_node.name, 'bias', bias)
-            kwargs['use_bias'] = True
             layer.convolution_param.bias_term = True
             layer.blobs.extend([as_blob(weight), as_blob(bias)])
         else:
-            kwargs['use_bias'] = False
             layer.convolution_param.bias_term = False
             layer.blobs.extend([as_blob(weight)])
 
@@ -278,12 +266,9 @@ class PytorchParser(Parser):
         return layer
 
     def rename_PRelu(self, source_node):
-        attr = source_node.attrs
-        kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "PReLU"
 
-        bias_name = '{0}.bias'.format(source_node.weights_name)
         weights_name = '{0}.weight'.format(source_node.weights_name)
 
         weight = self.state_dict[weights_name]
@@ -334,7 +319,6 @@ class PytorchParser(Parser):
 
     def rename_BatchNormalization(self, source_node):
         attr = source_node.attrs
-
         layer_bn = pb2.LayerParameter()
         layer_bn.type = "BatchNorm"
 
@@ -396,8 +380,6 @@ class PytorchParser(Parser):
 
     def rename_MaxPool(self, source_node):
         attr = source_node.attrs      
-        kwargs = dict()
-
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
@@ -405,14 +387,12 @@ class PytorchParser(Parser):
 
         if 'pads' in attr:
             if len(attr['pads']) == 4:
-                kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
                 if attr['pads'][0] == attr['pads'][1] and attr['pads'][2] == attr['pads'][3]:
                     layer.pooling_param.pad = attr['pads'][0]
                 else:
                     layer.pooling_param.pad_h = attr['pads'][0]
                     layer.pooling_param.pad_w = attr['pads'][1]
             elif len(attr['pads']) == 2:
-                kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
                 if attr['pads'][0] == attr['pads'][1]:
                     layer.pooling_param.pad = attr['pads'][0]
                 else:
@@ -420,10 +400,8 @@ class PytorchParser(Parser):
                     layer.pooling_param.pad_w = attr['pads'][1]
 
         if 'dilations' not in attr:
-            kwargs['strides'] = [1] + [1, 1] + [1]
             layer.pooling_param.stride = 1
         else:
-            kwargs['strides'] = [1] + attr['strides'] + [1]
             if attr['strides'][0] == attr['strides'][1]:
                 layer.pooling_param.stride = attr['strides'][0]
             else:
@@ -431,10 +409,8 @@ class PytorchParser(Parser):
                 layer.pooling_param.stride_w = attr['strides'][1]
 
         if 'strides' not in attr:
-            kwargs['strides'] = [1] + [1, 1] + [1]
             layer.pooling_param.stride = 1
         else:
-            kwargs['strides'] = [1] + attr['strides'] + [1]
             if attr['strides'][0] == attr['strides'][1]:
                 layer.pooling_param.stride = attr['strides'][0]
             else:
@@ -442,10 +418,8 @@ class PytorchParser(Parser):
                 layer.pooling_param.stride_w = attr['strides'][1]
 
         if 'kernel_shape' not in attr:
-            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
             layer.pooling_param.kernel_size.extend(1)
         else:
-            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
             if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
                 layer.pooling_param.kernel_size = attr['kernel_shape'][0]
             else:
@@ -487,7 +461,6 @@ class PytorchParser(Parser):
 
     def rename_AveragePool(self, source_node):
         attr = source_node.attrs
-        kwargs = dict()
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
@@ -497,14 +470,12 @@ class PytorchParser(Parser):
             layer.pooling_param.pad = 0
         else:
             if len(attr['pads']) == 4:
-                kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
                 if attr['pads'][0] == attr['pads'][1]:
                     layer.pooling_param.pad = attr['pads'][0]
                 else:
                     layer.pooling_param.pad_h = attr['pads'][0]
                     layer.pooling_param.pad_w = attr['pads'][1]
             elif len(attr['pads']) == 2:
-                kwargs['pads'] = ([0] + attr['pads'][0:2] + [0]) * 2
                 if attr['pads'][0] == attr['pads'][1]:
                     layer.pooling_param.pad = attr['pads'][0]
                 else:
@@ -512,10 +483,8 @@ class PytorchParser(Parser):
                     layer.pooling_param.pad_w = attr['pads'][1]
 
         if 'strides' not in attr:
-            kwargs['strides'] = [1] + [1, 1] + [1]
             layer.pooling_param.stride = 1
         else:
-            kwargs['strides'] = [1] + attr['strides'] + [1]
             if attr['strides'][0] == attr['strides'][1]:
                 layer.pooling_param.stride = attr['strides'][0]
             else:
@@ -523,10 +492,8 @@ class PytorchParser(Parser):
                 layer.pooling_param.stride_w = attr['strides'][1]
 
         if 'kernel_shape' not in attr:
-            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
             layer.pooling_param.kernel_size.extend(1)
         else:
-            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
             if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
                 layer.pooling_param.kernel_size = attr['kernel_shape'][0]
             else:
@@ -534,11 +501,9 @@ class PytorchParser(Parser):
                 layer.pooling_param.kernel_w = attr['kernel_shape'][1]
 
         if 'ceil_mode' not in attr:
-            kwargs['ceil_mode'] = 0
+            layer.pooling_param.ceil_mode = 0
         else:
-            if attr['ceil_mode'] != 1:
-                layer.pooling_param.stride_h = attr['strides'][0]
-                layer.pooling_param.stride_w = attr['strides'][1]
+            layer.pooling_param.ceil_mode = attr['ceil_mode']
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
@@ -550,7 +515,6 @@ class PytorchParser(Parser):
         return layer
 
     def rename_Flatten(self, source_node):
-        attr = source_node.attrs
         layer = pb2.LayerParameter()
         layer.type = "Flatten"
 
@@ -564,8 +528,6 @@ class PytorchParser(Parser):
         return layer
 
     def rename_FullyConnected(self, source_node):
-        attr = source_node.attrs
-
         layer = pb2.LayerParameter()
         layer.type = "InnerProduct"
 
@@ -574,14 +536,13 @@ class PytorchParser(Parser):
 
         W = self.state_dict[weights_name].numpy().transpose()
 
-        input_channels, output_channels = W.shape
+        _, output_channels = W.shape
 
         weight = self.state_dict[weights_name].numpy()
 
         # weights
         self.set_weight(source_node.name, 'weights', W )
 
-        # use_bias
         if bias_name in self.state_dict:
             bias = self.state_dict[bias_name].numpy()
             layer.inner_product_param.bias_term = True
@@ -605,6 +566,7 @@ class PytorchParser(Parser):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
         layer.type = "Dropout"
+
         layer.dropout_param.dropout_ratio = attr['ratio']
 
         for b in source_node.in_edges:
@@ -617,9 +579,9 @@ class PytorchParser(Parser):
 
     def rename_Softmax(self, source_node):
         attr = source_node.attrs
-
         layer = pb2.LayerParameter()
         layer.type = 'Softmax'
+
         layer.softmax_param.axis = attr['axis']
 
         for b in source_node.in_edges:
@@ -633,7 +595,6 @@ class PytorchParser(Parser):
 
     def rename_Permute(self, source_node):
         attr = source_node.attrs
-
         layer = pb2.LayerParameter()
         layer.type = "Permute"
 
@@ -672,6 +633,7 @@ class PytorchParser(Parser):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
         layer.type = "Concat"
+
         layer.concat_param.axis = attr['axis']
 
         for b in source_node.in_edges:
@@ -761,8 +723,6 @@ class PytorchParser(Parser):
         return layer   
 
     def rename_HardSwish(self, source_node):
-        attr = source_node.attrs
-
         layer = pb2.LayerParameter()
         layer.type = "HardSwish"
 
@@ -876,7 +836,6 @@ class PytorchParser(Parser):
             return layer                
 
     def rename_Slice(self, source_node):
-        attr = source_node.attrs
         layer = pb2.LayerParameter()
         layer.type = "Slice"
 
@@ -982,6 +941,7 @@ class PytorchParser(Parser):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
         layer.type = "ReLU"
+
         layer.relu_param.negative_slope = attr['alpha']
 
         for b in source_node.in_edges:
@@ -1011,6 +971,7 @@ class PytorchParser(Parser):
     def rename_BilinearInterpolate(self, source_node):
         attr = source_node.attrs
         layer = pb2.LayerParameter()
+
         if self.opset_version == 9:
             layer.type = "BilinearInterpolate"
             layer.bilinear_interpolate_param.align_corners = attr['align_corners']
@@ -1026,7 +987,6 @@ class PytorchParser(Parser):
             raise Exception('Unsupported opset_version: {}'.format(self.opset_versionc))
 
     def rename_MaxUnPool(self, source_node):
-        attr = source_node.attrs
         layer = pb2.LayerParameter()
 
         layer.type = "MaxUnPool"
@@ -1046,27 +1006,22 @@ class PytorchParser(Parser):
      
     def rename_ConvTranspose(self, source_node):
         attr = source_node.attrs
-        kwargs = dict()
         layer = pb2.LayerParameter()
-
         layer.type = "Deconvolution"
+
         # dilation
         if 'dilations' in attr:
-            kwargs['dilations'] = [1] + attr['dilations'] + [1]
             layer.convolution_param.dilation.extend([attr['dilations'][0]])
         else:
-            kwargs['dilations'] = [1] + [1, 1] + [1]
             layer.convolution_param.dilation.extend(1)
 
         if len(attr['pads']) == 4:
-            kwargs['pads'] = [0] + attr['pads'][0:2] + [0, 0] + attr['pads'][2:] + [0]
             if attr['pads'][0] == attr['pads'][1]:
                 layer.convolution_param.pad.extend([attr['pads'][0]])
             else:
                 layer.convolution_param.pad_h = attr['pads'][0]
                 layer.convolution_param.pad_w = attr['pads'][1]
         elif len(attr['pads']) == 2:
-            kwargs['pads'] = ( [0] + attr['pads'][0:2] + [0] ) *2
             if attr['pads'][0] == attr['pads'][1]:
                 layer.convolution_param.pad.extend([attr['pads'][0]])
             else:
@@ -1074,9 +1029,8 @@ class PytorchParser(Parser):
                 layer.convolution_param.pad_w = attr['pads'][1]
 
         if 'strides' not in attr:
-            kwargs['strides'] = [1] + [1, 1] + [1]
+            layer.convolution_param.stride.extend([1])
         else:
-            kwargs['strides'] = [1] + attr['strides'] + [1]
             if attr['strides'][0] == attr['strides'][1]:
                 layer.convolution_param.stride.extend([attr['strides'][0]])
             else:
@@ -1084,17 +1038,14 @@ class PytorchParser(Parser):
                 layer.convolution_param.stride_w = attr['strides'][1]
 
         if 'kernel_shape' not in attr:
-            kwargs['kernel_shape'] = [1] + [1, 1] + [1]
             layer.convolution_param.kernel_size.extend([1])
         else:
-            kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
             if attr['kernel_shape'][0] == attr['kernel_shape'][1]:
                 layer.convolution_param.kernel_size.extend([attr['kernel_shape'][0]])
             else:
                 layer.convolution_param.kernel_h = attr['kernel_shape'][0]
                 layer.convolution_param.kernel_w = attr['kernel_shape'][1]
 
-        kwargs['group'] = attr['group']
         layer.convolution_param.group = attr['group']
 
         bias_name = '{0}.bias'.format(source_node.weights_name)
@@ -1104,18 +1055,15 @@ class PytorchParser(Parser):
         weight = weight.numpy()
 
         self.set_weight(source_node.name, 'weights', weight)
-        kwargs['kernel_shape'] = list(weight.shape)
         layer.convolution_param.num_output = list(weight.shape)[1]
 
         # handle bias
         if bias_name in self.state_dict:
             bias = self.state_dict[bias_name].numpy()
             self.set_weight(source_node.name, 'bias', bias)
-            kwargs['use_bias'] = True
             layer.convolution_param.bias_term = True
             layer.blobs.extend([as_blob(weight), as_blob(bias)])
         else:
-            kwargs['use_bias'] = False
             layer.convolution_param.bias_term = False
             layer.blobs.extend([as_blob(weight)])
 
