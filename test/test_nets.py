@@ -80,17 +80,17 @@ def test_densenet161(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
-    runner.check_result()   
+    runner.check_result()
 
-def test_inception_v3(shape = [1, 3, 299, 299], opset_version=9, fuse=FUSE):
-    net = models.inception_v3(pretrained=False)
+def test_inception_v3(shape = [1, 3, 299, 299], opset_version=13, fuse=FUSE):
+    net = models.inception_v3(pretrained=False, init_weights=True)
     runner = Runner("inception_v3", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
     runner.check_result()  
 
-def test_vgg16(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
+def test_vgg16(shape = [1, 3, 224, 224], opset_version=13, fuse=FUSE):
     net = models.vgg16(pretrained=False)
     runner = Runner("vgg16", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
@@ -205,7 +205,7 @@ def test_realcugan(shape = [1, 3, 200, 200], opset_version=13, fuse=FUSE):
     runner.pyotrch_inference()
     runner.convert()
     runner.caffe_inference()
-    runner.check_result()   
+    runner.check_result()
 
 
 if __name__ == '__main__':
