@@ -8,7 +8,6 @@ import torch
 import torch.jit
 import torch.autograd
 import torch.serialization
-import contextlib
 from torch.jit import _unique_state_dict
 
 
@@ -28,17 +27,30 @@ ONNX_OPS = ["onnx::Conv",
 class PytorchGraphNode(GraphNode):
 
     def __init__(self, node, node_id, weights_name, output_shape):
-        self._name = node.scopeName()
-        self._kind = node.kind()
+        if hasattr(node, "scopeName"):
+            self._name = node.scopeName()
+        else:
+            self._name = node_id
+
+        if hasattr(node, "kind"):
+            self._kind = node.kind()
+        else:
+            self._kind = "Data"
+
         self.id = node_id
         self.output_shape = output_shape
         super(PytorchGraphNode, self).__init__(node)
 
-        self.attrs = {k : node[k] for k in node.attributeNames()}
+        if hasattr(node, "attributeNames"):
+            self.attrs = {k : node[k] for k in node.attributeNames()}
+
         self.weights_name = weights_name
 
     @property
     def name(self):
+        if self._kind == 'Data':
+            return self._name
+
         name = self._name + self.id
         name = name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
         return name
@@ -105,11 +117,23 @@ class PytorchGraph(Graph):
         self.weights_names = list()
         self.ids = list()
 
+    def process_model_inputs(self, inputs):
+        input = list(inputs)[0] # many inputs but are the same
+        input_nodes = re.findall(r'\(*(%[a-z]+.*?)\)', input.__str__())
+        for input_node in input_nodes:
+            node_name = re.findall(r"%([a-z]+.*?) :", input_node)[0]
+            output_shape_str = re.findall(r'[^()!]+', input_node.split('=')[0])
+            output_shape = [int(x.replace('!', '')) if x.strip().isdigit() else None for x in output_shape_str[1].split(',')]
+            output_shape = list(filter(None, output_shape))
+            self.shape_dict[node_name] = output_shape
+            self.layer_map[node_name] = PytorchGraphNode(input, node_name, None, output_shape)
+            self.layer_name_map[node_name] = node_name
+
     def get_node_id(self, node):
         node_id = re.search(r"[\d]+", node.__str__())
         return node_id.group(0)
 
-    def get_input_id(self, node):
+    def get_node_input_id(self, node):
         node_id = re.findall(r"%([\d]+) :", node.__str__())
         return node_id
 
@@ -119,7 +143,7 @@ class PytorchGraph(Graph):
         node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
         return node_name
 
-    def extract(self, dummy_input, opset_version):
+    def extract(self, dummy_input, names, opset_version):
         with scope_name_workaround():
             torch.onnx.symbolic_helper._set_onnx_shape_inference(True)            
             torch.onnx.symbolic_helper._set_opset_version(opset_version)        
@@ -136,6 +160,8 @@ class PytorchGraph(Graph):
                         ))
             self.scope_name = list(dict.fromkeys(scopename))
             trace_graph = torch.onnx.utils._optimize_graph(trace_graph, torch.onnx.OperatorExportTypes.ONNX, params_dict={})
+            torch.onnx.utils._set_input_and_output_names(trace_graph, names, None)
+            self.process_model_inputs(trace_graph.inputs())
 
         nodes = list(trace_graph.nodes())
         for node in nodes:
@@ -154,13 +180,16 @@ class PytorchGraph(Graph):
     def build(self, shape, opset_version):
         if isinstance(shape, tuple):
             dummy_input = []
-            for each in shape:
+            names = []
+            for idx, each in enumerate(shape):
                 dummy = torch.ones(each)
                 dummy_input.append(dummy)
-            graph, nodes = self.extract(dummy_input, opset_version)
+                names.append("data_" + str(idx))
+            graph, nodes = self.extract(dummy_input, names, opset_version)
         else:
             dummy_input = torch.ones(shape)
-            graph, nodes = self.extract(dummy_input, opset_version)
+            name = ["data"]
+            graph, nodes = self.extract(dummy_input, name, opset_version)
 
         for node, node_id, weight_name in zip(nodes, self.ids, self.weights_names):
             node_name = self.rename_nodes(node, node_id)
@@ -175,32 +204,43 @@ class PytorchGraph(Graph):
             self.layer_map[node_name] = PytorchGraphNode(node, node_id, weight_name, output_shape)
             self.layer_name_map[node_name] = node_name
             # make connection
-            self.node_connection(graph, node, node_name)       
+            self.node_connection(graph, node, node_name)     
 
         super(PytorchGraph, self).build() 
 
     def node_connection(self, graph, node, node_name):
         for node_input in list(node.inputs()):
             node_input = node_input.node()
-            node_id = self.get_node_id(node_input)
+
+            if node_input.kind() == "prim::Param":
+                node_id = re.findall(r"%([a-z]+.*?) :", node_input.__str__())
+            else:
+                node_id = self.get_node_id(node_input)
+
             if node_id:
                 if node_input.scopeName() == '':
                     if node_id == '1':
                         continue
                     else:
-                        input_ids = self.get_input_id(node_input)
-                        if len(input_ids) == 1:
-                            assert ("%" + input_ids[0]) in node_input.__str__()
-                            node_input_name = self.rename_nodes(node_input, input_ids[0])
-                            self._make_connection(node_input_name, node_name)
+                        if node_input.kind() == "prim::Param": # Param has not scopeName
+                            input_names = re.findall(r"%([a-z]+.*?) :", node_input.__str__())
+                            for input_name in input_names:
+                                if ("%" + input_name) in node.__str__():
+                                    self._make_connection(input_name, node_name)
                         else:
-                            for input_id in input_ids:
-                                if ("%" + input_id) in node.__str__():
-                                    input_id = input_ids[0] + ':' + input_id
-                                    node_input_name = self.rename_nodes(node_input, input_id)
-                                    self._make_connection(node_input_name, node_name)
+                            input_ids = self.get_node_input_id(node_input)
+                            if len(input_ids) == 1:
+                                assert ("%" + input_ids[0]) in node_input.__str__()
+                                node_input_name = self.rename_nodes(node_input, input_ids[0])
+                                self._make_connection(node_input_name, node_name)
+                            else:
+                                for input_id in input_ids:
+                                    if ("%" + input_id) in node.__str__():
+                                        input_id = input_ids[0] + ':' + input_id
+                                        node_input_name = self.rename_nodes(node_input, input_id)
+                                        self._make_connection(node_input_name, node_name)
                 else:
-                    input_ids = self.get_input_id(node_input)
+                    input_ids = self.get_node_input_id(node_input)
                     if len(input_ids) == 1:
                         assert ("%" + input_ids[0]) in node_input.__str__()
                         node_input_name = self.rename_nodes(node_input, input_ids[0])
