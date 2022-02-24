@@ -147,6 +147,7 @@ class PytorchParser(Parser):
                     layer.bottom[0] = layer.top[0]
 
         for layer in self.main_layers:
+            layer.name = layer.name.replace(".", "")
             binary_weights.layer.extend([layer])
             layer_proto = pb2.LayerParameter()
             layer_proto.CopyFrom(layer)

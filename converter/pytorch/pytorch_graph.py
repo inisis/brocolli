@@ -53,6 +53,7 @@ class PytorchGraphNode(GraphNode):
 
         name = self._name + self.id
         name = name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
+        name = name.replace(".", "")
         return name
 
     @property
@@ -141,6 +142,7 @@ class PytorchGraph(Graph):
         node_scope = node.scopeName()
         node_name = node_scope + node_id
         node_name = node_name.replace('-','n').replace('\\','n').replace('/','n').replace('_','n').replace('[','n').replace(']','n')
+        node_name = node_name.replace(".", "")
         return node_name
 
     def extract(self, dummy_input, names, opset_version):
