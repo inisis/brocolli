@@ -12,6 +12,8 @@ from bin.pytorch_model_converter import Runner
 
 FUSE = True
 
+os.makedirs('tmp', exist_ok=True)
+
 def test_alexnet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.alexnet(pretrained=False)
     runner = Runner("alexnet", net, shape, opset_version, fuse)
