@@ -19,6 +19,7 @@ def as_blob(array):
 
 class PytorchParser(Parser):
     layer_map = {
+    'Data': 'Data',
     'onnx::Conv': 'Conv',
     'onnx::Sigmoid': 'Sigmoid',
     'onnx::PRelu': 'PRelu',
@@ -82,7 +83,6 @@ class PytorchParser(Parser):
         self.named_layer = dict()
         self.named_node = dict()
         self.caffe_net = []
-        self.bottoms = list()
         self.main_layers = []
 
     def fuse_all_conv_bn(self, model):
@@ -114,19 +114,6 @@ class PytorchParser(Parser):
         return True
 
     def gen_IR(self):
-        if isinstance(self.input_shape, tuple):
-            for idx, shape in enumerate(self.input_shape):
-                name = "data_" + str(idx)
-                func = getattr(self, "rename_Data")
-                layer_data = func(shape, name)
-                self.caffe_net.append(layer_data)
-                self.bottoms.append(name)
-        else:                                    
-            func = getattr(self, "rename_Data")
-            layer_data = func(self.input_shape, "data")
-            self.caffe_net.append(layer_data)  
-            self.bottoms.append("data") 
-
         for node in self.src_graph.topological_sort:
             current_node = self.src_graph.get_node(node)
             self.named_node[current_node.real_name] = current_node
@@ -177,16 +164,16 @@ class PytorchParser(Parser):
 
         return None
 
-    def rename_Data(self, shape, name):
+    def rename_Data(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = 'Input'
         input_shape = pb2.BlobShape()
-        input_shape.dim.extend(shape)
+        input_shape.dim.extend(source_node.output_shape)
         layer.input_param.shape.extend([input_shape])
-        layer.top.append(name)
-        layer.name = name
+        layer.top.append(source_node.name)
+        layer.name = source_node.name
         self.main_layers.append(layer)
-        self.named_layer[name] = layer
+        self.named_layer[source_node.name] = layer
         return layer
 
     def rename_Conv(self, source_node):
@@ -254,9 +241,6 @@ class PytorchParser(Parser):
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
-
-        if len(source_node.in_edges) == 0:
-            layer.bottom.append(self.bottoms.pop(0))
 
         layer.top.append(source_node.name)
 
@@ -703,16 +687,7 @@ class PytorchParser(Parser):
             layer.pad_param.pad_l = attr['pads'][3]
             layer.pad_param.pad_r = attr['pads'][7]
 
-        if self.opset_version > 9:
-            if len(source_node.in_edges) == 1:
-                layer.bottom.append(self.bottoms.pop(0))
-            else:
-                layer.bottom.append(source_node.in_edges[0])   
-        else:
-            if len(source_node.in_edges) == 0:
-                layer.bottom.append(self.bottoms.pop(0))
-            else:
-                layer.bottom.append(source_node.in_edges[0])
+        layer.bottom.append(source_node.in_edges[0])
         
         layer.top.append(source_node.name)
 
@@ -1070,9 +1045,6 @@ class PytorchParser(Parser):
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
-
-        if len(source_node.in_edges) == 0:
-            layer.bottom.append(self.bottoms.pop(0))
 
         layer.top.append(source_node.name)
 
