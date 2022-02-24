@@ -82,32 +82,6 @@ def test_densenet161(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.caffe_inference()
     runner.check_result()
 
-def test_inception_v3(shape = [1, 3, 299, 299], opset_version=13, fuse=FUSE):
-    '''
-    symbolic_opset11.py
-    def _avg_pool(name, tuple_fn):
-        @parse_args('v', 'is', 'is', 'is', 'i', 'i', 'none')
-        def symbolic_fn(g, input, kernel_size, stride, padding, ceil_mode, count_include_pad, divisor_override=None):
-            padding = sym_help._avgpool_helper(tuple_fn, padding, kernel_size, stride, divisor_override, name)
-
-            if not stride:
-                stride = kernel_size
-
-            output = g.op("AveragePool", input,
-                        kernel_shape_i=tuple_fn(kernel_size),
-                        strides_i=tuple_fn(stride),
-                        pads_i=padding * 2,
-                        ceil_mode_i=ceil_mode)                     
-            return output
-        return symbolic_fn    
-    '''
-    net = models.inception_v3(pretrained=False, init_weights=True)
-    runner = Runner("inception_v3", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
-    runner.convert()
-    runner.caffe_inference()
-    runner.check_result()  
-
 def test_vgg16(shape = [1, 3, 224, 224], opset_version=13, fuse=FUSE):
     net = models.vgg16(pretrained=False)
     runner = Runner("vgg16", net, shape, opset_version, fuse)
@@ -145,6 +119,7 @@ def test_yolov5(shape = [1, 3, 640, 640], opset_version=13, fuse=FUSE):
 
     import torch
     net = torch.hub.load('ultralytics/yolov5', 'yolov5l', autoshape=False, pretrained=False, device=torch.device('cpu'))
+    net.model = torch.nn.Sequential(*(list(net.model.children())[:-1]))
     runner = Runner("yolov5", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()

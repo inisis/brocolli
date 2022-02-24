@@ -58,7 +58,6 @@ Curently supported network
 > * SqueezeNet
 > * MobileNet
 > * DenseNet
-> * Inception
 > * VGG
 > * YoloV3
 > * ShuffleNet
@@ -66,7 +65,7 @@ Curently supported network
 > * SegNet
 > * YoloV5
 > * Realcugan
-
+> * Yolo-Lite
 
 # Contact
  QQ Group: 597059928
