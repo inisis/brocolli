@@ -11,14 +11,9 @@ import caffe.proto.caffe_pb2 as pb2
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval
 
-def as_blob(array):
-    blob = pb2.BlobProto()
-    blob.shape.dim.extend(array.shape)
-    blob.data.extend(array.astype(float).flat)
-    return blob
+import google.protobuf.text_format
 
-class PytorchParser(Parser):
-    layer_map = {
+layer_map = {
     'Data': 'Data',
     'onnx::Conv': 'Conv',
     'onnx::Sigmoid': 'Sigmoid',
@@ -63,13 +58,15 @@ class PytorchParser(Parser):
     'onnx::Div': 'Common'
 }
 
-    @property
-    def src_graph(self):
-        return self.pytorch_graph
+def as_blob(array):
+    blob = pb2.BlobProto()
+    blob.shape.dim.extend(array.shape)
+    blob.data.extend(array.astype(float).flat)
+    return blob
 
-
+class PytorchCaffeParser(Parser):
     def __init__(self, model, input_shape, opset_version, fuse=False):
-        super(PytorchParser, self).__init__()
+        super(PytorchCaffeParser, self).__init__()
         self.fuse = fuse
         self.model = model
         if self.fuse:
@@ -83,6 +80,23 @@ class PytorchParser(Parser):
         self.named_layer = dict()
         self.named_node = dict()
         self.main_layers = []
+
+    def run(self, dest_path):
+        text_net, binary_weights = self.gen_IR()
+        self.save_to_proto(text_net, dest_path + ".prototxt")
+        self.save_weights(binary_weights, dest_path + ".caffemodel")
+
+    def save_to_proto(self, net, filename):
+        with open(filename, 'wb') as f:
+            f.write(google.protobuf.text_format.MessageToString(net).encode())
+
+    def save_weights(self, weights, filename):
+        with open(filename, 'wb') as f:
+            f.write(weights.SerializeToString())
+
+    @property
+    def src_graph(self):
+        return self.pytorch_graph
 
     def fuse_all_conv_bn(self, model):
         stack = []
@@ -117,7 +131,7 @@ class PytorchParser(Parser):
             current_node = self.src_graph.get_node(node)
             self.named_node[current_node.real_name] = current_node
             onnx_node_type = current_node.type
-            node_type = PytorchParser.layer_map[onnx_node_type]
+            node_type = layer_map[onnx_node_type]
 
             if hasattr(self, "rename_" + node_type):
                 func = getattr(self, "rename_" + node_type)

@@ -12,7 +12,7 @@ np.random.seed(0)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 
 import caffe  # noqa
-from converter.pytorch.pytorch_caffe_parser import PytorchParser  # noqa
+from converter.pytorch.pytorch_caffe_parser import PytorchCaffeParser  # noqa
 
 class Runner(object):
     def __init__(self, name, model, shape, opset_version, fuse=False):
@@ -41,7 +41,7 @@ class Runner(object):
         
     def convert(self, export_mode=False):
         self.model.export_mode = export_mode
-        pytorch_parser = PytorchParser(self.model, self.shape, self.opset_version, self.fuse)
+        pytorch_parser = PytorchCaffeParser(self.model, self.shape, self.opset_version, self.fuse)
         pytorch_parser.run(self.model_file)
 
     def caffe_inference(self):

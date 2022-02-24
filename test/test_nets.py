@@ -8,7 +8,7 @@ import warnings
 
 import torchvision.models as models
 
-from bin.pytorch_model_converter import Runner
+from bin.pytorch2caffe import Runner
 
 FUSE = True
 
