@@ -82,7 +82,6 @@ class PytorchParser(Parser):
         self.shape_dict = self.pytorch_graph.shape_dict
         self.named_layer = dict()
         self.named_node = dict()
-        self.caffe_net = []
         self.main_layers = []
 
     def fuse_all_conv_bn(self, model):
@@ -126,12 +125,9 @@ class PytorchParser(Parser):
                 if layer_data == None:
                     continue
                 elif(isinstance(layer_data, tuple)):
-                    self.caffe_net.append(layer_data[0])
-                    self.caffe_net.append(layer_data[1])
                     self.named_layer[layer_data[0].name] = layer_data[0]
                     self.named_layer[layer_data[1].name] = layer_data[1] # some batchnorm will not be eliminated
-                else:
-                    self.caffe_net.append(layer_data)                    
+                else:                 
                     self.named_layer[layer_data.name] = layer_data
             else:
                 self.rename_Common(current_node)
@@ -141,7 +137,7 @@ class PytorchParser(Parser):
         binary_weights.CopyFrom(text_net)
 
         if self.fuse:
-            for layer in self.caffe_net:
+            for layer in self.main_layers:
                 if layer.type in ["ReLU"] and self.named_layer[layer.bottom[0]].type == "Convolution":
                     self.named_layer[layer.bottom[0]].top[0] = layer.top[0]                
                     layer.bottom[0] = layer.top[0]
