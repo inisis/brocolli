@@ -7,7 +7,7 @@ Support 1.9.0 or higher Pytorch
 # How to use
 > * clone caffe from https://github.com/inisis/caffe and build
 > * export PYTHONPATH=/path/to/your/caffe/python:$PYTHONPATH
-> * python test/test_nets.py
+> * python test/test_caffe_nets.py
 
 # Docker user
 for user who uses docker, you can use following command to get a stable development env.
