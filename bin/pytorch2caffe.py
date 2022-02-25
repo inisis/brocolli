@@ -61,7 +61,7 @@ class Runner(object):
         self.caffe_output = self.net.forward()
 
     def check_result(self):
-        assert len(self.pytorch_output) == len(self.caffe_output)
+        assert len(self.pytorch_output) == len(self.caffe_output), "pytorch_output: %d vs caffe_output %d" % (len(self.pytorch_output), len(self.caffe_output))
 
         caffe_outname = self.net.outputs
         caffe_outname = sorted(caffe_outname, key=lambda x: re.findall(r'\d+', x)[-1])

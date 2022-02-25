@@ -1,4 +1,5 @@
 import os
+from numpy import identity
 os.environ[
     "GLOG_minloglevel"
 ] = "3"  # 0 - debug 1 - info (still a LOT of outputs) 2 - warnings 3 - errors
@@ -111,17 +112,27 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.check_result()
 
 def test_yolov5(shape = [1, 3, 640, 640], opset_version=13, fuse=FUSE):
-    '''
-    def parse_model(d, ch):
-
-    elif m is Detect:
-        continue
-    
-    '''
-
     import torch
-    net = torch.hub.load('ultralytics/yolov5', 'yolov5l', autoshape=False, pretrained=False, device=torch.device('cpu'))
-    net.model = torch.nn.Sequential(*(list(net.model.children())[:-1]))
+    net = torch.hub.load('ultralytics/yolov5', 'yolov5s', autoshape=False, pretrained=False, device=torch.device('cpu'))
+
+    class Identity(torch.nn.Module):
+        def __init__(self):
+            super(Identity, self).__init__()
+            
+        def forward(self, x):
+            for i in range(self.nl):
+                x[i] = self.m[i](x[i])
+                bs, _, ny, nx = x[i].shape
+                x[i] = x[i].view(bs, self.na, self.no, ny, nx).permute(0, 1, 3, 4, 2).contiguous()
+       
+            return x
+    
+    name, _ = list(net.model.named_children())[-1]
+    identity = Identity()
+    detect = getattr(net.model, name)
+    identity.__dict__.update(detect.__dict__)
+    setattr(net.model, name, identity)
+
     runner = Runner("yolov5", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
     runner.convert()
@@ -243,4 +254,4 @@ def test_realcugan(shape = [1, 3, 200, 200], opset_version=13, fuse=FUSE):
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
-    pytest.main(['-p', 'no:warnings', '-v', 'test/test_nets.py'])
+    pytest.main(['-p', 'no:warnings', '-v', 'test/test_caffe_nets.py'])
