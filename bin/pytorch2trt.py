@@ -10,6 +10,7 @@ np.random.seed(0)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 
 import tensorrt as trt
+import pycuda.autoinit
 import pycuda.driver as cuda
 from converter.pytorch.pytorch_trt_parser import PytorchTensorRTParser  # noqa
 
@@ -56,21 +57,9 @@ class Runner(object):
         pytorch_parser.run(self.model_file)
 
     def trt_inference(self):
-        def load_engine(trt_runtime, engine_path):
-            trt.init_libnvinfer_plugins(None, "")             
-            with open(engine_path, 'rb') as f:
-                engine_data = f.read()
-            engine = trt_runtime.deserialize_cuda_engine(engine_data)
-
-            return engine
-
         engine_file = "tmp/" + self.name + '.trt'
         self.dtype = np.float32
         self.logger = trt.Logger(trt.Logger.WARNING)
-        self.runtime = trt.Runtime(self.logger)
-        self.engine = load_engine(self.runtime, engine_file)
-        self.inputs, self.outputs, self.bindings, self.stream = self.allocate_buffers()
-        self.context = self.engine.create_execution_context()
 
         if isinstance(self.shape, tuple):
             dummy_input = []
@@ -80,44 +69,55 @@ class Runner(object):
         else:
             dummy_input = np.ones(self.shape)
 
-        x = dummy_input
-        
-        np.copyto(self.inputs[0].host, x.ravel())
-        for inp in self.inputs:
-            cuda.memcpy_htod_async(inp.device, inp.host, self.stream)
-        self.context.execute_async(batch_size=1, bindings=self.bindings, stream_handle=self.stream.handle)
-        for out in self.outputs:
-            cuda.memcpy_dtoh_async(out.host, out.device, self.stream) 
-            
-        self.stream.synchronize()
-        self.outputs = self.outputs[0].host
+        with trt.Runtime(self.logger) as trt_runtime:
+            trt.init_libnvinfer_plugins(None, "")             
+            with open(engine_file, 'rb') as f:
+                engine_data = f.read()
+            engine = trt_runtime.deserialize_cuda_engine(engine_data)
+            inputs, outputs, bindings, stream = self.allocate_buffers(engine)
 
-        del self.engine
-        del self.runtime
-        del self.context
+            with engine.create_execution_context() as context:
+                if len(inputs) == 1:
+                    np.copyto(inputs[0].host, dummy_input.ravel())
+                else:   
+                    for idx in len(inputs):
+                        np.copyto(inputs[idx].host, dummy_input[idx].ravel())        
+
+                for inp in inputs:
+                    cuda.memcpy_htod_async(inp.device, inp.host, stream)
+                context.execute_async(batch_size=1, bindings=bindings, stream_handle=stream.handle)
+                for out in outputs:
+                    cuda.memcpy_dtoh_async(out.host, out.device, stream) 
+                    
+                stream.synchronize()
+
+                self.trt_output = [out.host for out in outputs]
 
     def check_result(self):
-        np.testing.assert_allclose(
-            self.outputs.flatten(),
-            self.pytorch_output.detach().numpy().flatten(),
-            rtol=1e-7,
-            atol=1e-3, # inception will produce large outputs, but low relative error
-        )
+        assert len(self.pytorch_output) == len(self.trt_output), "pytorch_output: %d vs trt_output %d" % (len(self.pytorch_output), len(self.trt_output))
+        
+        for idx in range(len(self.trt_output)):
+            np.testing.assert_allclose(
+                self.trt_output[idx].flatten(),
+                self.pytorch_output[idx].detach().numpy().flatten(),
+                rtol=1e-7,
+                atol=1e-3, # inception will produce large outputs, but low relative error
+            )
         print("accuracy test passed")
 
-    def allocate_buffers(self):
+    def allocate_buffers(self, engine):
         inputs = []
         outputs = []
         bindings = []
         stream = cuda.Stream()
         
-        for binding in self.engine:
-            size = trt.volume(self.engine.get_binding_shape(binding)) * 1
+        for binding in engine:
+            size = trt.volume(engine.get_binding_shape(binding)) * 1
             host_mem = cuda.pagelocked_empty(size, self.dtype)
             device_mem = cuda.mem_alloc(host_mem.nbytes)
             bindings.append(int(device_mem))
 
-            if self.engine.binding_is_input(binding):
+            if engine.binding_is_input(binding):
                 inputs.append(HostDeviceMem(host_mem, device_mem))
             else:
                 outputs.append(HostDeviceMem(host_mem, device_mem))
