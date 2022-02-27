@@ -11,7 +11,7 @@ import caffe.proto.caffe_pb2 as pb2
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval
 
-import collections
+import google.protobuf.text_format
 import tensorrt as trt
 
 
@@ -75,12 +75,12 @@ class PytorchTensorRTParser(Parser):
         self.shape_dict = self.pytorch_graph.shape_dict
         self.named_layer = dict()
         self.named_node = dict()
-        self.tensorrt_net = collections.OrderedDict()
         self.main_layers = []
 
     def run(self, dest_path):
-        engine = self.gen_IR()
+        engine, text_net = self.gen_IR()
         self.save_to_file(engine, dest_path + ".trt")
+        self.save_to_proto(text_net, dest_path + "_debug.prototxt")
 
     def save_to_file(self, engine, filename):
         with open(filename, 'wb') as f:
@@ -118,6 +118,10 @@ class PytorchTensorRTParser(Parser):
 
         return True
 
+    def save_to_proto(self, net, filename):
+        with open(filename, 'wb') as f:
+            f.write(google.protobuf.text_format.MessageToString(net).encode())
+
     def gen_IR(self):
         TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
         self.builder = trt.Builder(TRT_LOGGER)
@@ -135,23 +139,26 @@ class PytorchTensorRTParser(Parser):
 
             if hasattr(self, "rename_" + node_type):
                 func = getattr(self, "rename_" + node_type)
-                layer_data = func(current_node)
-                if layer_data == None:
-                    continue
-                elif(isinstance(layer_data, tuple)):
-                    self.named_layer[layer_data[0].name] = layer_data[0]
-                    self.named_layer[layer_data[1].name] = layer_data[1] # some batchnorm will not be eliminated
-                else:                  
-                    self.named_layer[layer_data.name] = layer_data
+                func(current_node)
             else:
                 self.rename_Common(current_node)
 
+        text_net = pb2.NetParameter()
+
+        for layer in self.main_layers:
+            layer.name = layer.name.replace(".", "")
+            layer_proto = pb2.LayerParameter()
+            layer_proto.CopyFrom(layer)
+            del layer_proto.blobs[:]
+            text_net.layer.extend([layer_proto])
+
         for layer_name in self.pytorch_graph.output_layers:
-            self.network.mark_output(tensor=self.tensorrt_net[layer_name].get_output(0))              
+            self.network.mark_output(tensor=self.named_layer[layer_name].get_output(0))              
 
         self.plan = self.builder.build_serialized_network(self.network, self.config)
         engine = self.runtime.deserialize_cuda_engine(self.plan)
-        return engine
+
+        return engine, text_net
 
     ##########
     # Layers #
@@ -164,12 +171,21 @@ class PytorchTensorRTParser(Parser):
 
     def rename_Data(self, source_node):
         layer = self.network.add_input(source_node.name, dtype=trt.float32, shape=source_node.output_shape)
-        assert(layer)
-        self.tensorrt_net["data"] = layer        
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name
+        caffe_layer.type = 'Input'    
+        caffe_layer.top.append(source_node.name)
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
        
         return layer
 
     def rename_Conv(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None      
+
         attr = source_node.attrs
         if len(attr['pads']) == 4:
             pads = (attr['pads'][0], attr['pads'][1])
@@ -201,26 +217,47 @@ class PytorchTensorRTParser(Parser):
         else:
             trt.Weights()
 
-        if isinstance(self.tensorrt_net[source_node.in_edges[0]], trt.tensorrt.ITensor):
-            input_ = self.tensorrt_net[source_node.in_edges[0]]
+        if isinstance(self.named_layer[source_node.in_edges[0]], trt.tensorrt.ITensor):
+            input_ = self.named_layer[source_node.in_edges[0]]
         else:
-            input_ = self.tensorrt_net[source_node.in_edges[0]].get_output(0)
+            input_ = self.named_layer[source_node.in_edges[0]].get_output(0)
 
         layer = self.network.add_convolution(input=input_, num_output_maps=num_filter, kernel_shape=kernel_shape, kernel=weight, bias=bias)    
         layer.stride = strides
         layer.padding = pads
 
-        self.tensorrt_net[source_node.name] = layer
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name
+        caffe_layer.type = 'Convolution'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
 
         return layer
 
     def rename_Relu(self, source_node):
-        layer = self.network.add_activation(self.tensorrt_net[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.RELU)
-        self.tensorrt_net[source_node.name] = layer
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None   
+        
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.RELU)
+        
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name
+        caffe_layer.type = 'ReLU'     
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_MaxPool(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
         attr = source_node.attrs
         kwargs = dict()
 
@@ -242,32 +279,76 @@ class PytorchTensorRTParser(Parser):
             kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
             kernel_shape = (attr['kernel_shape'][0], attr['kernel_shape'][1])            
 
-        layer = self.network.add_pooling(self.tensorrt_net[source_node.in_edges[0]].get_output(0), trt.PoolingType.MAX, window_size=kernel_shape)
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.MAX, window_size=kernel_shape)
         layer.stride = strides
         layer.padding = pads
 
-        self.tensorrt_net[source_node.name] = layer
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name
+        caffe_layer.type = 'Pooling'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_Add(self, source_node):
-        layer = self.network.add_elementwise(self.tensorrt_net[source_node.in_edges[0]].get_output(0), self.tensorrt_net[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.SUM)
-        self.tensorrt_net[source_node.name] = layer
+        if not self.is_main(source_node.in_edges[0:2]):
+            return None
+        
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), self.named_layer[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.SUM)
+        
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name     
+        caffe_layer.type = 'Eltwise'     
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+        caffe_layer.bottom.append(source_node.in_edges[1])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_GlobalAveragePool(self, source_node):
-        shape  = self.tensorrt_net[source_node.in_edges[0]].get_output(0).shape
-        layer = self.network.add_pooling(self.tensorrt_net[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=shape[2:])
-        self.tensorrt_net[source_node.name] = layer
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None   
+        
+        shape  = self.named_layer[source_node.in_edges[0]].get_output(0).shape
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=shape[2:])
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Pooling'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
 
         return layer
 
     def rename_Flatten(self, source_node):
-        self.tensorrt_net[source_node.name] = self.tensorrt_net[source_node.in_edges[0]]
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name  
+        caffe_layer.type = 'Flatten'        
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = self.named_layer[source_node.in_edges[0]]
+
         return
 
     def rename_FullyConnected(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
         bias_name = '{0}.bias'.format(source_node.weights_name)
         weights_name = '{0}.weight'.format(source_node.weights_name)
 
@@ -285,43 +366,95 @@ class PytorchTensorRTParser(Parser):
         else:
             bias = trt.Weights()
 
-        layer = self.network.add_fully_connected(input=self.tensorrt_net[source_node.in_edges[0]].get_output(0), num_outputs=output_channels, kernel=weight, bias=bias)
+        layer = self.network.add_fully_connected(input=self.named_layer[source_node.in_edges[0]].get_output(0), num_outputs=output_channels, kernel=weight, bias=bias)
         
-        self.tensorrt_net[source_node.name] = layer
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'InnerProduct'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_Sigmoid(self, source_node):
-        layer = self.network.add_activation(self.tensorrt_net[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.SIGMOID)
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.SIGMOID)
         layer.name = source_node.real_name
 
-        self.tensorrt_net[source_node.name] = layer
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name  
+        caffe_layer.type = 'Sigmoid'      
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_ReduceSum(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
         attr = source_node.attrs
         axes = np.power(2, attr['axes'][0]) # bit wise 
-        layer = self.network.add_reduce(self.tensorrt_net[source_node.in_edges[0]].get_output(0), trt.ReduceOperation.SUM, axes=axes, keep_dims=True)
-        self.tensorrt_net[source_node.name] = layer
+        layer = self.network.add_reduce(self.named_layer[source_node.in_edges[0]].get_output(0), trt.ReduceOperation.SUM, axes=axes, keep_dims=True)
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Pooling'      
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_Div(self, source_node):
-        layer = self.network.add_elementwise(self.tensorrt_net[source_node.in_edges[0]].get_output(0), self.tensorrt_net[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.DIV)
-        self.tensorrt_net[source_node.name] = layer
-        print("div : ", layer.get_output(0).shape)
-        print(source_node.name)
+        if not self.is_main(source_node.in_edges[0:2]):
+            return None   
+        
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), self.named_layer[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.DIV)
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name      
+        caffe_layer.type = 'Eltwise'   
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
         
         return layer
 
     def rename_Mul(self, source_node):
-        layer = self.network.add_elementwise(self.tensorrt_net[source_node.in_edges[0]].get_output(0), self.tensorrt_net[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.PROD)
-        self.tensorrt_net[source_node.name] = layer
+        if not self.is_main(source_node.in_edges[0:2]):
+            return None   
+        
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), self.named_layer[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.PROD)
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Eltwise'      
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+        caffe_layer.bottom.append(source_node.in_edges[1])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
 
     def rename_ConvTranspose(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None   
+        
         attr = source_node.attrs
         if len(attr['pads']) == 4:
             pads = (attr['pads'][0], attr['pads'][1])
@@ -352,11 +485,113 @@ class PytorchTensorRTParser(Parser):
         else:
             bias = trt.Weights()
 
-        layer = self.network.add_deconvolution(input=self.tensorrt_net[source_node.in_edges[0]].get_output(0), num_output_maps=num_groups,
+        layer = self.network.add_deconvolution(input=self.named_layer[source_node.in_edges[0]].get_output(0), num_output_maps=num_groups,
                                         kernel_shape=kernel_shape, kernel=weight, bias=bias)
         layer.stride = strides
         layer.padding = pads
 
-        self.tensorrt_net[source_node.name] = layer
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name    
+        caffe_layer.type = 'Deconvolution'
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
+
+        return layer
+
+    def rename_Concat(self, source_node):
+        if not self.is_main(source_node.in_edges):
+            return None
+        
+        input_ = [self.named_layer[x].get_output(0) for x in source_node.in_edges]
+        layer = self.network.add_concatenation(input_)
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Concat'     
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.extend(source_node.in_edges)
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
+
+        return layer
+
+    def rename_Reshape(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+
+        attr = source_node.attrs
+
+        shape = None
+        if 'shape' in attr:
+            shape = attr['shape']
+        elif source_node.output_shape is not None:
+            shape = source_node.output_shape
+        else:
+            raise Exception('Shape get not be retrived')   
+
+        layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]].get_output(0))
+        layer.reshape_dims = shape
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name    
+        caffe_layer.type = 'Reshape'    
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
+
+        return layer
+
+    def rename_Permute(self, source_node):
+        if not self.is_main(source_node.in_edges):
+            return None
+
+        attr = source_node.attrs
+
+        if 'perm' in attr:
+            order = attr['perm']
+        else:
+            order = []
+
+        layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]].get_output(0))
+        layer.first_transpose = order
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name 
+        caffe_layer.type = 'Permute'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
+
+        return layer
+
+    def rename_Resize(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
+        attr = source_node.attrs
+
+        scale = 1
+        if 'scale_factor' in attr:
+            scale = attr['scale_factor'][0]
+
+        layer = self.network.add_resize(self.named_layer[source_node.in_edges[0]].get_output(0))
+        layer.scales = [1, 1, scale, scale]
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name 
+        caffe_layer.type = 'Upsample'        
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer   
 
         return layer
