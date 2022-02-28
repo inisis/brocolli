@@ -24,53 +24,62 @@ the source code is located in /root/brocolli, and a pre-compiled caffe is in /ro
 
 # Notice 
 
+* ✔️ : support 
+* ❔ : shall support
+* ❌ : not support
+
 Curently supported layers
-> * Conv
-> * PRelu
-> * MaxPooling
-> * Sigmoid
-> * BatchNormalization
-> * Relu
-> * LeakyRelu
-> * Add
-> * AvgPool
-> * Flatten
-> * FullyConnected
-> * Dropout
-> * Softmax
-> * Upsample
-> * Permute
-> * Concat
-> * Unsqueeze
-> * Relu6
-> * Pad
-> * HardSwish
-> * HardSigmoid
-> * Mul    
-> * Slice 
-> * L2Normalization
-> * Resize
-> * ReduceMean
-> * BilinearInterpolate
-> * MaxUnPool
-> * ConvTranspose
+
+|                    |Caffe|TensorRT|
+|---                 |---|---|
+|Conv                |✔️|✔️|
+|PRelu               |✔️|❔|
+|MaxPooling          |✔️|✔️|
+|Sigmoid             |✔️|✔️|
+|BatchNormalization  |✔️|❌|
+|Relu                |✔️|✔️|
+|LeakyRelu           |✔️|❔|
+|Add                 |✔️|✔️|
+|AvgPool             |✔️|❔|
+|Flatten             |✔️|❔|
+|FullyConnected      |✔️|✔️|
+|Softmax             |✔️|❔|
+|Upsample            |✔️|✔️|
+|Permute             |✔️|✔️|
+|Concat              |✔️|✔️|
+|Unsqueeze           |✔️|❔|
+|Relu6               |✔️|❔|
+|Pad                 |✔️|❔|
+|HardSwish           |✔️|❔|
+|HardSigmoid         |✔️|❔|
+|Mul                 |✔️|✔️|
+|Slice               |✔️|❔|
+|L2Normalization     |✔️|❔|
+|Resize              |✔️|✔️|
+|ReduceMean          |✔️|❔|
+|BilinearInterpolate |✔️|❔|
+|MaxUnPool           |✔️|❔|
+|ConvTranspose       |✔️|✔️|
+
 
 Curently supported network
-> * SSD
-> * AlexNet
-> * ResNet
-> * GoogleNet
-> * SqueezeNet
-> * MobileNet
-> * DenseNet
-> * VGG
-> * YoloV3
-> * ShuffleNet
-> * SCNN
-> * SegNet
-> * YoloV5
-> * Realcugan
-> * Yolo-Lite
+
+|          |Caffe|TensorRT|
+|---       |---|---|
+|SSD       |✔️|❔|
+|AlexNet   |✔️|❔|
+|ResNet    |✔️|✔️|
+|GoogleNet |✔️|❔|
+|SqueezeNet|✔️|❔|
+|MobileNet |✔️|❔|
+|DenseNet  |✔️|❔|
+|VGG       |✔️|❔|
+|SCNN      |✔️|❔|
+|SegNet    |✔️|❔|
+|YoloV5    |✔️|✔️|
+|Realcugan |✔️|❔|
+|Yolo-Lite |✔️|❔|
+
 
 # Contact
  QQ Group: 597059928
