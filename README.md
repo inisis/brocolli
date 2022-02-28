@@ -5,14 +5,19 @@ a pytorch to caffe && tensorrt model converter, our tool provides direct convers
 Support 1.9.0 or higher Pytorch
 
 # How to use
-> * clone caffe from https://github.com/inisis/caffe and build
-> * export PYTHONPATH=/path/to/your/caffe/python:$PYTHONPATH
-> * python test/test_caffe_nets.py
+docker image is provided, you can use following command to get a stable development env.
 
-# Docker user
-for user who uses docker, you can use following command to get a stable development env.
+for Caffe-only:
 ```
 docker pull yaphets4desmond/brocolli:v1.0
+docker run --rm --name=BRO -it yaphets4desmond/brocolli:v1.0 bash
+cd /root/brocolli && python test/test_caffe_nets.py
+```
+for TensorRT:
+```
+docker pull yaphets4desmond/brocolli:v2.0
+docker run --gpus=all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility --rm --name=BRO -it yaphets4desmond/brocolli:v2.0 bash
+cd /root/brocolli && python test/test_trt_nets.py
 ```
 
 the source code is located in /root/brocolli, and a pre-compiled caffe is in /root/caffe
