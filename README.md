@@ -70,7 +70,7 @@ Curently supported network
 |AlexNet   |✔️|❔|
 |ResNet    |✔️|✔️|
 |GoogleNet |✔️|❔|
-|SqueezeNet|✔️|❔|
+|SqueezeNet|✔️|✔️|
 |MobileNet |✔️|❔|
 |DenseNet  |✔️|❔|
 |VGG       |✔️|❔|
