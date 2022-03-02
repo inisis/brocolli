@@ -69,7 +69,7 @@ Curently supported network
 |SSD       |✔️|❔|
 |AlexNet   |✔️|❔|
 |ResNet    |✔️|✔️|
-|GoogleNet |✔️|❔|
+|GoogleNet |✔️|✔️|
 |SqueezeNet|✔️|✔️|
 |MobileNet |✔️|❔|
 |DenseNet  |✔️|❔|
