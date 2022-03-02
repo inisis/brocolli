@@ -36,7 +36,7 @@ Curently supported layers
 |PRelu               |✔️|❔|
 |MaxPooling          |✔️|✔️|
 |Sigmoid             |✔️|✔️|
-|BatchNormalization  |✔️|❌|
+|BatchNormalization  |✔️|✔️|
 |Relu                |✔️|✔️|
 |LeakyRelu           |✔️|❔|
 |Add                 |✔️|✔️|
