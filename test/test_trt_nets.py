@@ -12,6 +12,15 @@ from bin.pytorch2trt import Runner
 
 os.makedirs('tmp', exist_ok=True)
 
+
+def test_alexnet(shape = [1, 3, 224, 224], opset_version=9):
+    net = models.alexnet(pretrained=False)
+    runner = Runner("alexnet", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.trt_inference()
+    runner.check_result()
+
 def test_resnet18(shape = [1, 3, 224, 224], opset_version=9):
     net = models.resnet18(pretrained=False)
     runner = Runner("resnet18", net, shape, opset_version)

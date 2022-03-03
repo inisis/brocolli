@@ -316,8 +316,8 @@ class PytorchTensorRTParser(Parser):
         if not self.is_main(source_node.in_edges[0:1]):
             return None   
         
-        shape  = self.named_layer[source_node.in_edges[0]].get_output(0).shape
-        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=shape[2:])
+        kernel_shape  = self.named_layer[source_node.in_edges[0]].get_output(0).shape
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=kernel_shape[2:])
 
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -593,5 +593,27 @@ class PytorchTensorRTParser(Parser):
 
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer   
+
+        return layer
+
+    def rename_AveragePool(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+ 
+        attr = source_node.attrs
+        
+        kernel_shape  = attr['kernel_shape']
+        stride = attr['strides']
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=kernel_shape)
+        layer.stride = stride
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Pooling'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
 
         return layer
