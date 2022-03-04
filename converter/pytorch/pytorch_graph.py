@@ -174,7 +174,12 @@ class PytorchGraph(Graph):
                     value = next(x for x in reversed(self.weights_names) if x is not None)                    
                     self.weights_names.append(self.scope_name[self.scope_name.index(value) + 1])
                 else:
-                    self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
+                    value = '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName()))
+                    if value in self.scope_name:
+                        self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
+                    else:
+                        value = next(x for x in reversed(self.weights_names) if x is not None)                    
+                        self.weights_names.append(self.scope_name[self.scope_name.index(value) + 1])
             else:
                 self.weights_names.append(None)
         return trace_graph, nodes
