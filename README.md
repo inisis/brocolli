@@ -40,10 +40,10 @@ Curently supported layers
 |Relu                |✔️|✔️|
 |LeakyRelu           |✔️|❔|
 |Add                 |✔️|✔️|
-|AvgPool             |✔️|❔|
-|Flatten             |✔️|❔|
+|AvgPool             |✔️|✔️|
+|Flatten             |✔️|✔️|
 |FullyConnected      |✔️|✔️|
-|Softmax             |✔️|❔|
+|Softmax             |✔️|✔️|
 |Upsample            |✔️|✔️|
 |Permute             |✔️|✔️|
 |Concat              |✔️|✔️|
@@ -57,9 +57,10 @@ Curently supported layers
 |L2Normalization     |✔️|❔|
 |Resize              |✔️|✔️|
 |ReduceMean          |✔️|❔|
-|BilinearInterpolate |✔️|❔|
+|BilinearInterpolate |✔️|✔️|
 |MaxUnPool           |✔️|❔|
 |ConvTranspose       |✔️|✔️|
+|Gather              |❌|✔️|
 
 
 Curently supported network
@@ -67,7 +68,7 @@ Curently supported network
 |          |Caffe|TensorRT|
 |---       |---|---|
 |SSD       |✔️|❔|
-|AlexNet   |✔️|❔|
+|AlexNet   |✔️|✔️|
 |ResNet    |✔️|✔️|
 |GoogleNet |✔️|✔️|
 |SqueezeNet|✔️|✔️|
@@ -79,6 +80,7 @@ Curently supported network
 |YoloV5    |✔️|✔️|
 |Realcugan |✔️|❔|
 |Yolo-Lite |✔️|❔|
+|Resa      |❌|✔️|
 
 
 # Contact
