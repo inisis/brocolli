@@ -73,6 +73,19 @@ def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
     runner.trt_inference()
     runner.check_result()
 
+def test_resa(shape = [1, 3, 288, 800], opset_version=13):
+    from custom_models.resa.configs.culane import cfg
+    from custom_models.resa.models.resa import RESANet
+    from easydict import EasyDict as edict
+
+    net = RESANet(edict(cfg))
+
+    runner = Runner("resa", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.trt_inference()
+    runner.check_result()
+
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
