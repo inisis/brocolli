@@ -34,7 +34,7 @@ layer_map = {
     'onnx::Upsample': 'Upsample',
     'onnx::Concat': 'Concat',
     'onnx::Unsqueeze': "Unsqueeze",
-    'onnx::Clip': "Relu6",
+    'onnx::Clip': "Clip",
     'onnx::Pad': "Pad",
     'onnx::HardSwish': "HardSwish",
     'onnx::HardSigmoid': "HardSigmoid",
@@ -773,4 +773,26 @@ class PytorchTensorRTParser(Parser):
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer
 
-        return layer           
+        return layer
+
+    def rename_Clip(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+ 
+        attr = source_node.attrs
+
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.CLIP)
+        layer.alpha = attr['min']
+        layer.beta = attr['max']
+        layer.name = source_node.name
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Relu6'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+ 
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
+
+        return layer          
