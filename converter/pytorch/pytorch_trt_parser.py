@@ -795,4 +795,50 @@ class PytorchTensorRTParser(Parser):
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer
 
-        return layer          
+        return layer
+
+    def rename_HardSigmoid(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+ 
+        attr = source_node.attrs
+
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.HARD_SIGMOID)
+        layer.alpha = attr['alpha']
+        layer.beta = 0.5
+        layer.name = source_node.name
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'HardSigmoid'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+ 
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
+
+        return layer
+
+    def rename_HardSwish(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+ 
+        attr = source_node.attrs
+
+        layer_hardsigmoid = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.HARD_SIGMOID)
+        layer_hardsigmoid.alpha = 0.5
+        layer_hardsigmoid.beta = 0.5
+
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), layer_hardsigmoid.get_output(0), trt.ElementWiseOperation.PROD)        
+        layer.name = source_node.name
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'HardSwish'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+ 
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
+
+        return layer  
