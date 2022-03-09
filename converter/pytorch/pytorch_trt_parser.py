@@ -557,10 +557,14 @@ class PytorchTensorRTParser(Parser):
     def rename_Concat(self, source_node):
         if not self.is_main(source_node.in_edges):
             return None
-        
+
+        attr = source_node.attrs
+
         input_ = [self.named_layer[x].get_output(0) for x in source_node.in_edges]
         layer = self.network.add_concatenation(input_)
+        layer.axis = attr['axis']
         layer.name = source_node.name
+
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
         caffe_layer.type = 'Concat'     
@@ -586,7 +590,12 @@ class PytorchTensorRTParser(Parser):
         else:
             raise Exception('Shape get not be retrived')   
 
-        layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]].get_output(0))
+        if isinstance(self.named_layer[source_node.in_edges[0]], trt.tensorrt.ITensor):
+            input_ = self.named_layer[source_node.in_edges[0]]
+        else:
+            input_ = self.named_layer[source_node.in_edges[0]].get_output(0)
+
+        layer = self.network.add_shuffle(input_)
         layer.reshape_dims = shape
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()

@@ -81,6 +81,7 @@ Curently supported network
 |Realcugan |✔️|❔|
 |Yolo-Lite |✔️|❔|
 |Resa      |❌|✔️|
+|YoloX     |✔️|✔️|
 
 
 # Contact
