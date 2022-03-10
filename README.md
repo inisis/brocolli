@@ -49,7 +49,7 @@ Curently supported layers
 |Concat              |✔️|✔️|
 |Unsqueeze           |✔️|❔|
 |Relu6               |✔️|✔️|
-|Pad                 |✔️|❔|
+|Pad                 |✔️|✔️|
 |HardSwish           |✔️|❔|
 |HardSigmoid         |✔️|❔|
 |Mul                 |✔️|✔️|
@@ -73,7 +73,7 @@ Curently supported network
 |GoogleNet |✔️|✔️|
 |SqueezeNet|✔️|✔️|
 |MobileNet |✔️|✔️|
-|DenseNet  |✔️|❔|
+|DenseNet  |✔️|✔️|
 |VGG       |✔️|❔|
 |SCNN      |✔️|❔|
 |SegNet    |✔️|❔|
