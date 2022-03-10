@@ -850,4 +850,33 @@ class PytorchTensorRTParser(Parser):
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer
 
-        return layer  
+        return layer
+
+    def rename_Pad(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
+        attr = source_node.attrs
+
+        pre_padding = (0, 0)
+        post_padding = (0, 0)
+        if 'pads' in attr:
+        # pad order [x1_begin, x2_begin, ..., x1_end, x2_end, ...]
+            pre_padding = (attr['pads'][2], attr['pads'][3]) # top left
+            post_padding = (attr['pads'][6], attr['pads'][7]) # bottom right
+
+        attr = source_node.attrs
+
+        layer = self.network.add_padding(self.named_layer[source_node.in_edges[0]].get_output(0), pre_padding, post_padding)        
+        layer.name = source_node.name
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Pad'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+ 
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer
+
+        return layer           
