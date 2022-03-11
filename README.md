@@ -5,7 +5,7 @@ a pytorch to caffe && tensorrt model converter, our tool provides direct convers
 Support 1.9.0 or higher Pytorch
 
 # How to use
-docker image is provided, you can use following command to get a stable development env.
+⚠️user must uses provided docker to convert your model, clone code only currently will not work.
 
 for Caffe-only:
 ```
