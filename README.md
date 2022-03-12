@@ -50,8 +50,8 @@ Curently supported layers
 |Unsqueeze           |✔️|❔|
 |Relu6               |✔️|✔️|
 |Pad                 |✔️|✔️|
-|HardSwish           |✔️|❔|
-|HardSigmoid         |✔️|❔|
+|HardSwish           |✔️|✔️|
+|HardSigmoid         |✔️|✔️|
 |Mul                 |✔️|✔️|
 |Slice               |✔️|❔|
 |L2Normalization     |✔️|❔|
