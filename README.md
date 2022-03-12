@@ -74,7 +74,7 @@ Curently supported network
 |SqueezeNet|✔️|✔️|
 |MobileNet |✔️|✔️|
 |DenseNet  |✔️|✔️|
-|VGG       |✔️|❔|
+|ShuffleNet|✔️|❔|
 |SCNN      |✔️|❔|
 |SegNet    |✔️|❔|
 |YoloV5    |✔️|✔️|
