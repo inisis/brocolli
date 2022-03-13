@@ -156,7 +156,7 @@ class PytorchTensorRTParser(Parser):
             self.save_to_proto(text_net, dest_path + "_debug.prototxt")
 
         for layer_name in self.pytorch_graph.output_layers:
-            self.network.mark_output(tensor=self.named_layer[layer_name].get_output(0))              
+            self.network.mark_output(tensor=self.named_layer[layer_name])              
 
         self.plan = self.builder.build_serialized_network(self.network, self.config)
         engine = self.runtime.deserialize_cuda_engine(self.plan)
@@ -173,7 +173,7 @@ class PytorchTensorRTParser(Parser):
         return None
 
     def rename_Data(self, source_node):
-        layer = self.network.add_input(source_node.name, dtype=trt.float32, shape=source_node.output_shape)
+        tensor = self.network.add_input(source_node.name, dtype=trt.float32, shape=source_node.output_shape)
 
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name
@@ -181,10 +181,10 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.top.append(source_node.name)
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
-        layer.name = source_node.name
+        self.named_layer[source_node.name] = tensor
+        tensor.name = source_node.name
        
-        return layer
+        return tensor
 
     def rename_Conv(self, source_node):
         if not self.is_main(source_node.in_edges[0:1]):
@@ -232,12 +232,7 @@ class PytorchTensorRTParser(Parser):
         else:
             bias = trt.Weights()
 
-        if isinstance(self.named_layer[source_node.in_edges[0]], trt.tensorrt.ITensor):
-            input_ = self.named_layer[source_node.in_edges[0]]
-        else:
-            input_ = self.named_layer[source_node.in_edges[0]].get_output(0)
-
-        layer = self.network.add_convolution(input=input_, num_output_maps=num_filter, kernel_shape=kernel_shape, kernel=weight, bias=bias)    
+        layer = self.network.add_convolution(input=self.named_layer[source_node.in_edges[0]], num_output_maps=num_filter, kernel_shape=kernel_shape, kernel=weight, bias=bias)    
         layer.stride = strides
         layer.padding = pads
         layer.num_groups = num_groups
@@ -251,7 +246,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -259,7 +254,7 @@ class PytorchTensorRTParser(Parser):
         if not self.is_main(source_node.in_edges[0:1]):
             return None   
 
-        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.RELU)
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]], type=trt.ActivationType.RELU)
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name
@@ -268,7 +263,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -297,7 +292,7 @@ class PytorchTensorRTParser(Parser):
             kwargs['kernel_shape'] = [1] + attr['kernel_shape'] + [1]
             kernel_shape = (attr['kernel_shape'][0], attr['kernel_shape'][1])            
 
-        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.MAX, window_size=kernel_shape)
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]], trt.PoolingType.MAX, window_size=kernel_shape)
         layer.stride = strides
         layer.padding = pads
         layer.name = source_node.name
@@ -308,7 +303,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -316,7 +311,7 @@ class PytorchTensorRTParser(Parser):
         if not self.is_main(source_node.in_edges[0:2]):
             return None
 
-        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), self.named_layer[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.SUM)
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]], self.named_layer[source_node.in_edges[1]], trt.ElementWiseOperation.SUM)
         layer.name = source_node.name 
         
         caffe_layer = pb2.LayerParameter()
@@ -327,7 +322,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[1])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -335,8 +330,8 @@ class PytorchTensorRTParser(Parser):
         if not self.is_main(source_node.in_edges[0:1]):
             return None   
         
-        kernel_shape  = self.named_layer[source_node.in_edges[0]].get_output(0).shape
-        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=kernel_shape[2:])
+        kernel_shape  = self.named_layer[source_node.in_edges[0]].shape
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]], trt.PoolingType.AVERAGE, window_size=kernel_shape[2:])
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -345,7 +340,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -384,11 +379,11 @@ class PytorchTensorRTParser(Parser):
         else:
             bias = trt.Weights()
         
-        if(len(self.named_layer[source_node.in_edges[0]].get_output(0).shape) == 4):
-            layer = self.network.add_fully_connected(input=self.named_layer[source_node.in_edges[0]].get_output(0), num_outputs=output_channels, kernel=weight, bias=bias)
+        if(len(self.named_layer[source_node.in_edges[0]].shape) == 4):
+            layer = self.network.add_fully_connected(input=self.named_layer[source_node.in_edges[0]], num_outputs=output_channels, kernel=weight, bias=bias)
         else:
-            shuffle_layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]].get_output(0))
-            shuffle_layer.reshape_dims = tuple(self.named_layer[source_node.in_edges[0]].get_output(0).shape) + (1, 1)
+            shuffle_layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]])
+            shuffle_layer.reshape_dims = tuple(self.named_layer[source_node.in_edges[0]].shape) + (1, 1)
 
             fc_layer = self.network.add_fully_connected(input=shuffle_layer.get_output(0), num_outputs=output_channels, kernel=weight, bias=bias)
         
@@ -404,7 +399,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -412,7 +407,7 @@ class PytorchTensorRTParser(Parser):
         if not self.is_main(source_node.in_edges[0:1]):
             return None
 
-        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.SIGMOID)
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]], type=trt.ActivationType.SIGMOID)
         layer.name = source_node.real_name
 
         caffe_layer = pb2.LayerParameter()
@@ -422,7 +417,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -432,7 +427,7 @@ class PytorchTensorRTParser(Parser):
         
         attr = source_node.attrs
         axes = np.power(2, attr['axes'][0]) # bit wise 
-        layer = self.network.add_reduce(self.named_layer[source_node.in_edges[0]].get_output(0), trt.ReduceOperation.SUM, axes=axes, keep_dims=True)
+        layer = self.network.add_reduce(self.named_layer[source_node.in_edges[0]], trt.ReduceOperation.SUM, axes=axes, keep_dims=True)
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -441,7 +436,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -449,7 +444,7 @@ class PytorchTensorRTParser(Parser):
         if not self.is_main(source_node.in_edges[0:2]):
             return None   
         
-        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), self.named_layer[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.DIV)
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]], self.named_layer[source_node.in_edges[1]], trt.ElementWiseOperation.DIV)
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name      
@@ -458,7 +453,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
         
         return layer
 
@@ -469,10 +464,10 @@ class PytorchTensorRTParser(Parser):
         attr = source_node.attrs
 
         if 'scale' in attr:
-            layer = self.network.add_scale_nd(self.named_layer[source_node.in_edges[0]].get_output(0), mode=trt.ScaleMode(0), scale=np.array(attr['scale']).astype(np.float32), channel_axis=1)  
+            layer = self.network.add_scale_nd(self.named_layer[source_node.in_edges[0]], mode=trt.ScaleMode(0), scale=np.array(attr['scale']).astype(np.float32), channel_axis=1)  
             layer.channel_axis = 3
         else:
-            layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), self.named_layer[source_node.in_edges[1]].get_output(0), trt.ElementWiseOperation.PROD)
+            layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]], self.named_layer[source_node.in_edges[1]], trt.ElementWiseOperation.PROD)
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -482,7 +477,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[1])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -531,7 +526,7 @@ class PytorchTensorRTParser(Parser):
         else:
             output_padding = attr['output_padding']  
 
-        layer = self.network.add_deconvolution(input=self.named_layer[source_node.in_edges[0]].get_output(0), num_output_maps=num_output_maps,
+        layer = self.network.add_deconvolution(input=self.named_layer[source_node.in_edges[0]], num_output_maps=num_output_maps,
                                         kernel_shape=kernel_shape, kernel=weight, bias=bias)
         layer.stride = strides
         layer.num_groups = num_groups
@@ -550,7 +545,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -560,7 +555,7 @@ class PytorchTensorRTParser(Parser):
 
         attr = source_node.attrs
 
-        input_ = [self.named_layer[x].get_output(0) for x in source_node.in_edges]
+        input_ = [self.named_layer[x] for x in source_node.in_edges]
         layer = self.network.add_concatenation(input_)
         layer.axis = attr['axis']
         layer.name = source_node.name
@@ -572,7 +567,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.extend(source_node.in_edges)
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -593,7 +588,7 @@ class PytorchTensorRTParser(Parser):
         if isinstance(self.named_layer[source_node.in_edges[0]], trt.tensorrt.ITensor):
             input_ = self.named_layer[source_node.in_edges[0]]
         else:
-            input_ = self.named_layer[source_node.in_edges[0]].get_output(0)
+            input_ = self.named_layer[source_node.in_edges[0]]
 
         layer = self.network.add_shuffle(input_)
         layer.reshape_dims = shape
@@ -605,7 +600,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -620,7 +615,7 @@ class PytorchTensorRTParser(Parser):
         else:
             order = []
 
-        layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]].get_output(0))
+        layer = self.network.add_shuffle(self.named_layer[source_node.in_edges[0]])
         layer.first_transpose = order
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
@@ -630,7 +625,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -640,12 +635,12 @@ class PytorchTensorRTParser(Parser):
         
         attr = source_node.attrs
 
-        layer = self.network.add_resize(self.named_layer[source_node.in_edges[0]].get_output(0))
+        layer = self.network.add_resize(self.named_layer[source_node.in_edges[0]])
         if 'scale_factor' in attr:
             scale = attr['scale_factor'][0]
             layer.scales = [1, 1, scale, scale]
         else:
-            input_shape = self.named_layer[source_node.in_edges[0]].get_output(0).shape
+            input_shape = self.named_layer[source_node.in_edges[0]].shape
             shape = list(input_shape[0:2]) + attr['output_size']
             layer.shape = shape
         
@@ -674,7 +669,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer   
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer
 
@@ -686,7 +681,7 @@ class PytorchTensorRTParser(Parser):
         
         kernel_shape  = attr['kernel_shape']
         stride = attr['strides']
-        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]].get_output(0), trt.PoolingType.AVERAGE, window_size=kernel_shape)
+        layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]], trt.PoolingType.AVERAGE, window_size=kernel_shape)
         layer.stride = stride
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
@@ -696,7 +691,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -711,7 +706,7 @@ class PytorchTensorRTParser(Parser):
         # dims = trt.Dims(shape=[len(indices)])
 
         const_layer = self.network.add_constant(shape=[len(indices)], weights=np.array(indices).astype(np.int32))
-        layer = self.network.add_gather(self.named_layer[source_node.in_edges[0]].get_output(0), indices=const_layer.get_output(0), axis=axis)
+        layer = self.network.add_gather(self.named_layer[source_node.in_edges[0]], indices=const_layer.get_output(0), axis=axis)
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -720,7 +715,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -750,7 +745,7 @@ class PytorchTensorRTParser(Parser):
         new_w = (scale * bn_var_rsqrt).reshape([-1] + [1] * (len(scale.shape) - 1))
         new_b = (- mean) * bn_var_rsqrt * scale + bias
 
-        layer = self.network.add_scale(self.named_layer[source_node.in_edges[0]].get_output(0), mode=trt.ScaleMode(1), shift=new_b, scale=new_w)
+        layer = self.network.add_scale(self.named_layer[source_node.in_edges[0]], mode=trt.ScaleMode(1), shift=new_b, scale=new_w)
         layer.channel_axis = 1
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
@@ -760,7 +755,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer     
 
@@ -770,8 +765,8 @@ class PytorchTensorRTParser(Parser):
  
         attr = source_node.attrs
 
-        layer = self.network.add_softmax(self.named_layer[source_node.in_edges[0]].get_output(0))
-        # layer.axes  = (1 << (attr['axis'] - 1))
+        layer = self.network.add_softmax(self.named_layer[source_node.in_edges[0]])
+        layer.axes  = (1 << (attr['axis']))
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -780,7 +775,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
  
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -790,7 +785,7 @@ class PytorchTensorRTParser(Parser):
  
         attr = source_node.attrs
 
-        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.CLIP)
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]], type=trt.ActivationType.CLIP)
         layer.alpha = attr['min']
         layer.beta = attr['max']
         layer.name = source_node.name
@@ -802,7 +797,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
  
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -812,7 +807,7 @@ class PytorchTensorRTParser(Parser):
  
         attr = source_node.attrs
 
-        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.HARD_SIGMOID)
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]], type=trt.ActivationType.HARD_SIGMOID)
         layer.alpha = attr['alpha']
         layer.beta = 0.5
         layer.name = source_node.name
@@ -824,7 +819,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
  
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -834,11 +829,11 @@ class PytorchTensorRTParser(Parser):
  
         attr = source_node.attrs
 
-        layer_hardsigmoid = self.network.add_activation(self.named_layer[source_node.in_edges[0]].get_output(0), type=trt.ActivationType.HARD_SIGMOID)
+        layer_hardsigmoid = self.network.add_activation(self.named_layer[source_node.in_edges[0]], type=trt.ActivationType.HARD_SIGMOID)
         layer_hardsigmoid.alpha = 0.5
         layer_hardsigmoid.beta = 0.5
 
-        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]].get_output(0), layer_hardsigmoid.get_output(0), trt.ElementWiseOperation.PROD)        
+        layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]], layer_hardsigmoid.get_output(0), trt.ElementWiseOperation.PROD)        
         layer.name = source_node.name
 
         caffe_layer = pb2.LayerParameter()
@@ -848,7 +843,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
  
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -867,7 +862,7 @@ class PytorchTensorRTParser(Parser):
 
         attr = source_node.attrs
 
-        layer = self.network.add_padding(self.named_layer[source_node.in_edges[0]].get_output(0), pre_padding, post_padding)        
+        layer = self.network.add_padding(self.named_layer[source_node.in_edges[0]], pre_padding, post_padding)        
         layer.name = source_node.name
 
         caffe_layer = pb2.LayerParameter()
@@ -877,6 +872,58 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[0])
  
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer           
+
+    def rename_Split(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+ 
+        attr = source_node.attrs
+        
+        input_shape = self.named_layer[source_node.in_edges[0]].shape
+        start = [0, 0, 0, 0]
+        for idx, output_id in enumerate(source_node.output_ids):
+            shape = [input_shape[0], attr['split'][idx], input_shape[2], input_shape[3]]
+            stride = [input_shape[0], 1, 1, 1]            
+            layer = self.network.add_slice(self.named_layer[source_node.in_edges[0]], start, shape, stride)        
+            output_name = source_node.name + ':' + output_id
+            self.named_layer[output_name] = layer.get_output(0)
+            layer.name = output_name
+            start[1] = start[1] + attr['split'][idx]
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'Split'       
+        for output_id in source_node.output_ids:
+            output_id = source_node.name + ':' + output_id
+            caffe_layer.top.append(output_id)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+ 
+        self.main_layers.append(caffe_layer)
+
+        return layer
+
+    def rename_ReduceMean(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+ 
+        attr = source_node.attrs
+        axes = 0
+        for d in attr['axes']:
+            axes |= 1 << (d)  # -1 to remove batch dimension
+
+        layer = self.network.add_reduce(self.named_layer[source_node.in_edges[0]], op=trt.ReduceOperation.AVG, axes=axes, keep_dims=attr['keepdims'])
+        layer.name = source_node.name
+
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name   
+        caffe_layer.type = 'ReduceMean'       
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+ 
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer.get_output(0)
+
+        return layer
