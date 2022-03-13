@@ -75,6 +75,14 @@ def test_densenet121(shape = [1, 3, 224, 224], opset_version=9):
     runner.trt_inference()
     runner.check_result()
 
+def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9):     
+    net = models.shufflenet_v2_x1_0(pretrained=False)
+    runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.trt_inference()
+    runner.check_result()
+
 def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
     import torch
     net = torch.hub.load('ultralytics/yolov5', 'yolov5s', autoshape=False, pretrained=False, device=torch.device('cpu'))
