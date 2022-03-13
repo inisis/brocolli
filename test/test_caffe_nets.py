@@ -94,16 +94,6 @@ def test_vgg16(shape = [1, 3, 224, 224], opset_version=13, fuse=FUSE):
     runner.check_result()
 
 def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
-    '''
-    shufflenetv2.py
-    def channel_shuffle(x: Tensor, groups: int) -> Tensor:
-        # reshape
-        x = x.view(int(x.size(0)), groups, -1, int(x.size(2)), int(x.size(3)))
-        x = torch.transpose(x, 1, 2).contiguous()
-        # flatten
-        x = x.view(int(x.size(0)), -1, int(x.size(3)), int(x.size(4)))
-        return x
-    '''       
     net = models.shufflenet_v2_x1_0(pretrained=False)
     runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version, fuse)
     runner.pyotrch_inference()
