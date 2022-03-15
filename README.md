@@ -53,10 +53,10 @@ Curently supported layers
 |HardSwish           |✔️|✔️|
 |HardSigmoid         |✔️|✔️|
 |Mul                 |✔️|✔️|
-|Slice               |✔️|❔|
+|Slice               |✔️|✔️|
 |L2Normalization     |✔️|❔|
 |Resize              |✔️|✔️|
-|ReduceMean          |✔️|❔|
+|ReduceMean          |✔️|✔️|
 |BilinearInterpolate |✔️|✔️|
 |MaxUnPool           |✔️|❔|
 |ConvTranspose       |✔️|✔️|
@@ -74,7 +74,7 @@ Curently supported network
 |SqueezeNet|✔️|✔️|
 |MobileNet |✔️|✔️|
 |DenseNet  |✔️|✔️|
-|ShuffleNet|✔️|❔|
+|ShuffleNet|✔️|✔️|
 |SCNN      |✔️|❔|
 |SegNet    |✔️|❔|
 |YoloV5    |✔️|✔️|
