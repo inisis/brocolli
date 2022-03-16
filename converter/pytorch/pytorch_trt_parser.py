@@ -927,3 +927,23 @@ class PytorchTensorRTParser(Parser):
         self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
+
+    def rename_LeakyRelu(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None   
+
+        attr = source_node.attrs
+
+        layer = self.network.add_activation(self.named_layer[source_node.in_edges[0]], type=trt.ActivationType.LEAKY_RELU)
+        layer.alpha = attr['alpha']
+        layer.name = source_node.name
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name
+        caffe_layer.type = 'LeakyReLU'     
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer.get_output(0)   
+
+        return layer      
