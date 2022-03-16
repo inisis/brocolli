@@ -38,7 +38,7 @@ Curently supported layers
 |Sigmoid             |✔️|✔️|
 |BatchNormalization  |✔️|✔️|
 |Relu                |✔️|✔️|
-|LeakyRelu           |✔️|❔|
+|LeakyRelu           |✔️|✔️|
 |Add                 |✔️|✔️|
 |AvgPool             |✔️|✔️|
 |Flatten             |✔️|✔️|
@@ -78,6 +78,7 @@ Curently supported network
 |SCNN      |✔️|❔|
 |SegNet    |✔️|❔|
 |YoloV5    |✔️|✔️|
+|YoloV3    |✔️|✔️|
 |Realcugan |✔️|❔|
 |Yolo-Lite |✔️|❔|
 |Resa      |❌|✔️|
