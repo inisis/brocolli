@@ -57,7 +57,8 @@ layer_map = {
     'onnx::ConvTranspose': 'ConvTranspose',
     'onnx::Cast': 'Common',
     'onnx::ConstantOfShape': 'Common',
-    'onnx::Div': 'Common'
+    'onnx::Div': 'Common',
+    'onnx::ArgMax': 'ArgMax'
 }
 
 class PytorchTensorRTParser(Parser):
@@ -994,5 +995,24 @@ class PytorchTensorRTParser(Parser):
 
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer.get_output(0)   
+
+        return layer
+
+    def rename_ArgMax(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None   
+
+        attr = source_node.attrs
+        axes = 1 << (attr['axis'])
+        layer = self.network.add_topk(self.named_layer[source_node.in_edges[0]], op=trt.TopKOperation.MAX, k=1, axes=axes)
+        layer.name = source_node.name
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name
+        caffe_layer.type = 'Argmax'     
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer.get_output(1)   
 
         return layer        
