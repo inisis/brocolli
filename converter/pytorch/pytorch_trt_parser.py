@@ -2,8 +2,8 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
-import logging
 import numpy as np
+from loguru import logger
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
@@ -143,7 +143,7 @@ class PytorchTensorRTParser(Parser):
                 else:
                     self.rename_Common(current_node)
         except Exception as e:
-            print(e)
+            logger.info(e)
         finally:
             text_net = pb2.NetParameter()
 
@@ -167,7 +167,7 @@ class PytorchTensorRTParser(Parser):
     # Layers #
     ##########
     def rename_Common(self, source_node):
-        logging.warning("PyTorch parser will skip operator [%s] with name [%s]."
+        logger.warning("PyTorch parser will skip operator [%s] with name [%s]."
               % (source_node.type, source_node.name)) 
 
         return None
@@ -468,6 +468,7 @@ class PytorchTensorRTParser(Parser):
             layer.channel_axis = 3
         else:
             layer = self.network.add_elementwise(self.named_layer[source_node.in_edges[0]], self.named_layer[source_node.in_edges[1]], trt.ElementWiseOperation.PROD)
+
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -477,7 +478,7 @@ class PytorchTensorRTParser(Parser):
         caffe_layer.bottom.append(source_node.in_edges[1])
 
         self.main_layers.append(caffe_layer)
-        self.named_layer[source_node.name] = layer.get_output(0)   
+        self.named_layer[source_node.name] = layer.get_output(0)
 
         return layer
 
@@ -678,15 +679,19 @@ class PytorchTensorRTParser(Parser):
             return None
  
         attr = source_node.attrs
-        
+
         kernel_shape  = attr['kernel_shape']
         stride = attr['strides']
         layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]], trt.PoolingType.AVERAGE, window_size=kernel_shape)
         layer.stride = stride
+        layer.padding = (attr['pads'][0], attr['pads'][2])
+        if "count_include_pad" not in attr:
+            layer.average_count_excludes_padding = False
+        
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
-        caffe_layer.type = 'Pooling'       
+        caffe_layer.type = 'GlobalPooling'       
         caffe_layer.top.append(source_node.name)
         caffe_layer.bottom.append(source_node.in_edges[0])
 
@@ -946,4 +951,48 @@ class PytorchTensorRTParser(Parser):
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer.get_output(0)   
 
-        return layer      
+        return layer
+
+    def rename_Upsample(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
+        attr = source_node.attrs
+        logger.info(attr)
+        layer = self.network.add_resize(self.named_layer[source_node.in_edges[0]])
+        if 'scale_factor' in attr:
+            scale = attr['scale_factor'][0]
+            layer.scales = [1, 1, scale, scale]
+        else:
+            input_shape = self.named_layer[source_node.in_edges[0]].shape
+            shape = list(input_shape[0:2]) + attr['output_size']
+            layer.shape = shape
+        
+        if attr['mode'] == "linear":
+            layer.resize_mode = trt.ResizeMode.LINEAR
+        else:
+            layer.resize_mode = trt.ResizeMode.NEAREST
+
+        if attr['coordinate_transformation_mode'] == "pytorch_half_pixel":
+            layer.coordinate_transformation = trt.ResizeCoordinateTransformation.HALF_PIXEL
+        elif attr['coordinate_transformation_mode'] == "asymmetric":
+            layer.coordinate_transformation = trt.ResizeCoordinateTransformation.ASYMMETRIC       
+        else:
+            raise
+
+        if attr['nearest_mode'] == 'floor':
+            layer.nearest_rounding = trt.ResizeRoundMode.FLOOR 
+        else:
+            raise
+
+        layer.name = source_node.name
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name 
+        caffe_layer.type = 'Upsample'        
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer.get_output(0)   
+
+        return layer        
