@@ -83,6 +83,7 @@ Curently supported network
 |Yolo-Lite |✔️|❔|
 |Resa      |❌|✔️|
 |YoloX     |✔️|✔️|
+|BiSeNet   |❌|✔️|
 
 
 # Contact
