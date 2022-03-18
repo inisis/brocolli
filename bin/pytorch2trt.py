@@ -58,7 +58,6 @@ class Runner(object):
 
     def trt_inference(self):
         engine_file = "tmp/" + self.name + '.trt'
-        self.dtype = np.float32
         self.logger = trt.Logger(trt.Logger.WARNING)
 
         if isinstance(self.shape, tuple):
@@ -111,9 +110,9 @@ class Runner(object):
         bindings = []
         stream = cuda.Stream()
         
-        for binding in engine:
+        for idx, binding in enumerate(engine):
             size = trt.volume(engine.get_binding_shape(binding)) * 1
-            host_mem = cuda.pagelocked_empty(size, self.dtype)
+            host_mem = cuda.pagelocked_empty(size, dtype=trt.nptype(engine.get_binding_dtype(idx)))
             device_mem = cuda.mem_alloc(host_mem.nbytes)
             bindings.append(int(device_mem))
 
