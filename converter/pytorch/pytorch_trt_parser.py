@@ -685,7 +685,8 @@ class PytorchTensorRTParser(Parser):
         stride = attr['strides']
         layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]], trt.PoolingType.AVERAGE, window_size=kernel_shape)
         layer.stride = stride
-        layer.padding = (attr['pads'][0], attr['pads'][2])
+        if "pads" in attr:
+            layer.padding = (attr['pads'][0], attr['pads'][2])
         if "count_include_pad" not in attr:
             layer.average_count_excludes_padding = False
         
