@@ -887,17 +887,18 @@ class PytorchTensorRTParser(Parser):
             return None
  
         attr = source_node.attrs
-        
+
         input_shape = self.named_layer[source_node.in_edges[0]].shape
         start = [0, 0, 0, 0]
         for idx, output_id in enumerate(source_node.output_ids):
-            shape = [input_shape[0], attr['split'][idx], input_shape[2], input_shape[3]]
+            shape = input_shape
+            shape[attr['axis']] = attr['split'][idx]
             stride = [input_shape[0], 1, 1, 1]            
             layer = self.network.add_slice(self.named_layer[source_node.in_edges[0]], start, shape, stride)        
             output_name = source_node.name + ':' + output_id
             self.named_layer[output_name] = layer.get_output(0)
             layer.name = output_name
-            start[1] = start[1] + attr['split'][idx]
+            start[attr['axis']] = start[attr['axis']] + attr['split'][idx]
 
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
@@ -959,7 +960,7 @@ class PytorchTensorRTParser(Parser):
             return None
         
         attr = source_node.attrs
-        logger.info(attr)
+
         layer = self.network.add_resize(self.named_layer[source_node.in_edges[0]])
         if 'scale_factor' in attr:
             scale = attr['scale_factor'][0]
@@ -1014,5 +1015,40 @@ class PytorchTensorRTParser(Parser):
 
         self.main_layers.append(caffe_layer)
         self.named_layer[source_node.name] = layer.get_output(1)   
+
+        return layer
+
+    def rename_BilinearInterpolate(self, source_node):
+        if not self.is_main(source_node.in_edges[0:1]):
+            return None
+        
+        attr = source_node.attrs
+        logger.info(attr)
+        layer = self.network.add_resize(self.named_layer[source_node.in_edges[0]])
+        if 'scale' in attr:
+            scale = attr['scale'][0]
+            layer.scales = [1, 1, scale, scale]
+        else:
+            input_shape = self.named_layer[source_node.in_edges[0]].shape
+            shape = list(input_shape[0:2]) + attr['output_size']
+            layer.shape = shape
+        
+        if attr['mode'] == "linear":
+            layer.resize_mode = trt.ResizeMode.LINEAR
+        else:
+            layer.resize_mode = trt.ResizeMode.NEAREST
+
+        if attr['align_corners'] == 1:
+            layer.coordinate_transformation = trt.ResizeCoordinateTransformation.ALIGN_CORNERS
+
+        layer.name = source_node.name
+        caffe_layer = pb2.LayerParameter()
+        caffe_layer.name = source_node.name 
+        caffe_layer.type = 'BilinearInterpolate'        
+        caffe_layer.top.append(source_node.name)
+        caffe_layer.bottom.append(source_node.in_edges[0])
+
+        self.main_layers.append(caffe_layer)
+        self.named_layer[source_node.name] = layer.get_output(0)   
 
         return layer        
