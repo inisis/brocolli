@@ -85,14 +85,6 @@ def test_densenet161(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.caffe_inference()
     runner.check_result()
 
-def test_vgg16(shape = [1, 3, 224, 224], opset_version=13, fuse=FUSE):
-    net = models.vgg16(pretrained=False)
-    runner = Runner("vgg16", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
-    runner.convert()
-    runner.caffe_inference()
-    runner.check_result()
-
 def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     net = models.shufflenet_v2_x1_0(pretrained=False)
     runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version, fuse)
