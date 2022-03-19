@@ -23,7 +23,7 @@ cd /root/brocolli && python test/test_trt_nets.py
 the source code is located in /root/brocolli, and a pre-compiled caffe is in /root/caffe
 
 ## How to convert your own model
-user can follow this sample to convert your own model
+user can follow this sample to convert your own model,
 ```
 from bin.pytorch2caffe import Runner # if caffe, use bin.pytorch2caffe, if TensorRT use bin.pytorch2trt;
 model = torchvision.models.resnet18(pretrained=False) # Here, you should use your ownd model
@@ -37,6 +37,7 @@ runner.convert()
 runner.caffe_inference() # if caffe, use caffe_inference, if TensorRT use trt_inference;
 runner.check_result()
 ```
+user can run this script until you see "accuracy test passed" on screen, then you can get your caffe or trt model under tmp folder.
 
 # Notice 
 
@@ -91,7 +92,7 @@ Curently supported network
 |MobileNet |✔️|✔️|
 |DenseNet  |✔️|✔️|
 |ShuffleNet|✔️|✔️|
-|SCNN      |✔️|❔|
+|SCNN      |✔️|✔️|
 |SegNet    |✔️|❔|
 |YoloV5    |✔️|✔️|
 |YoloV3    |✔️|✔️|
