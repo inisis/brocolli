@@ -83,6 +83,29 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9):
     runner.trt_inference()
     runner.check_result()
 
+def test_yolov3(shape = [1, 3, 416, 416], opset_version=13):
+    '''
+    symbolic_helper.py
+    size = _maybe_get_const(args[0:][0], 'is')
+    
+    return g.op("Resize",
+                input,
+                empty_roi,
+                scales,
+                coordinate_transformation_mode_s=coordinate_transformation_mode,
+                cubic_coeff_a_f=-0.75,  # only valid when mode="cubic"
+                mode_s=interpolate_mode,  # nearest, linear, or cubic
+                nearest_mode_s="floor",
+                scale_factor_i = size)  # only valid when mode="nearest"
+    '''    
+    from custom_models.yolov3 import Darknet
+    net = Darknet('custom_models/yolov3.cfg', 416)
+    runner = Runner("yolov3", net, shape, opset_version)
+    runner.pyotrch_inference()
+    runner.convert()
+    runner.trt_inference()
+    runner.check_result()
+
 def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
     import torch
     net = torch.hub.load('ultralytics/yolov5', 'yolov5s', autoshape=False, pretrained=False, device=torch.device('cpu'))
@@ -111,24 +134,11 @@ def test_yolov5(shape = [1, 3, 640, 640], opset_version=13):
     runner.trt_inference()
     runner.check_result()
 
-def test_yolov3(shape = [1, 3, 416, 416], opset_version=13):
-    '''
-    symbolic_helper.py
-    size = _maybe_get_const(args[0:][0], 'is')
-    
-    return g.op("Resize",
-                input,
-                empty_roi,
-                scales,
-                coordinate_transformation_mode_s=coordinate_transformation_mode,
-                cubic_coeff_a_f=-0.75,  # only valid when mode="cubic"
-                mode_s=interpolate_mode,  # nearest, linear, or cubic
-                nearest_mode_s="floor",
-                scale_factor_i = size)  # only valid when mode="nearest"
-    '''    
-    from custom_models.yolov3 import Darknet
-    net = Darknet('custom_models/yolov3.cfg', 416)
-    runner = Runner("yolov3", net, shape, opset_version)
+def test_scnn(shape = [1, 3, 512, 288], opset_version=9):
+    from custom_models.scnn import SCNN
+    net = SCNN(input_size=[512, 288], pretrained=False)
+
+    runner = Runner("scnn", net, shape, opset_version)
     runner.pyotrch_inference()
     runner.convert()
     runner.trt_inference()
