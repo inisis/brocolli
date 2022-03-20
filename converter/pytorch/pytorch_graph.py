@@ -8,6 +8,7 @@ import torch
 import torch.jit
 import torch.autograd
 import torch.serialization
+import torch.onnx.symbolic_helper
 from torch.jit import _unique_state_dict
 
 
