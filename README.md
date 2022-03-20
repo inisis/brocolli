@@ -75,7 +75,7 @@ Curently supported layers
 |Resize              |✔️|✔️|
 |ReduceMean          |✔️|✔️|
 |BilinearInterpolate |✔️|✔️|
-|MaxUnPool           |✔️|❔|
+|MaxUnPool           |✔️|❌|
 |ConvTranspose       |✔️|✔️|
 |Gather              |❌|✔️|
 
@@ -93,7 +93,7 @@ Curently supported network
 |DenseNet  |✔️|✔️|
 |ShuffleNet|✔️|✔️|
 |SCNN      |✔️|✔️|
-|SegNet    |✔️|❔|
+|SegNet    |✔️|❌|
 |YoloV5    |✔️|✔️|
 |YoloV3    |✔️|✔️|
 |Realcugan |✔️|❔|
