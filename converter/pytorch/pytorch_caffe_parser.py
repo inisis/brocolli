@@ -375,7 +375,7 @@ class PytorchCaffeParser(Parser):
         return layer
 
     def rename_MaxPool(self, source_node):
-        attr = source_node.attrs      
+        attr = source_node.attrs
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
 
@@ -394,15 +394,6 @@ class PytorchCaffeParser(Parser):
                 else:
                     layer.pooling_param.pad_h = attr['pads'][0]
                     layer.pooling_param.pad_w = attr['pads'][1]
-
-        if 'dilations' not in attr:
-            layer.pooling_param.stride = 1
-        else:
-            if attr['strides'][0] == attr['strides'][1]:
-                layer.pooling_param.stride = attr['strides'][0]
-            else:
-                layer.pooling_param.stride_h = attr['strides'][0]
-                layer.pooling_param.stride_w = attr['strides'][1]
 
         if 'strides' not in attr:
             layer.pooling_param.stride = 1
