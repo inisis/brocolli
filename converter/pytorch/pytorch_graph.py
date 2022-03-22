@@ -3,6 +3,7 @@
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
 import re
+from loguru import logger
 from converter.core.graph import GraphNode, Graph
 import torch
 import torch.jit
@@ -147,11 +148,17 @@ class PytorchGraph(Graph):
         return node_name
 
     def extract(self, dummy_input, names, opset_version):
+        if isinstance(dummy_input, list):
+            input = tuple(dummy_input)
+        else:
+            input = (dummy_input, )
+
         with scope_name_workaround():
             torch.onnx.symbolic_helper._set_onnx_shape_inference(True)            
-            torch.onnx.symbolic_helper._set_opset_version(opset_version)        
-            trace_graph, torch_out, inputs_states = \
-                torch.jit._get_trace_graph(self.model, (dummy_input, ),  strict=False, _force_outplace=False, _return_inputs_states=True)
+            torch.onnx.symbolic_helper._set_opset_version(opset_version)
+            trace_graph, _, inputs_states = \
+                torch.jit._get_trace_graph(self.model, input,  strict=False, _force_outplace=False, _return_inputs_states=True)
+
             torch.onnx.utils.warn_on_static_input_change(inputs_states)
 
             nodes = list(trace_graph.nodes())
