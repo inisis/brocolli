@@ -170,7 +170,7 @@ class PytorchCaffeParser(Parser):
     # Layers #
     ##########
     def rename_Common(self, source_node):
-        logging.warning("PyTorch parser will skip operator [%s] with name [%s]."
+        logger.warning("PyTorch parser will skip operator [%s] with name [%s]."
               % (source_node.type, source_node.name)) 
 
         return None
@@ -270,7 +270,10 @@ class PytorchCaffeParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "PReLU"
 
-        weights_name = '{0}.weight'.format(source_node.weights_name)
+        if source_node.weights_name == "":
+            weights_name = 'weight'
+        else:
+            weights_name = '{0}.weight'.format(source_node.weights_name)
 
         weight = self.state_dict[weights_name]
 
@@ -280,8 +283,7 @@ class PytorchCaffeParser(Parser):
         layer.prelu_param.channel_shared = True if dim == 1 else False
         layer.blobs.extend([as_blob(weight[0])])
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
+        layer.bottom.append(source_node.in_edges[0])
 
         layer.top.append(source_node.name)
 
@@ -679,8 +681,7 @@ class PytorchCaffeParser(Parser):
         if 'max' in attr:
             layer.relu6_param.threshold = attr['max']
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
+        layer.bottom.append(source_node.in_edges[0])
 
         layer.top.append(source_node.name)
 
