@@ -55,7 +55,7 @@ layer_map = {
     'onnx::ConvTranspose': 'ConvTranspose',
     'onnx::Cast': 'Common',
     'onnx::ConstantOfShape': 'Common',
-    'onnx::Div': 'Common'
+    'onnx::Div': 'Common',
 }
 
 def as_blob(array):
@@ -531,8 +531,12 @@ class PytorchCaffeParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "InnerProduct"
 
-        bias_name = '{0}.bias'.format(source_node.weights_name)
-        weights_name = '{0}.weight'.format(source_node.weights_name)
+        if source_node.weights_name == "":
+            bias_name = 'bias'
+            weights_name = 'weight'
+        else:
+            bias_name = '{0}.bias'.format(source_node.weights_name)
+            weights_name = '{0}.weight'.format(source_node.weights_name)
 
         W = self.state_dict[weights_name].numpy().transpose()
 
