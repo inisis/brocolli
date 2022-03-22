@@ -2,8 +2,8 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
-import logging
 import numpy as np
+from loguru import logger
 from converter.core.parser import Parser
 from converter.pytorch.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
@@ -230,9 +230,14 @@ class PytorchCaffeParser(Parser):
                 layer.convolution_param.kernel_w = attr['kernel_shape'][1]
 
         layer.convolution_param.group = attr['group']
+        
+        if source_node.weights_name == "":
+            bias_name = 'bias'
+            weights_name = 'weight'
+        else:
+            bias_name = '{0}.bias'.format(source_node.weights_name)
+            weights_name = '{0}.weight'.format(source_node.weights_name)
 
-        bias_name = '{0}.bias'.format(source_node.weights_name)
-        weights_name = '{0}.weight'.format(source_node.weights_name)
         weight = self.state_dict[weights_name]
 
         weight = weight.numpy()
