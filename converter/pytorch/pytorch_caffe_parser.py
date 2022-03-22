@@ -326,8 +326,12 @@ class PytorchCaffeParser(Parser):
         layer_bn.batch_norm_param.use_global_stats = 1
         layer_bn.batch_norm_param.eps = attr['epsilon']
 
-        mean_name = '{0}.running_mean'.format(source_node.weights_name)
-        var_name = '{0}.running_var'.format(source_node.weights_name)
+        if source_node.weights_name == "":
+            mean_name = 'running_mean'
+            var_name = 'running_var'
+        else:
+            mean_name = '{0}.running_mean'.format(source_node.weights_name)
+            var_name = '{0}.running_var'.format(source_node.weights_name)
 
         mean = self.state_dict[mean_name].numpy()
         variance = self.state_dict[var_name].numpy()
@@ -343,8 +347,12 @@ class PytorchCaffeParser(Parser):
         layer_scale = pb2.LayerParameter()
         layer_scale.type = "Scale"
 
-        bias_name = '{0}.bias'.format(source_node.weights_name)
-        weights_name = '{0}.weight'.format(source_node.weights_name)
+        if source_node.weights_name == "":
+            bias_name = 'bias'
+            weights_name = 'weight'
+        else:
+            bias_name = '{0}.bias'.format(source_node.weights_name)
+            weights_name = '{0}.weight'.format(source_node.weights_name)
 
         weight = self.state_dict[weights_name].numpy()
 
