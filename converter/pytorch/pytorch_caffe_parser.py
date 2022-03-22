@@ -1031,8 +1031,13 @@ class PytorchCaffeParser(Parser):
 
         layer.convolution_param.group = attr['group']
 
-        bias_name = '{0}.bias'.format(source_node.weights_name)
-        weights_name = '{0}.weight'.format(source_node.weights_name)
+        if source_node.weights_name == "":
+            bias_name = 'bias'
+            weights_name = 'weight'
+        else:
+            bias_name = '{0}.bias'.format(source_node.weights_name)
+            weights_name = '{0}.weight'.format(source_node.weights_name)
+
         weight = self.state_dict[weights_name]
 
         weight = weight.numpy()
