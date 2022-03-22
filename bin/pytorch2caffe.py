@@ -1,8 +1,7 @@
 import os
 import re
 import sys
-import argparse
-import json
+from loguru import logger
 
 import torch
 torch.manual_seed(0)
@@ -26,15 +25,16 @@ class Runner(object):
         self.model_file = "tmp/" + self.name
         self.device = torch.device('cpu')
         self.model = self.model.eval().to(self.device)
+
         if isinstance(self.shape, tuple):
             dummy_input = []
             for each in self.shape:
                 dummy = torch.ones(each).to(torch.float32)
                 dummy_input.append(dummy)
         else:
-            dummy_input = torch.ones(self.shape).to(torch.float32)
+            dummy_input = [torch.ones(self.shape).to(torch.float32)]
 
-        self.pytorch_output = self.model(dummy_input)
+        self.pytorch_output = self.model(*dummy_input)
  
         if generate_onnx:
             torch.onnx.export(self.model, dummy_input, self.name + ".onnx", opset_version=self.opset_version, enable_onnx_checker=False)
