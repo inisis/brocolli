@@ -48,10 +48,6 @@ class Mean(torch.nn.Module):
     def forward(self, x):
         return x.mean(self.dim, self.keepdim)
 
-def test_Mean_basic(shape = [1, 3, 32, 32], opset_version=13):
-    model = Mean((2, 3), False)
-    Tester("Mean_tuple", model, shape, opset_version)
-
 def test_Mean_keepdim(shape = [1, 3, 32, 32], opset_version=13):
     model = Mean((2, 3), True)
     Tester("Mean_keepdim", model, shape, opset_version)
