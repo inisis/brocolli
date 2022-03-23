@@ -620,6 +620,7 @@ class PytorchCaffeParser(Parser):
 
     def rename_Upsample(self, source_node):
         attr = source_node.attrs
+
         layer = pb2.LayerParameter()
         layer.type = "Upsample"
 
@@ -835,8 +836,7 @@ class PytorchCaffeParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "Slice"
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
+        layer.bottom.append(source_node.in_edges[0])
 
         layer.top.append(source_node.name)
         layer.name = source_node.real_name
@@ -971,7 +971,13 @@ class PytorchCaffeParser(Parser):
         if self.opset_version == 9:
             layer.type = "BilinearInterpolate"
             layer.bilinear_interpolate_param.align_corners = attr['align_corners']
-            layer.bilinear_interpolate_param.scale_factor = attr['scale'][0]
+
+            if 'scale' in attr:
+                layer.bilinear_interpolate_param.scale_factor = attr['scale'][0]
+            else:
+                layer.bilinear_interpolate_param.dst_h = attr['size'][0]
+                layer.bilinear_interpolate_param.dst_w = attr['size'][1]
+
             layer.bottom.append(source_node.in_edges[0])
 
             layer.top.append(source_node.name)
