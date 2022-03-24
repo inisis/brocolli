@@ -40,7 +40,7 @@ class Runner(object):
             self.pytorch_output = [self.pytorch_output]        
  
         if generate_onnx:
-            torch.onnx.export(self.model, *self.dummy_input, self.name + ".onnx", opset_version=self.opset_version, enable_onnx_checker=False)
+            torch.onnx.export(self.model, tuple(self.dummy_input), self.name + ".onnx", opset_version=self.opset_version, enable_onnx_checker=False)
         
     def convert(self, export_mode=False):
         self.model.export_mode = export_mode
