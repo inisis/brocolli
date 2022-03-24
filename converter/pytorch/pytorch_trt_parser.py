@@ -158,11 +158,14 @@ class PytorchTensorRTParser(Parser):
 
         for layer_name in self.pytorch_graph.output_layers:
             node = self.named_node[layer_name]
+
             if node.type in ['onnx::Split']:
                 for idx, output_id in enumerate(node.output_ids):     
                     output_name = node.name + ':' + output_id 
                     self.network.mark_output(tensor=self.named_layer[output_name])
             else:
+                if layer_name not in self.named_layer.keys():
+                    continue
                 self.network.mark_output(tensor=self.named_layer[layer_name])
 
         self.plan = self.builder.build_serialized_network(self.network, self.config)
@@ -1068,7 +1071,7 @@ class PytorchTensorRTParser(Parser):
             layer.scales = [1, 1, scale, scale]
         else:
             input_shape = self.named_layer[source_node.in_edges[0]].shape
-            shape = list(input_shape[0:2]) + attr['output_size']
+            shape = list(input_shape[0:2]) + attr['size']
             layer.shape = shape
         
         if attr['mode'] == "linear":
