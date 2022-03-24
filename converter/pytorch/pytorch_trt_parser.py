@@ -157,7 +157,13 @@ class PytorchTensorRTParser(Parser):
             self.save_to_proto(text_net, dest_path + "_debug.prototxt")
 
         for layer_name in self.pytorch_graph.output_layers:
-            self.network.mark_output(tensor=self.named_layer[layer_name])              
+            node = self.named_node[layer_name]
+            if node.type in ['onnx::Split']:
+                for idx, output_id in enumerate(node.output_ids):     
+                    output_name = node.name + ':' + output_id 
+                    self.network.mark_output(tensor=self.named_layer[output_name])
+            else:
+                self.network.mark_output(tensor=self.named_layer[layer_name])
 
         self.plan = self.builder.build_serialized_network(self.network, self.config)
         engine = self.runtime.deserialize_cuda_engine(self.plan)
@@ -573,10 +579,13 @@ class PytorchTensorRTParser(Parser):
             return None
 
         attr = source_node.attrs
-
+        
         input_ = [self.named_layer[x] for x in source_node.in_edges]
         layer = self.network.add_concatenation(input_)
-        layer.axis = attr['axis']
+        if attr['axis'] < 0:
+            layer.axis = len(source_node.output_shape) + attr['axis']
+        else:
+            layer.axis = attr['axis']
         layer.name = source_node.name
 
         caffe_layer = pb2.LayerParameter()
