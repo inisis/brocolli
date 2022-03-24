@@ -301,6 +301,10 @@ class PytorchTensorRTParser(Parser):
         layer = self.network.add_pooling(self.named_layer[source_node.in_edges[0]], trt.PoolingType.MAX, window_size=kernel_shape)
         layer.stride = strides
         layer.padding = pads
+        if 'ceil_mode' in attr:
+            if attr['ceil_mode'] == 1:
+                layer.padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
+
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name
@@ -702,7 +706,10 @@ class PytorchTensorRTParser(Parser):
             layer.padding = (attr['pads'][0], attr['pads'][2])
         if "count_include_pad" not in attr:
             layer.average_count_excludes_padding = False
-        
+        if 'ceil_mode' in attr:
+            if attr['ceil_mode'] == 1:
+                layer.padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
+       
         layer.name = source_node.name
         caffe_layer = pb2.LayerParameter()
         caffe_layer.name = source_node.name   
