@@ -9,7 +9,7 @@ from converter.pytorch.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
 
 import torch.nn as nn
-from torch.nn.utils.fusion import fuse_conv_bn_eval
+from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 
 import google.protobuf.text_format
 import tensorrt as trt
@@ -95,13 +95,20 @@ class PytorchTensorRTParser(Parser):
         for name, module in model.named_children():
             if list(module.named_children()):
                 self.fuse_all_conv_bn(module)
-                
+
             if isinstance(module, nn.BatchNorm2d):
                 if not stack:
                     continue
                 if isinstance(stack[-1][1], nn.Conv2d):
                     setattr(model, stack[-1][0], fuse_conv_bn_eval(stack[-1][1], module))
                     setattr(model, name, nn.Identity())
+
+            elif isinstance(module, nn.BatchNorm1d):
+                if not stack:
+                    continue                
+                if isinstance(stack[-1][1], nn.Linear):
+                    setattr(model, stack[-1][0], fuse_linear_bn_eval(stack[-1][1], module))
+                    setattr(model, name, nn.Identity())                    
             else:
                 stack.append((name, module))
 
