@@ -101,6 +101,10 @@ Curently supported network
 |Resa      |❌|✔️|
 |YoloX     |✔️|✔️|
 |BiSeNet   |❌|✔️|
+|fbnet     |✔️|❔|
+|regnet    |✔️|❔|
+|ghostnet  |✔️|❔|
+|tinynet   |✔️|❔|
 
 
 # Contact
