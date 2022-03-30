@@ -17,18 +17,6 @@ def test_Add(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
     model = Add()
     Tester("Add", model, shape, opset_version)
 
-def test_IAdd(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class IAdd(torch.nn.Module):
-        def __init__(self):
-            super(IAdd, self).__init__()
-
-        def forward(self, x, y):
-            x += y
-            return x 
-    
-    model = IAdd()
-    Tester("IAdd", model, shape, opset_version)
-
 def test_TorchAdd(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
     class TorchAdd(torch.nn.Module):
         def __init__(self):
@@ -62,18 +50,6 @@ def test_Mul(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
     
     model = Mul()
     Tester("Mul", model, shape, opset_version)
-
-def test_IMul(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class IMul(torch.nn.Module):
-        def __init__(self):
-            super(IMul, self).__init__()
-
-        def forward(self, x, y):
-            x *= y
-            return x 
-    
-    model = IMul()
-    Tester("IMul", model, shape, opset_version)
 
 def test_TorchMul(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
     class TorchMul(torch.nn.Module):
