@@ -143,7 +143,8 @@ class L2Norm(nn.Module):
 
     def forward(self, x, export_mode):
         if export_mode:
-            out = torch.linalg.norm(x, dim=0, keepdim=True)  
+            norm = F.normalize(input, 2)
+            out = self.weight * norm
         else:
             norm = x.pow(2).sum(dim=1, keepdim=True).sqrt()+self.eps
             #x /= norm
