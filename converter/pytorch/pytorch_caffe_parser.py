@@ -928,7 +928,7 @@ class PytorchCaffeParser(Parser):
 
         layer = pb2.LayerParameter()
 
-        if attr['mode'] == "nearset":
+        if attr['mode'] == "nearest":
             layer.type = "Upsample"
             if 'scale_factor' in attr:
                 layer.upsample_param.scale = attr['scale_factor'][0]
