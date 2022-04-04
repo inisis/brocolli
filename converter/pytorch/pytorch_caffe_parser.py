@@ -925,20 +925,43 @@ class PytorchCaffeParser(Parser):
 
     def rename_Resize(self, source_node):
         attr = source_node.attrs
+
         layer = pb2.LayerParameter()
-        layer.type = "Upsample"
 
-        if 'scale_factor' in attr:
-            layer.upsample_param.scale = attr['scale_factor'][0]
+        if attr['mode'] == "nearset":
+            layer.type = "Upsample"
+            if 'scale_factor' in attr:
+                layer.upsample_param.scale = attr['scale_factor'][0]
 
-        layer.bottom.append(source_node.in_edges[0])
+            layer.bottom.append(source_node.in_edges[0])
 
-        layer.top.append(source_node.name)
+            layer.top.append(source_node.name)
+            layer.name = source_node.real_name
+            if self.is_main(layer.bottom):
+                self.main_layers.append(layer)        
+            return layer
 
-        layer.name = source_node.real_name
-        if self.is_main(layer.bottom):
-            self.main_layers.append(layer)        
-        return layer
+        elif attr['mode'] == "linear":
+            layer.type = "BilinearInterpolate"
+
+            if 'align_corners' in attr:
+                layer.bilinear_interpolate_param.align_corners = attr['align_corners']
+
+            if 'scale_factor' in attr:
+                layer.bilinear_interpolate_param.scale_factor = attr['scale_factor'][0]
+            else:
+                layer.bilinear_interpolate_param.dst_h = attr['size'][0]
+                layer.bilinear_interpolate_param.dst_w = attr['size'][1]
+
+            layer.bottom.append(source_node.in_edges[0])
+
+            layer.top.append(source_node.name)
+            layer.name = source_node.real_name
+            if self.is_main(layer.bottom):
+                self.main_layers.append(layer)
+            return layer
+        else:         
+            raise Exception('Unsupported mode: {}'.format(attr['mode']))
 
     def rename_LeakyRelu(self, source_node):
         attr = source_node.attrs
@@ -993,7 +1016,7 @@ class PytorchCaffeParser(Parser):
                 self.main_layers.append(layer)
             return layer  
         else:
-            raise Exception('Unsupported opset_version: {}'.format(self.opset_versionc))
+            raise Exception('Unsupported opset_version: {}'.format(self.opset_version))
 
     def rename_MaxUnPool(self, source_node):
         layer = pb2.LayerParameter()
