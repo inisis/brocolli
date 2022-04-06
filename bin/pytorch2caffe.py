@@ -69,11 +69,11 @@ class Runner(object):
         caffe_outname = self.net.outputs
         caffe_outname = sorted(caffe_outname, key=lambda x: re.findall(r'\d+', x)[-1])
 
-        for idx in range(len(self.caffe_output)):         
+        for idx in range(len(self.caffe_output)):
             np.testing.assert_allclose(
                 self.caffe_output[caffe_outname[idx]],
                 self.pytorch_output[idx].detach().numpy(),
                 rtol=1e-7,
-                atol=1e-3, # inception will produce large outputs, but low relative error
+                atol=1e-5,
             )
         print("accuracy test passed")
