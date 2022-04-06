@@ -944,8 +944,12 @@ class PytorchCaffeParser(Parser):
         elif attr['mode'] == "linear":
             layer.type = "BilinearInterpolate"
 
-            if 'align_corners' in attr:
-                layer.bilinear_interpolate_param.align_corners = attr['align_corners']
+            if attr['coordinate_transformation_mode'] == "pytorch_half_pixel":
+                layer.bilinear_interpolate_param.align_corners = False
+            elif attr['coordinate_transformation_mode'] == "align_corners":
+                layer.bilinear_interpolate_param.align_corners = True
+            else:
+                raise Exception('Unsupported mode: {}'.format(attr['coordinate_transformation_mode']))
 
             if 'scale_factor' in attr:
                 layer.bilinear_interpolate_param.scale_factor = attr['scale_factor'][0]
