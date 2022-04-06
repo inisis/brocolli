@@ -60,6 +60,14 @@ def test_Upsample_scale_factor2_nearest(shape = [1, 3, 32, 32], opset_version=13
     model = torch.nn.Upsample(scale_factor=2, mode='nearest')
     Tester("Upsample_scale_factor2_nearest", model, shape, opset_version)
 
+def test_Upsample_scale_factor2_bilinear(shape = [1, 3, 32, 32], opset_version=13):
+    model = torch.nn.Upsample(scale_factor=2, mode='bilinear')
+    Tester("Upsample_scale_factor2_bilinear", model, shape, opset_version)
+
+def test_Upsample_scale_factor2_bilinear_aligncorner(shape = [1, 3, 32, 32], opset_version=13):
+    model = torch.nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+    Tester("Upsample_scale_factor2_bilinear_aligncorner", model, shape, opset_version)
+
 class Interpolate(torch.nn.Module):
     def __init__(self, size=None,scale_factor=None, mode=None, align_corners=None):
         super(Interpolate, self).__init__()
