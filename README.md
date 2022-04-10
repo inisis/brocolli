@@ -106,6 +106,8 @@ Curently supported network
 |ghostnet  |✔️|❔|
 |tinynet   |✔️|❔|
 
+# TODO
+RNN support
 
 # Contact
  QQ Group: 597059928
