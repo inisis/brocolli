@@ -56,6 +56,7 @@ layer_map = {
     'onnx::Cast': 'Common',
     'onnx::ConstantOfShape': 'Common',
     'onnx::Div': 'Common',
+    'onnx::DepthToSpace': 'PixelShuffle',
 }
 
 def as_blob(array):
@@ -1116,4 +1117,20 @@ class PytorchCaffeParser(Parser):
         layer.name = source_node.real_name
         if self.is_main(layer.bottom):
             self.main_layers.append(layer)
-        return layer     
+        return layer
+
+    def rename_PixelShuffle(self, source_node):
+        attr = source_node.attrs
+        layer = pb2.LayerParameter()
+        layer.type = "PixelShuffle"
+
+        layer.pixelshuffle_param.upscale_factor = attr['blocksize']
+
+        for b in source_node.in_edges:
+            layer.bottom.append(b)
+
+        layer.top.append(source_node.name)
+        layer.name = source_node.real_name
+        if self.is_main(layer.bottom):
+            self.main_layers.append(layer)
+        return layer
