@@ -78,6 +78,7 @@ Curently supported layers
 |MaxUnPool           |✔️|❌|
 |ConvTranspose       |✔️|✔️|
 |Gather              |❌|✔️|
+|PixelShufle         |✔️|❔|
 
 
 Curently supported network
