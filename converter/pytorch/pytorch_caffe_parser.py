@@ -1124,7 +1124,7 @@ class PytorchCaffeParser(Parser):
         layer = pb2.LayerParameter()
         layer.type = "PixelShuffle"
 
-        layer.pixelshuffle_param.upscale_factor = attr['blocksize']
+        layer.pixelshuffle_param.upscale_factor = int(attr['blocksize'])
 
         for b in source_node.in_edges:
             layer.bottom.append(b)
