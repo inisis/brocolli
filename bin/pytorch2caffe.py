@@ -74,6 +74,6 @@ class Runner(object):
                 self.caffe_output[caffe_outname[idx]],
                 self.pytorch_output[idx].detach().numpy(),
                 rtol=1e-7,
-                atol=1e-5,
+                atol=1e-3,
             )
         print("accuracy test passed")
