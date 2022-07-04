@@ -38,7 +38,7 @@ def test_squeezenet(shape = [1, 3, 227, 227], opset_version=9, fuse=FUSE):
     runner.caffe_inference()
     runner.check_result()
 
-def test_googlenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
+def test_googlenet(shape = [1, 3, 224, 224], opset_version=13, fuse=FUSE):
     net = models.googlenet(pretrained=False)
     runner = Runner("googlenet", net, shape, opset_version, fuse)
     runner.pyotrch_inference()

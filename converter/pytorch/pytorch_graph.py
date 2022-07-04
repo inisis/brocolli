@@ -13,19 +13,6 @@ import torch.onnx.symbolic_helper
 from torch.jit import _unique_state_dict
 
 
-ATEN_OPS = ["aten::_convolution",
-            "aten::batch_norm",
-            "aten::prelu",
-            "aten::linalg_norm",
-            "aten::linear"]
-ONNX_OPS = ["onnx::Conv",
-            "onnx::PRelu",
-            "onnx::BatchNormalization",
-            "onnx::LpNormalization",
-            "onnx::Gemm",
-            "onnx::ConvTranspose"]
-
-
 class PytorchGraphNode(GraphNode):
 
     def __init__(self, node, node_id, weights_name, output_shape):
@@ -157,13 +144,6 @@ class PytorchGraph(Graph):
             torch.onnx.utils.warn_on_static_input_change(inputs_states)
 
             nodes = list(trace_graph.nodes())
-            scopename = []
-            for node in nodes:
-                if node.kind() in ATEN_OPS:
-                    scopename.append('.'.join(
-                            re.findall(r'\[([\w\d.]+)\]', node.scopeName())
-                        ))
-            self.scope_name = list(dict.fromkeys(scopename))
             trace_graph = torch.onnx.utils._optimize_graph(trace_graph, torch.onnx.OperatorExportTypes.ONNX, params_dict={})
             torch.onnx.utils._set_input_and_output_names(trace_graph, names, None)
             self.process_model_inputs(trace_graph.inputs())
@@ -172,19 +152,8 @@ class PytorchGraph(Graph):
         for node in nodes:
             node_id = self.get_node_id(node)
             self.ids.append(node_id)
-            if node.kind() in ONNX_OPS:
-                if node.scopeName() == '':
-                    value = next(x for x in reversed(self.weights_names) if x is not None)                    
-                    self.weights_names.append(self.scope_name[self.scope_name.index(value) + 1])
-                else:
-                    value = '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName()))
-                    if value in self.scope_name:
-                        self.weights_names.append('.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName())))
-                    else:
-                        value = next(x for x in reversed(self.weights_names) if x is not None)                    
-                        self.weights_names.append(self.scope_name[self.scope_name.index(value) + 1])
-            else:
-                self.weights_names.append(None)
+            value = '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName()))
+            self.weights_names.append(value)
         return trace_graph, nodes
 
     def build(self, shape, opset_version):
