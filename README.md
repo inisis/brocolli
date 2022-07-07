@@ -106,6 +106,7 @@ Curently supported network
 |regnet    |✔️|❔|
 |ghostnet  |✔️|❔|
 |tinynet   |✔️|❔|
+|YoloV7    |✔️|❔|
 
 # TODO
 RNN support
