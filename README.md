@@ -110,6 +110,7 @@ Curently supported network
 
 # TODO
 RNN support
+torch.fx support
 
 # Contact
  QQ Group: 597059928
