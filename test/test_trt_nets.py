@@ -8,7 +8,7 @@ import warnings
 
 import torchvision.models as models
 
-from bin.pytorch2trt import Runner
+from bin.jit.pytorch2trt import Runner
 
 os.makedirs('tmp', exist_ok=True)
 

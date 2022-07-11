@@ -1,7 +1,7 @@
 class CaffeBaseTester(object):
     def __init__(self, name, model, shape, opset_version):
         super(CaffeBaseTester, self).__init__()
-        from bin.pytorch2caffe import Runner as CaffeRunner
+        from bin.jit.pytorch2caffe import Runner as CaffeRunner
         self.runner = CaffeRunner(name, model, shape, opset_version)
         self.runner.pyotrch_inference()
         self.runner.convert()
@@ -11,7 +11,7 @@ class CaffeBaseTester(object):
 class TensorRTBaseTester(object):
     def __init__(self, name, model, shape, opset_version):
         super(TensorRTBaseTester, self).__init__()
-        from bin.pytorch2trt import Runner as TensorRTRunner
+        from bin.jit.pytorch2trt import Runner as TensorRTRunner
         self.runner = TensorRTRunner(name, model, shape, opset_version)
         self.runner.pyotrch_inference()
         self.runner.convert()

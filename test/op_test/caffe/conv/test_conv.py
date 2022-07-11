@@ -4,7 +4,7 @@ import torch
 import pytest
 import warnings
 
-from bin.utils import CaffeBaseTester as Tester
+from bin.jit.utils import CaffeBaseTester as Tester
 
 def test_Conv2d_basic(shape = [1, 3, 32, 32], opset_version=13):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0)

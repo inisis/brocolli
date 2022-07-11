@@ -4,7 +4,7 @@ import torch
 import pytest
 import warnings
 
-from bin.utils import CaffeBaseTester as Tester
+from bin.jit.utils import CaffeBaseTester as Tester
 
 class TorchChunk(torch.nn.Module):
     def __init__(self, *args, **kwargs):

@@ -4,7 +4,7 @@ import torch
 import pytest
 import warnings
 
-from bin.utils import TensorRTBaseTester as Tester
+from bin.jit.utils import TensorRTBaseTester as Tester
 
 def test_Add(shape = ([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
     class Add(torch.nn.Module):

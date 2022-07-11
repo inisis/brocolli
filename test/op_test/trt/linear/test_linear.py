@@ -4,7 +4,7 @@ import torch
 import pytest
 import warnings
 
-from bin.utils import TensorRTBaseTester as Tester
+from bin.jit.utils import TensorRTBaseTester as Tester
 
 def test_Linear_basic(shape = [1, 3], opset_version=13):
     model = torch.nn.Linear(3, 5)
