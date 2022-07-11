@@ -5,7 +5,7 @@
 import numpy as np
 from loguru import logger
 from converter.core.parser import Parser
-from converter.pytorch.pytorch_graph import PytorchGraph
+from converter.pytorch.jit.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
 
 import torch.nn as nn

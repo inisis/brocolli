@@ -144,16 +144,22 @@ class PytorchGraph(Graph):
             torch.onnx.utils.warn_on_static_input_change(inputs_states)
 
             nodes = list(trace_graph.nodes())
+            for node in nodes:
+                print(node.scopeName())
+            
+            input()
             trace_graph = torch.onnx.utils._optimize_graph(trace_graph, torch.onnx.OperatorExportTypes.ONNX, params_dict={})
             torch.onnx.utils._set_input_and_output_names(trace_graph, names, None)
             self.process_model_inputs(trace_graph.inputs())
 
         nodes = list(trace_graph.nodes())
         for node in nodes:
+            print(node.kind(), node.scopeName())
             node_id = self.get_node_id(node)
             self.ids.append(node_id)
             value = '.'.join(re.findall(r'\[([\w\d.]+)\]', node.scopeName()))
             self.weights_names.append(value)
+        input()            
         return trace_graph, nodes
 
     def build(self, shape, opset_version):

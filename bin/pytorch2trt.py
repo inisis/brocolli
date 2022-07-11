@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 import tensorrt as trt
 import pycuda.autoinit
 import pycuda.driver as cuda
-from converter.pytorch.pytorch_trt_parser import PytorchTensorRTParser  # noqa
+from converter.pytorch.jit.pytorch_trt_parser import PytorchTensorRTParser  # noqa
 
 
 class HostDeviceMem(object):

@@ -11,7 +11,7 @@ np.random.seed(0)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 
 import caffe  # noqa
-from converter.pytorch.pytorch_caffe_parser import PytorchCaffeParser  # noqa
+from converter.pytorch.jit.pytorch_caffe_parser import PytorchCaffeParser  # noqa
 
 class Runner(object):
     def __init__(self, name, model, shape, opset_version, fuse=False):
