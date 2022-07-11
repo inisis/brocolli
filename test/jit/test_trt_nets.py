@@ -160,4 +160,4 @@ def test_resa(shape = [1, 3, 288, 800], opset_version=13):
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
-    pytest.main(['-p', 'no:warnings', '-v', 'test/test_trt_nets.py'])
+    pytest.main(['-p', 'no:warnings', '-v', 'test/jit/test_trt_nets.py'])

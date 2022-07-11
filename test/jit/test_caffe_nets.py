@@ -235,4 +235,4 @@ def test_realcugan(shape = [1, 3, 200, 200], opset_version=13, fuse=FUSE):
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
-    pytest.main(['-p', 'no:warnings', '-v', 'test/test_caffe_nets.py'])
+    pytest.main(['-p', 'no:warnings', '-v', 'test/jit/test_caffe_nets.py'])
