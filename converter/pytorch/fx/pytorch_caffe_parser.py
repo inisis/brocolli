@@ -2,7 +2,6 @@
 #  Copyright (c) Microsoft Corporation. All rights reserved.
 #  Licensed under the MIT License. See License.txt in the project root for license information.
 #----------------------------------------------------------------------------------------------
-from builtins import isinstance
 import re
 import numpy as np
 from loguru import logger
@@ -168,7 +167,16 @@ class PytorchCaffeParser():
                 elif isinstance(module, nn.AvgPool2d):                
                     func = getattr(self, "rename_AveragePool")
                     layer_data = func(node, module)
-                    self.layers.append(layer_data)                         
+                    self.layers.append(layer_data)  
+                elif isinstance(module, nn.SiLU):                
+                    func = getattr(self, "rename_SiLU")
+                    layer_data = func(node, module)
+                    self.layers.append(layer_data[0]) 
+                    self.layers.append(layer_data[1])                    
+                elif isinstance(module, nn.Upsample):                
+                    func = getattr(self, "rename_Upsample")
+                    layer_data = func(node, module)
+                    self.layers.append(layer_data)                                         
                 else:
                      raise NotImplementedError("module %s is not implemented" % (module))
             elif node.op == 'call_function':
@@ -270,7 +278,9 @@ class PytorchCaffeParser():
                 elif function_name == "split":
                     func = getattr(self, "rename_split")
                     layer_data = func(node)
-                    self.layers.append(layer_data)                                                                                                                                                                                                  
+                    self.layers.append(layer_data)   
+                elif function_name == "getattr":
+                    pass                                                                                                                                                                                                                   
                 else:
                      raise NotImplementedError("function %s is not implemented" % (function_name))
             elif node.op == 'call_method':
@@ -383,22 +393,6 @@ class PytorchCaffeParser():
 
         return layer
 
-    def rename_prelu(self, source_node):
-        layer = pb2.LayerParameter()
-        layer.type = "PReLU"
-
-        weight = self.model.weight.detach().numpy()
-
-        layer.prelu_param.channel_shared = True
-        layer.blobs.extend([as_blob(weight[0])])
-
-        bottom_name = self.recursive_find_name(source_node.args[0])
-        layer.bottom.append(bottom_name)
-        layer.top.append(source_node.name)
-        layer.name = source_node.name   
-
-        return layer
-
     def rename_AdaptiveAvgPool2d(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Pooling"
@@ -438,7 +432,7 @@ class PytorchCaffeParser():
 
         layer_bn.blobs.extend([as_blob(mean), as_blob(variance), as_blob(np.array([1.]))])
 
-        layer_bn.bottom.append(source_node.prev.name)
+        layer_bn.bottom.append(source_node.args[0].name)
 
         layer_bn.top.append(source_node.name + '_bn')
         layer_bn.name = source_node.name + '_bn'
@@ -656,22 +650,14 @@ class PytorchCaffeParser():
 
         return layer
 
-    def rename_Upsample(self, source_node):
-        attr = source_node.attrs
-
+    def rename_Upsample(self, source_node, module):
         layer = pb2.LayerParameter()
         layer.type = "Upsample"
 
-        if 'scale_factor' in attr:
-            layer.upsample_param.scale = attr['scale_factor'][0]
+        layer.upsample_param.scale = int(module.scale_factor)
 
-        layer.bottom.append(source_node.in_edges[0])
-
-        layer.top.append(source_node.name)
-
-        layer.name = source_node.real_name
-        if self.is_main(layer.bottom):
-            self.main_layers.append(layer)        
+        self.add_bottom_top(layer, source_node)
+   
         return layer
 
     def rename_Cat(self, source_node):
@@ -1076,6 +1062,25 @@ class PytorchCaffeParser():
         if self.is_main(layer.bottom):
             self.main_layers.append(layer)
         return layer
+
+    def rename_SiLU(self, source_node, module):
+        layer_sigmoid = pb2.LayerParameter()
+        layer_sigmoid.type = "Sigmoid"
+        layer_sigmoid.bottom.append(source_node.args[0].name)
+
+        layer_sigmoid.top.append(source_node.name + '_sigmoid')
+        layer_sigmoid.name = source_node.name + '_sigmoid'
+
+        layer_scale = pb2.LayerParameter()
+        layer_scale.type = "Scale"
+        layer_scale.scale_param.axis = 0
+
+        layer_scale.bottom.append(source_node.args[0].name)
+        layer_scale.bottom.append(source_node.name + '_sigmoid')
+        layer_scale.top.append(source_node.name)
+        layer_scale.name = source_node.name
+
+        return layer_sigmoid, layer_scale
 
     def rename_hardtanh(self, source_node):
         layer = pb2.LayerParameter()
@@ -1495,3 +1500,19 @@ class PytorchCaffeParser():
         self.add_bottom_top(layer, source_node)
 
         return layer           
+
+    def rename_prelu(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "PReLU"
+
+        weight = self.model.weight.detach().numpy()
+
+        layer.prelu_param.channel_shared = True
+        layer.blobs.extend([as_blob(weight[0])])
+
+        bottom_name = self.recursive_find_name(source_node.args[0])
+        layer.bottom.append(bottom_name)
+        layer.top.append(source_node.name)
+        layer.name = source_node.name   
+
+        return layer
