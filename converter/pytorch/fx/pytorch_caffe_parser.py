@@ -162,6 +162,10 @@ class PytorchCaffeParser():
                     func = getattr(self, "rename_Hardswish")
                     layer_data = func(node)
                     self.layers.append(layer_data)
+                elif isinstance(module, nn.Hardsigmoid):
+                    func = getattr(self, "rename_Hardsigmoid")
+                    layer_data = func(node)
+                    self.layers.append(layer_data)                    
                 elif isinstance(module, nn.Identity):
                     pass
                 elif isinstance(module, nn.AvgPool2d):                
@@ -742,10 +746,12 @@ class PytorchCaffeParser():
     def rename_Hardsigmoid(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "HardSigmoid"
+        layer.hardsigmoid_param.alpha = 1.0 / 6
+        layer.hardsigmoid_param.beta = 0.5
 
         self.add_bottom_top(layer, source_node)
 
-        return layer            
+        return layer          
 
     def rename_Mul(self, source_node):
         def add_flatten_before_mul(node_name, first_input, second_input):
