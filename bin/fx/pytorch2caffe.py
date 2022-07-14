@@ -44,7 +44,8 @@ class Runner(object):
         
     def convert(self, export_mode=False):
         pytorch_parser = PytorchCaffeParser(self.model, self.shape, self.fuse)
-        pytorch_parser.run(self.model_file)
+        pytorch_parser.run()
+        pytorch_parser.save(self.model_file)
 
     def caffe_inference(self):
         prototxt = "tmp/" + self.name + '.prototxt'
@@ -72,4 +73,4 @@ class Runner(object):
                 rtol=1e-7,
                 atol=1e-3,
             )
-        print("accuracy test passed")
+        logger.info("accuracy test passed")

@@ -11,6 +11,7 @@ import caffe.proto.caffe_pb2 as pb2
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 from torch.fx.node import Node
+from torch.fx.graph_module import GraphModule
 import google.protobuf.text_format
 
 
@@ -26,17 +27,28 @@ class PytorchCaffeParser():
         self.fuse = fuse
         self.model = model
         self.input_shape = input_shape
-        if self.fuse:
-            self.fuse_all_conv_bn(self.model)
+
+        if isinstance(self.model, GraphModule):
+            pass
+        elif isinstance(self.model, nn.Module):
+            if self.fuse:
+                self.fuse_all_conv_bn(self.model)
+        else:
+            raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
+
         self.pytorch_graph = PytorchGraph(self.model, self.input_shape)
-        self.state_dict = self.model.state_dict()
-        self.modules = dict(self.model.named_modules())
+        self.state_dict = self.pytorch_graph.trace.state_dict()
+        self.modules = dict(self.pytorch_graph.trace.named_modules())
         self.layers = []
 
-    def run(self, dest_path):
-        text_net, binary_weights = self.gen_IR()
-        self.save_to_proto(text_net, dest_path + ".prototxt")
-        self.save_weights(binary_weights, dest_path + ".caffemodel")
+    def run(self):
+        self.text_net, self.binary_weights = self.gen_ir()
+
+    def save(self, dest_path):
+        self.save_to_proto(self.text_net, dest_path + ".prototxt")
+        self.save_weights(self.binary_weights, dest_path + ".caffemodel")
+        logger.info("prototxt saved to {}.prototxt".format(dest_path))
+        logger.info("caffemodel saved to {}.caffemodel".format(dest_path))
 
     def save_to_proto(self, net, filename):
         with open(filename, 'wb') as f:
@@ -107,7 +119,7 @@ class PytorchCaffeParser():
         layer.top.append(source_node.name)
         layer.name = source_node.name
 
-    def gen_IR(self):
+    def gen_ir(self):
         for node in self.pytorch_graph.nodes:
             if node.op == 'placeholder':
                 func = getattr(self, "rename_Data")

@@ -1,7 +1,9 @@
 import torch
+import torch.nn as nn
+
 import torch.fx
 from torch.fx.passes.shape_prop import ShapeProp
-
+from torch.fx.graph_module import GraphModule
 
 class PytorchGraph():
 
@@ -9,8 +11,16 @@ class PytorchGraph():
         super(PytorchGraph, self).__init__()  
         self.model = model
         self.input_shape = input_shape
-        self.trace = torch.fx.symbolic_trace(self.model)
-        self.shape_inference()
+
+        if isinstance(self.model, GraphModule):
+            self.trace = self.model
+            self.shape_inference()
+        elif isinstance(self.model, nn.Module):
+            self.trace = torch.fx.symbolic_trace(self.model)
+            self.shape_inference()
+        else:
+            raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
+
         self.graph = self.trace.graph
         self.nodes = list(self.trace.graph.nodes)
 
