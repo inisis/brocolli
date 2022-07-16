@@ -80,6 +80,12 @@ class PytorchCaffeParser():
             else:
                 stack.append((name, module))
 
+    def list_try_get(self, list, idx, default=None):
+        try:
+            return list[idx]
+        except IndexError:
+            return default
+
     def recursive_find_name(self, node):
         if node.op == 'placeholder':
             return node.name
@@ -328,6 +334,7 @@ class PytorchCaffeParser():
                 pass
             else:
                 raise NotImplementedError("op type %s is not implemented" % (node.op))
+
         text_net = pb2.NetParameter()
         binary_weights = pb2.NetParameter()
         binary_weights.CopyFrom(text_net)
@@ -1371,9 +1378,9 @@ class PytorchCaffeParser():
             return layer
         else:
             kernel_size = source_node.args[1]
-            stride  = source_node.args[2]
-            padding  = source_node.args[3]
-            ceil_mode  = source_node.args[4]
+            stride  = self.list_try_get(source_node.args, 2, kernel_size)
+            padding  = self.list_try_get(source_node.args, 3, 0)
+            ceil_mode  = self.list_try_get(source_node.args, 4, False)
 
             if isinstance(padding, tuple):
                 if padding[0] == padding[1]:
@@ -1386,7 +1393,7 @@ class PytorchCaffeParser():
 
             if isinstance(stride, tuple):
                 if stride[0] == stride[1]:
-                    layer.pooling_param.stride.extend([stride[0]])
+                    layer.pooling_param.stride = stride[0]
                 else:
                     layer.pooling_param.stride_h = stride[0]
                     layer.pooling_param.stride_w = stride[1]
@@ -1395,7 +1402,7 @@ class PytorchCaffeParser():
 
             if isinstance(kernel_size, tuple):
                 if kernel_size[0] == kernel_size[1]:
-                    layer.pooling_param.kernel_size.extend([kernel_size[0]])
+                    layer.pooling_param.kernel_size = kernel_size[0]
                 else:
                     layer.pooling_param.kernel_h = kernel_size[0]
                     layer.pooling_param.kernel_w = kernel_size[1]
