@@ -309,7 +309,7 @@ class PytorchCaffeParser():
                 if str(node.target) == 'size':
                     pass
                 elif str(node.target) == 'view':
-                    func = getattr(self, "rename_View")
+                    func = getattr(self, "rename_view")
                     layer_data = func(node)
                     self.layers.append(layer_data)
                 elif str(node.target) == 'contiguous':
@@ -319,7 +319,7 @@ class PytorchCaffeParser():
                     layer_data = func(node)
                     self.layers.append(layer_data)
                 elif str(node.target) == 'mean':
-                    func = getattr(self, "rename_AdaptiveAvgPool2d")
+                    func = getattr(self, "rename_adaptive_avg_pool2d")
                     layer_data = func(node)
                     self.layers.append(layer_data)   
                 elif str(node.target) == 'permute':
@@ -816,7 +816,7 @@ class PytorchCaffeParser():
             self.main_layers.append(layer)
         return layer        
 
-    def rename_View(self, source_node):
+    def rename_view(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Reshape"
 
