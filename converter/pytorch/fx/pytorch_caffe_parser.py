@@ -114,11 +114,15 @@ class PytorchCaffeParser():
         for node in source_node.args:
             if isinstance(node, Node):
                 bottom_name = self.recursive_find_name(node)
+                if bottom_name is None:
+                    continue                
                 layer.bottom.append(bottom_name)
             elif isinstance(node, list) or isinstance(node, tuple): # cat function args[0]
                 for node_ in node:
                     if isinstance(node_, Node):
                         bottom_name = self.recursive_find_name(node_)
+                        if bottom_name is None:
+                            continue                        
                         layer.bottom.append(bottom_name)
             else:
                 continue
@@ -198,7 +202,11 @@ class PytorchCaffeParser():
                 elif isinstance(module, nn.Upsample):                
                     func = getattr(self, "rename_Upsample")
                     layer_data = func(node, module)
-                    self.layers.append(layer_data)                                         
+                    self.layers.append(layer_data)     
+                elif isinstance(module, nn.LeakyReLU): 
+                    func = getattr(self, "rename_LeakyRelu")
+                    layer_data = func(node, module)
+                    self.layers.append(layer_data)                                                                           
                 else:
                      raise NotImplementedError("module %s is not implemented" % (module))
             elif node.op == 'call_function':
@@ -325,7 +333,19 @@ class PytorchCaffeParser():
                 elif str(node.target) == 'permute':
                     func = getattr(self, "rename_permute")
                     layer_data = func(node)
-                    self.layers.append(layer_data)                                                    
+                    self.layers.append(layer_data)     
+                elif str(node.target) == 'flatten':
+                    func = getattr(self, "rename_view")
+                    layer_data = func(node)
+                    self.layers.append(layer_data) 
+                elif str(node.target) == "sigmoid":
+                    func = getattr(self, "rename_sigmoid")
+                    layer_data = func(node)
+                    self.layers.append(layer_data)     
+                elif str(node.target) == "squeeze":
+                    func = getattr(self, "rename_view")
+                    layer_data = func(node)
+                    self.layers.append(layer_data)                                                                                                               
                 else:
                     raise NotImplementedError("method %s is not implemented" % (str(node.target)))
             elif node.op == 'output':
@@ -921,20 +941,14 @@ class PytorchCaffeParser():
         else:         
             raise Exception('Unsupported mode: {}'.format(attr['mode']))
 
-    def rename_LeakyRelu(self, source_node):
-        attr = source_node.attrs
+    def rename_LeakyRelu(self, source_node, module):
         layer = pb2.LayerParameter()
         layer.type = "ReLU"
 
-        layer.relu_param.negative_slope = attr['alpha']
+        layer.relu_param.negative_slope = module.negative_slope
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
+        self.add_bottom_top(layer, source_node)
 
-        layer.top.append(source_node.name)
-        layer.name = source_node.real_name
-        if self.is_main(layer.bottom):
-            self.main_layers.append(layer)
         return layer
 
     def rename_ReduceMean(self, source_node):
