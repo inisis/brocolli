@@ -10,9 +10,6 @@ from onnx_layers.base_layer import BaseLayer
 class Template(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         super(Template, self).__init__(source_node, module, auto_gen)
-        if self._auto_gen:
-            self.add_bottom_top()
-            self.generate_node() 
 
     def get_template_attr(self):
         attr_dict = {"alpha": 1.0, "beta": 1.0, "transA": 0, "transB": 1}
