@@ -13,6 +13,7 @@ from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 from torch.fx.node import Node
 from torch.fx.graph_module import GraphModule
 import google.protobuf.text_format
+from .utils import get_function_name
 
 
 def as_blob(array):
@@ -22,11 +23,12 @@ def as_blob(array):
     return blob
 
 class PytorchCaffeParser():
-    def __init__(self, model, input_shape, fuse=False):
+    def __init__(self, model, input_shape, fuse=False, concrete_args=None):
         super(PytorchCaffeParser, self).__init__()
         self.fuse = fuse
         self.model = model
         self.input_shape = input_shape
+        self.concrete_args = concrete_args
 
         if isinstance(self.model, GraphModule):
             pass
@@ -36,7 +38,7 @@ class PytorchCaffeParser():
         else:
             raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
 
-        self.pytorch_graph = PytorchGraph(self.model, self.input_shape)
+        self.pytorch_graph = PytorchGraph(self.model, self.input_shape, self.concrete_args)
         self.state_dict = self.pytorch_graph.trace.state_dict()
         self.modules = dict(self.pytorch_graph.trace.named_modules())
         self.layers = []
@@ -97,7 +99,7 @@ class PytorchCaffeParser():
             else:
                 return node.name
         elif node.op == 'call_function':
-            function_name = re.findall(r"(?:function|method) ([a-z|_|0-9]+.*?)", str(node.target))[0]
+            function_name = get_function_name(node.target)
             if function_name == "getitem":
                 node_name = node.args[0].name + '_' + str(node.args[1])
                 return node_name
@@ -210,7 +212,7 @@ class PytorchCaffeParser():
                 else:
                      raise NotImplementedError("module %s is not implemented" % (module))
             elif node.op == 'call_function':
-                function_name = re.findall(r"(?:function|method) ([a-z|_|0-9]+.*?)", str(node.target))[0]
+                function_name = get_function_name(node.target)
                 if function_name == "relu":
                     func = getattr(self, "rename_relu")
                     layer_data = func(node)
@@ -1105,7 +1107,7 @@ class PytorchCaffeParser():
     def rename_SiLU(self, source_node, module):
         layer_sigmoid = pb2.LayerParameter()
         layer_sigmoid.type = "Sigmoid"
-        layer_sigmoid.bottom.append(source_node.args[0].name)
+        layer_sigmoid.bottom.append(self.recursive_find_name(source_node.args[0]))
 
         layer_sigmoid.top.append(source_node.name + '_sigmoid')
         layer_sigmoid.name = source_node.name + '_sigmoid'
@@ -1114,7 +1116,7 @@ class PytorchCaffeParser():
         layer_scale.type = "Scale"
         layer_scale.scale_param.axis = 0
 
-        layer_scale.bottom.append(source_node.args[0].name)
+        layer_scale.bottom.append(self.recursive_find_name(source_node.args[0]))
         layer_scale.bottom.append(source_node.name + '_sigmoid')
         layer_scale.top.append(source_node.name)
         layer_scale.name = source_node.name
@@ -1360,7 +1362,7 @@ class PytorchCaffeParser():
         layer.type = "Pooling"
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
-        function_name = re.findall(r"(?:function|method) ([a-z|_|0-9]+.*?)", str(source_node.target))[0]
+        function_name = get_function_name(source_node.target)
         if function_name == 'adaptive_avg_pool2d':
             output_size = source_node.args[1]
             dim = source_node.args[0].meta['tensor_meta'].shape[2:] # get input shape

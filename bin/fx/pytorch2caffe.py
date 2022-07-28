@@ -14,25 +14,35 @@ import caffe  # noqa
 from converter.pytorch.fx.pytorch_caffe_parser import PytorchCaffeParser  # noqa
 
 class Runner(object):
-    def __init__(self, name, model, shape, opset_version, fuse=False):
+    def __init__(self, name, model, shape, opset_version, fuse=False, concrete_args=None):
         self.name = name
         self.model = model
         self.shape = shape
+        if isinstance(shape, (tuple, list)) and all(isinstance(element, int) for element in shape):
+            self.shape = [shape]        
         self.opset_version = opset_version
         self.fuse = fuse
+        self.concrete_args = concrete_args
+
+    def gen_pytorch_input_tensor(self, shapes):
+        input_tensor = []
+        for shape in shapes:
+            if isinstance(shape, (tuple, list)):
+                if all(isinstance(element, int) for element in shape):
+                    input_tensor.append(torch.rand(shape).to(torch.float32))
+                else:
+                    input_tensor.append(self.gen_pytorch_input_tensor(shape))
+            else:
+                input_tensor.append(torch.rand(shape).to(torch.float32))
+
+        return input_tensor   
 
     def pyotrch_inference(self, generate_onnx=False):
         self.model_file = "tmp/" + self.name
         self.device = torch.device('cpu')
         self.model = self.model.eval().to(self.device)
 
-        if isinstance(self.shape, tuple):
-            self.dummy_input = []
-            for each in self.shape:
-                dummy = torch.rand(each).to(torch.float32)
-                self.dummy_input.append(dummy)
-        else:
-            self.dummy_input = [torch.rand(self.shape).to(torch.float32)]
+        self.dummy_input = self.gen_pytorch_input_tensor(self.shape)
 
         self.pytorch_output  = self.model(*self.dummy_input)
 
@@ -43,7 +53,7 @@ class Runner(object):
             torch.onnx.export(self.model, tuple(self.dummy_input), self.name + ".onnx", opset_version=self.opset_version, enable_onnx_checker=False)
         
     def convert(self, export_mode=False):
-        pytorch_parser = PytorchCaffeParser(self.model, self.shape, self.fuse)
+        pytorch_parser = PytorchCaffeParser(self.model, self.shape, self.fuse, self.concrete_args)
         pytorch_parser.run()
         pytorch_parser.save(self.model_file)
 
