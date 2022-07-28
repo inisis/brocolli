@@ -1,45 +1,36 @@
 # brocolli
 
-a pytorch to caffe && tensorrt model converter, our tool provides direct conversion from pytorch to caffe && tensorrt.
+torch fx based pytorch model converter, including pytorch2caffe  
 
-Support 1.9.0 or higher Pytorch
+Pytorch version 1.9.0 and above are all supported  
 
 # How to use
-⚠️user must uses provided docker to convert your model, clone code only currently will not work.
-
-for Caffe-only:
+Demo Case
 ```
-docker pull yaphets4desmond/brocolli:v1.0
-docker run --rm --name=BRO -it yaphets4desmond/brocolli:v1.0 bash
-cd /root/brocolli && python test/test_caffe_nets.py
+git clone https://github.com/inisis/brocolli.git
+cd brocolli
+python test/fx/test_caffe_nets.py
 ```
-for TensorRT:
-```
-docker pull yaphets4desmond/brocolli:v2.0
-docker run --gpus=all -e NVIDIA_DRIVER_CAPABILITIES=compute,utility --rm --name=BRO -it yaphets4desmond/brocolli:v2.0 bash
-cd /root/brocolli && python test/test_trt_nets.py
-```
-
-the source code is located in /root/brocolli, and a pre-compiled caffe is in /root/caffe
 
 ## How to convert your own model
 user can follow this sample to convert your own model,
 ```
-from bin.pytorch2caffe import Runner # if caffe, use bin.pytorch2caffe, if TensorRT use bin.pytorch2trt;
+from bin.fx.pytorch2caffe import Runner
 model = torchvision.models.resnet18(pretrained=False) # Here, you should use your ownd model
 runner = Runner("resnet18", model, [1, 3, 224, 224], 13)
 # "resnet18": is your converted model name, you should change to your own;
 # model: is your own pytorch model, it should be torch.nn.Module
 # [1, 3, 224, 224]: is the input shape of your model
-# 13: is the op_set version, use 13 by default
 runner.pyotrch_inference()
 runner.convert()
-runner.caffe_inference() # if caffe, use caffe_inference, if TensorRT use trt_inference;
+runner.caffe_inference()
 runner.check_result()
 ```
 user can run this script until you see "accuracy test passed" on screen, then you can get your caffe or trt model under tmp folder.
 
 # Notice 
+
+torch fx is highly recommended, and torch jit is deprecated, please do not use torch jit to convert your model, it will be removed soon.  
 
 * ✔️ : support 
 * ❔ : shall support
