@@ -14,7 +14,7 @@ import caffe  # noqa
 from converter.pytorch.fx.pytorch_caffe_parser import PytorchCaffeParser  # noqa
 
 class Runner(object):
-    def __init__(self, name, model, shape, opset_version, fuse=False, concrete_args=None):
+    def __init__(self, name, model, shape, opset_version=13, fuse=False, concrete_args=None):
         self.name = name
         self.model = model
         self.shape = shape

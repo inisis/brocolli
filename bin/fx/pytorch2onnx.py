@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 from converter.pytorch.fx.pytorch_onnx_parser import PytorchOnnxParser  # noqa
 
 class Runner(object):
-    def __init__(self, name, model, shape, opset_version, fuse=False):
+    def __init__(self, name, model, shape, opset_version=13, fuse=False):
         self.name = name
         self.model = model
         self.shape = shape
