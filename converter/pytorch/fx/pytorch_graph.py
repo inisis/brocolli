@@ -2,10 +2,25 @@ import torch
 import torch.nn as nn
 
 import torch.fx
+from torch.fx import Tracer
 from torch.fx.passes.shape_prop import ShapeProp
 from torch.fx.graph_module import GraphModule
 
 from .utils import get_function_name
+
+class BrocolliTracer(Tracer):
+    def __init__(self, *args, customed_leaf_module=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.customed_leaf_module = customed_leaf_module
+
+    def is_leaf_module(self, m: torch.nn.Module, module_qualified_name : str):
+        if self.customed_leaf_module and isinstance(m, self.customed_leaf_module):
+            return True
+        
+        if hasattr(m, '_is_leaf_module') and m._is_leaf_module:
+            return True
+
+        return m.__module__.startswith('torch.nn') and not isinstance(m, torch.nn.Sequential)
 
 class PytorchGraph():
 
@@ -19,7 +34,9 @@ class PytorchGraph():
             self.trace = self.model
             self.shape_inference()
         elif isinstance(self.model, nn.Module):
-            self.trace = torch.fx.symbolic_trace(self.model, concrete_args)
+            self.tracer = BrocolliTracer()
+            self.graph = self.tracer.trace(model, concrete_args)
+            self.trace = GraphModule(self.tracer.root, self.graph) 
             if concrete_args is not None:
                 self.trace_prune(self.trace)
             self.shape_inference()
@@ -28,6 +45,7 @@ class PytorchGraph():
 
         self.graph = self.trace.graph
         self.nodes = list(self.trace.graph.nodes)
+        print(self.graph.print_tabular())
 
     def placeholder_prune(self, trace):
         for node in list(trace.graph.nodes):

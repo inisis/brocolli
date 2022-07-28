@@ -208,9 +208,13 @@ class PytorchCaffeParser():
                 elif isinstance(module, nn.LeakyReLU): 
                     func = getattr(self, "rename_LeakyRelu")
                     layer_data = func(node, module)
-                    self.layers.append(layer_data)                                                                           
+                    self.layers.append(layer_data)
+                elif str(module) == 'L2Norm()': 
+                    func = getattr(self, "rename_L2Norm")
+                    layer_data = func(node, module)
+                    self.layers.append(layer_data)
                 else:
-                     raise NotImplementedError("module %s is not implemented" % (module))
+                    raise NotImplementedError("module %s is not implemented" % (module))
             elif node.op == 'call_function':
                 function_name = get_function_name(node.target)
                 if function_name == "relu":
@@ -875,28 +879,20 @@ class PytorchCaffeParser():
 
         return layer                          
 
-    def rename_LpNormalization(self, source_node):
+    def rename_L2Norm(self, source_node, module):
         layer = pb2.LayerParameter()
         layer.type = "Normalize"
 
         layer.norm_param.across_spatial = False
         layer.norm_param.scale_filler.type = "constant"
-        layer.norm_param.scale_filler.value = 20
+        layer.norm_param.scale_filler.value = module.gamma
         layer.norm_param.channel_shared = False
 
-        weights_name = '{0}.weight'.format(source_node.weights_name)
-        weight = self.state_dict[weights_name]
-        weight = weight.numpy().squeeze()
+        weight = module.weight.detach().numpy().squeeze()
         layer.blobs.extend([as_blob(weight)])
+        
+        self.add_bottom_top(layer, source_node)
 
-        for b in source_node.in_edges:
-            layer.bottom.append(b)
-
-        layer.top.append(source_node.name)
-
-        layer.name = source_node.real_name
-        if self.is_main(layer.bottom):
-            self.main_layers.append(layer)
         return layer             
 
     def rename_Resize(self, source_node):

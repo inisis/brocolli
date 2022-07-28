@@ -86,6 +86,15 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.caffe_inference()
     runner.check_result()
 
+def test_ssd300_vgg16(shape = [1, 3, 300, 300], opset_version=13, fuse=FUSE): 
+    from custom_models.ssd import build_ssd
+    net = build_ssd("export")
+    runner = Runner("ssd300_vgg16", net, shape, opset_version, fuse)
+    runner.pyotrch_inference()  
+    runner.convert()
+    runner.caffe_inference()
+    runner.check_result()
+
 def test_yolov5(shape = [1, 3, 640, 640], opset_version=13, fuse=FUSE, concrete_args={'augment': False, "profile": False, "visualize": False}):
     import torch
     net = torch.hub.load('ultralytics/yolov5', 'yolov5s', autoshape=False, pretrained=False, device=torch.device('cpu'))

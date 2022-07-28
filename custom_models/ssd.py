@@ -129,9 +129,11 @@ class PriorBox(object):
             output.clamp_(max=1, min=0)
         return output
 
+
 class L2Norm(nn.Module):
     def __init__(self,n_channels, scale):
         super(L2Norm,self).__init__()
+        self._is_leaf_module = True
         self.n_channels = n_channels
         self.gamma = scale or None
         self.eps = 1e-10
@@ -141,14 +143,11 @@ class L2Norm(nn.Module):
     def reset_parameters(self):
         torch.nn.init.constant_(self.weight, self.gamma)
 
-    def forward(self, x, export_mode):
-        if export_mode:
-            out = torch.linalg.norm(x, dim=0, keepdim=True)  
-        else:
-            norm = x.pow(2).sum(dim=1, keepdim=True).sqrt()+self.eps
-            #x /= norm
-            x = torch.div(x,norm)
-            out = self.weight * x
+    def forward(self, x):
+        norm = x.pow(2).sum(dim=1, keepdim=True).sqrt()+self.eps
+        #x /= norm
+        x = torch.div(x,norm)
+        out = self.weight * x
         return out
 
 class SSD(nn.Module):
@@ -169,11 +168,10 @@ class SSD(nn.Module):
         head: "multibox head" consists of loc and conf conv layers
     """
 
-    def __init__(self, phase, size, base, extras, head, num_classes, export_mode=False):
+    def __init__(self, phase, size, base, extras, head, num_classes):
         super(SSD, self).__init__()
         self.phase = phase
         self.num_classes = num_classes
-        self.export_mode = export_mode
         self.cfg = coco
         self.priorbox = PriorBox(self.cfg)
         self.priors = self.priorbox.forward()
@@ -236,7 +234,7 @@ class SSD(nn.Module):
 
         x = self.vgg_front(x)
         
-        s = self.L2Norm(x, self.export_mode)
+        s = self.L2Norm(x)
  
         sources.append(s)
 
@@ -383,7 +381,7 @@ mbox = {
 }
 
 
-def build_ssd(phase, size=300, num_classes=21, export_mode=False):
+def build_ssd(phase, size=300, num_classes=21):
     if phase != "test" and phase != "train" and phase != "export":
         print("ERROR: Phase: " + phase + " not recognized")
         return
@@ -394,4 +392,4 @@ def build_ssd(phase, size=300, num_classes=21, export_mode=False):
     base_, extras_, head_ = multibox(vgg(base[str(size)], 3),
                                      add_extras(extras[str(size)], 1024),
                                      mbox[str(size)], num_classes)
-    return SSD(phase, size, base_, extras_, head_, num_classes, export_mode)
+    return SSD(phase, size, base_, extras_, head_, num_classes)
