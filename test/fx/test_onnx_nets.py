@@ -83,33 +83,6 @@ def test_shufflenet(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
     runner.onnx_inference()
     runner.check_result()
 
-def test_partA(shape = [1, 1, 28, 28], opset_version=9, fuse=FUSE):
-    from custom_models.part_abc import PartANet
-    net = PartANet()
-    runner = Runner("PartA", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
-    runner.convert()
-    runner.onnx_inference()
-    runner.check_result()
-
-def test_partB(shape = [1, 1, 28, 28], opset_version=9, fuse=FUSE):
-    from custom_models.part_abc import PartBNet
-    net = PartBNet()
-    runner = Runner("PartBNet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
-    runner.convert()
-    runner.onnx_inference()
-    runner.check_result()
-
-def test_partC(shape = [1, 1, 28, 28], opset_version=9, fuse=FUSE):
-    from custom_models.part_abc import PartCNet
-    net = PartCNet()
-    runner = Runner("PartCNet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
-    runner.convert()
-    runner.onnx_inference()
-    runner.check_result()
-
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
