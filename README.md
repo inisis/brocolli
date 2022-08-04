@@ -1,6 +1,6 @@
 # brocolli
 
-torch fx based pytorch model converter, including pytorch2caffe  
+torch fx based pytorch model converter, including pytorch2caffe, pytorch2onnx  
 
 Pytorch version 1.9.0 and above are all supported  
 
