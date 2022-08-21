@@ -29,9 +29,6 @@ runner.check_result()
 user can run this script until you see "accuracy test passed" on screen, then you can get your caffe or trt model under tmp folder.
 
 # Notice 
-
-torch fx is highly recommended, and torch jit is deprecated, please do not use torch jit to convert your model, it will be removed soon.  
-
 * ✔️ : support 
 * ❔ : shall support
 * ❌ : not support
