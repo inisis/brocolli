@@ -66,7 +66,6 @@ class Runner(object):
         return tensor_list
 
     def get_onnx_input(self, sess, dummy_inputs):
-
         dummy_input_list = self.get_tensor_list(dummy_inputs)
 
         onnx_rt_dict = {}
@@ -77,7 +76,9 @@ class Runner(object):
         return onnx_rt_dict
 
     def onnx_inference(self):
-        sess = rt.InferenceSession(self.model_file + ".onnx")
+        sess_options = rt.SessionOptions()
+        sess_options.graph_optimization_level = rt.GraphOptimizationLevel.ORT_DISABLE_ALL 
+        sess = rt.InferenceSession(self.model_file + ".onnx", sess_options)
         onnx_rt_dict = self.get_onnx_input(sess, self.dummy_input)
 
         onnx_outname = [output.name for output in sess.get_outputs()]

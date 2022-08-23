@@ -17,6 +17,7 @@ from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 from torch.fx.node import Node
 from torch.fx.graph_module import GraphModule
 
+import onnx
 from onnx import save, helper, checker
 
 class PytorchOnnxParser():
@@ -68,7 +69,6 @@ class PytorchOnnxParser():
 
     def gen_ir(self):
         for node in self.pytorch_graph.nodes:
-            print(node.name, node.op, node.target, node.args, node.kwargs)
             if node.op == 'placeholder':
                 input_layer = ops.InputLayer(node)
                 self.node_post_process(input_layer)
@@ -435,9 +435,11 @@ class PytorchOnnxParser():
             self.out_tensor_value_info,
             self.init_tensor,
         )
-        self.model_def = helper.make_model(graph_def, producer_name="pytorch")
+        op = onnx.OperatorSetIdProto()
+        op.version=13
+        self.model_def = helper.make_model(graph_def, producer_name="pytorch", opset_imports=[op])
         self.freeze()
-        # checker.check_model(self.model_def)
+        checker.check_model(self.model_def)
         logger.info("onnx model conversion completed")
         save(self.model_def, dest_path + ".onnx")
         logger.info("onnx model saved to {}.onnx".format(dest_path))
