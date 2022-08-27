@@ -3,15 +3,10 @@ import pytest
 import warnings
 import argparse
 
-import torchvision.models as models
-
-from bin.converter.pytorch2onnx import Runner
-
-FUSE = True
 
 os.makedirs('tmp', exist_ok=True)
 
-def test_mnist(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
+def test_mnist(shape=(1, 1, 28, 28)):
     import time
     import torch
     import torch.nn as nn
@@ -47,49 +42,69 @@ def test_mnist(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
             return x
 
     model = Net()
-    state_dict = load_state_dict_from_url('http://120.224.26.73:15030/aifarm/best.pt', map_location='cpu')
+    url = 'http://120.224.26.73:15030/aifarm/best.pt'
+    state_dict = load_state_dict_from_url(url, map_location='cpu')
     model.load_state_dict(state_dict)
     model.eval()
 
+    class MNISTCHINA(datasets.MNIST):
+        mirrors = [
+            'http://120.224.26.73:15030/aifarm/mnist/'
+        ]
+
+        def __init__(self, root, train=True, transform=None,
+                     target_transform=None,
+                     download=False):
+            super(MNISTCHINA, self).__init__(root, train, transform=transform,
+                                             target_transform=target_transform,
+                                             download=download)
+
     def calibrate_func(model):
         test_acc = 0
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))])
-        dataset_train = datasets.MNIST('data', train=True, transform=transform)
+        transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize((0.1307),
+                                                             (0.3081))])
+        dataset_train = MNISTCHINA('data', download=True,
+                                   train=True, transform=transform)
         train_loader = DataLoader(dataset_train, batch_size=8, num_workers=8)
         with torch.no_grad():
             tick = time.time()
             for (images, targets) in train_loader:
                 pred = model(images)
                 pred_label = torch.argmax(pred, dim=1, keepdims=True)
-                test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
+                test_acc += pred_label.eq(targets).sum().item()
             tok = time.time()
 
-        logger.info(f'float time: {tok - tick  : .4f} sec')        
+        logger.info(f'float time: {tok - tick  : .4f} sec')
         test_acc /= len(train_loader.dataset)
 
         logger.info("calibrate acc: {}".format(test_acc))
 
     def evaluate_func(model):
         test_acc = 0
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))])
-        dataset_test = datasets.MNIST('data', train=False, transform=transform)
-        test_loader = DataLoader(dataset_test, batch_size=8, shuffle=False, num_workers=8)
+        transform = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize((0.1307),
+                                                             (0.3081))])
+        dataset_test = MNISTCHINA('data', download=True,
+                                  train=False, transform=transform)
+        test_loader = DataLoader(dataset_test, batch_size=8,
+                                 shuffle=False, num_workers=8)
         with torch.no_grad():
             tick = time.time()
             for (images, targets) in test_loader:
                 pred = model(images)
                 pred_label = torch.argmax(pred, dim=1, keepdims=True)
-                test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
-            tok  = time.time()
-        
-        logger.info(f'int8 time: {tok - tick  : .4f} sec')        
+                test_acc += pred_label.eq(targets).sum().item()
+            tok = time.time()
+
+        logger.info(f'int8 time: {tok - tick  : .4f} sec')
         test_acc /= len(test_loader.dataset)
 
         logger.info("evaluate acc: {}".format(test_acc))
 
     calibrate_func(model)
 
-    pytorch_quantizer = PytorchQuantizer(model, (8, 1, 28, 28))
+    pytorch_quantizer = PytorchQuantizer(model, shape)
     pytorch_quantizer.prepare()
     pytorch_quantizer.calibrate(calibrate_func)
     pytorch_quantizer.convert()
@@ -99,12 +114,13 @@ def test_mnist(shape = [1, 3, 224, 224], opset_version=9, fuse=FUSE):
 
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
-    parser = argparse.ArgumentParser(description='Pytorch Quantization network test.')
+    parser = argparse.ArgumentParser(description='Pytorch Quantization test.')
     parser.add_argument('--cov', help='foo help')
     args = parser.parse_args()
     if args.cov == '--cov':
         cov = ['--cov', '--cov-report=html:tmp/onnx_report']
     else:
         cov = []
-        
-    pytest.main(['-p', 'no:warnings', '-v', 'test/quantization/test_quanzation_nets.py'] + cov)
+
+    pytest.main(['-p', 'no:warnings', '-v',
+                 'test/quantization/test_quanzation_nets.py'] + cov)
