@@ -52,7 +52,7 @@ class Runner(object):
         if generate_onnx:
             torch.onnx.export(self.model, tuple(self.dummy_input), self.name + ".onnx", opset_version=self.opset_version, enable_onnx_checker=False)
         
-    def convert(self, export_mode=False):
+    def convert(self):
         pytorch_parser = PytorchCaffeParser(self.model, self.shape, self.fuse, self.concrete_args)
         pytorch_parser.run()
         pytorch_parser.save(self.model_file)
