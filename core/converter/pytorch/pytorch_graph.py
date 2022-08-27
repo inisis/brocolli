@@ -8,24 +8,29 @@ from torch.fx.graph_module import GraphModule
 
 from .utils import get_function_name
 
+
 class BrocolliTracer(Tracer):
     def __init__(self, *args, customed_leaf_module=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.customed_leaf_module = customed_leaf_module
 
-    def is_leaf_module(self, m: torch.nn.Module, module_qualified_name : str):
-        if self.customed_leaf_module and isinstance(m, self.customed_leaf_module):
+    def is_leaf_module(self, m: torch.nn.Module, module_qualified_name: str):
+        if self.customed_leaf_module and \
+                isinstance(m, self.customed_leaf_module):
+
             return True
-        
-        if hasattr(m, '_is_leaf_module') and m._is_leaf_module:
+
+        if hasattr(m, "_is_leaf_module") and m._is_leaf_module:
             return True
 
-        return m.__module__.startswith('torch.nn') and not isinstance(m, torch.nn.Sequential)
+        return m.__module__.startswith("torch.nn") and not isinstance(
+            m, torch.nn.Sequential
+        )
 
-class PytorchGraph():
 
+class PytorchGraph:
     def __init__(self, model, input_shape, concrete_args=None):
-        super(PytorchGraph, self).__init__()  
+        super(PytorchGraph, self).__init__()
         self.model = model
         self.input_shape = input_shape
         self.concrete_args = concrete_args
@@ -36,12 +41,13 @@ class PytorchGraph():
         elif isinstance(self.model, nn.Module):
             self.tracer = BrocolliTracer()
             self.graph = self.tracer.trace(model, concrete_args)
-            self.trace = GraphModule(self.tracer.root, self.graph) 
+            self.trace = GraphModule(self.tracer.root, self.graph)
             if concrete_args is not None:
                 self.trace_prune(self.trace)
             self.shape_inference()
         else:
-            raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
+            raise Exception("model must be a torch.nn.Module \
+                            or a torch.fx.GraphModule")
 
         self.graph = self.trace.graph
         self.nodes = list(self.trace.graph.nodes)
@@ -49,11 +55,12 @@ class PytorchGraph():
 
     def placeholder_prune(self, trace):
         for node in list(trace.graph.nodes):
-            if node.op == 'placeholder' and node.next.op == 'call_function':
+            if node.op == "placeholder" and node.next.op == "call_function":
                 function_name = get_function_name(node.next.target)
-                if function_name == 'eq' and node.next.next.op == 'call_function':
+                if function_name == "eq" and \
+                        node.next.next.op == "call_function":
                     function_name = get_function_name(node.next.next.target)
-                    if function_name == '_assert':
+                    if function_name == "_assert":
                         trace.graph.erase_node(node.next.next)
                         trace.graph.erase_node(node.next)
                         trace.graph.erase_node(node)
@@ -72,8 +79,8 @@ class PytorchGraph():
             else:
                 input_tensor.append(torch.rand(shape).to(torch.float32))
 
-        return input_tensor   
+        return input_tensor
 
-    def shape_inference(self):  
+    def shape_inference(self):
         dummy_input = self.gen_input_tensor(self.input_shape)
         ShapeProp(self.trace).propagate(*dummy_input)

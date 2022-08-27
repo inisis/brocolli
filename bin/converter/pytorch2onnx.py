@@ -13,11 +13,14 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
 from core.converter.pytorch.pytorch_onnx_parser import PytorchOnnxParser  # noqa
 
 class Runner(object):
-    def __init__(self, name, model, shape, opset_version=13, fuse=False, concrete_args=None):
+    def __init__(self, name, model, shape, opset_version=13,
+                 fuse=False, concrete_args=None):
         self.name = name
         self.model = model
         self.shape = shape
-        if isinstance(shape, (tuple, list)) and all(isinstance(element, int) for element in shape):
+        if isinstance(shape, (tuple, list)) and all(
+            isinstance(element, int) for element in shape
+        ):
             self.shape = [shape]
         self.opset_version = opset_version
         self.fuse = fuse
@@ -34,7 +37,7 @@ class Runner(object):
             else:
                 input_tensor.append(torch.rand(shape).to(torch.float32))
 
-        return input_tensor   
+        return input_tensor
 
     def pyotrch_inference(self, generate_onnx=False):
         self.model_file = "tmp/" + self.name
@@ -45,14 +48,18 @@ class Runner(object):
 
         self.pytorch_output = self.model(*self.dummy_input)
 
-        if isinstance(self.pytorch_output , torch.Tensor):
-            self.pytorch_output = [self.pytorch_output]        
- 
+        if isinstance(self.pytorch_output, torch.Tensor):
+            self.pytorch_output = [self.pytorch_output]
+
         if generate_onnx:
-            torch.onnx.export(self.model, tuple(self.dummy_input), self.name + ".onnx", opset_version=self.opset_version, enable_onnx_checker=False)
-        
+            torch.onnx.export(self.model, tuple(self.dummy_input),
+                              self.name + ".onnx",
+                              opset_version=self.opset_version,
+                              enable_onnx_checker=False)
+
     def convert(self):
-        pytorch_parser = PytorchOnnxParser(self.model, self.shape, self.fuse, self.concrete_args)
+        pytorch_parser = PytorchOnnxParser(self.model, self.shape,
+                                           self.fuse, self.concrete_args)
         pytorch_parser.run()
         pytorch_parser.save(self.model_file)
 
@@ -78,7 +85,8 @@ class Runner(object):
 
     def onnx_inference(self):
         sess_options = rt.SessionOptions()
-        sess_options.graph_optimization_level = rt.GraphOptimizationLevel.ORT_DISABLE_ALL 
+        sess_options.graph_optimization_level = \
+            rt.GraphOptimizationLevel.ORT_DISABLE_ALL
         sess = rt.InferenceSession(self.model_file + ".onnx", sess_options)
         onnx_rt_dict = self.get_onnx_input(sess, self.dummy_input)
 
@@ -87,7 +95,9 @@ class Runner(object):
 
     def check_result(self):
         pytorch_output_list = self.get_tensor_list(self.pytorch_output)
-        assert len(pytorch_output_list) == len(self.onnx_output), "pytorch_output: %d vs onnx_output %d" % (len(pytorch_output_list), len(self.onnx_output))
+        assert len(pytorch_output_list) == len(self.onnx_output), \
+               "pytorch_output: %d vs onnx_output %d" % \
+               (len(pytorch_output_list), len(self.onnx_output))
 
         for idx in range(len(self.onnx_output)):
             np.testing.assert_allclose(

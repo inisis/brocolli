@@ -16,4 +16,4 @@ class OnnxBaseTester(object):
         self.runner.pyotrch_inference()
         self.runner.convert()
         self.runner.onnx_inference()
-        self.runner.check_result()        
+        self.runner.check_result()

@@ -36,10 +36,10 @@ class ConvLayer(BaseLayer):
             }
 
         kernel_size = self._module.kernel_size
-        stride  = self._module.stride
+        stride = self._module.stride
         padding = self._module.padding
-        dilation  = self._module.dilation
-        groups  = self._module.groups
+        dilation = self._module.dilation
+        groups = self._module.groups
 
         if isinstance(dilation, tuple):
             attr_dict["dilations"] = dilation
