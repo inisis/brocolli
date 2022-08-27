@@ -99,7 +99,7 @@ class PytorchCaffeParser():
                 return self.find_name(node_)
             else:
                 return node.name
-        elif node.op == 'call_self.tion':
+        elif node.op == 'call_function':
             function_name = get_function_name(node.target)
             if function_name == "getitem":
                 node_name = node.args[0].name + '_' + str(node.args[1])
@@ -200,7 +200,7 @@ class PytorchCaffeParser():
                 else:
                     raise NotImplementedError("module %s is not implemented"
                                               % (module))
-            elif node.op == 'call_self.tion':
+            elif node.op == 'call_function':
                 function_name = get_function_name(node.target)
                 if function_name == "relu":
                     layer_data = self.rename_relu(node)
@@ -282,7 +282,7 @@ class PytorchCaffeParser():
                 elif function_name == "getattr":
                     pass
                 else:
-                    raise NotImplementedError("self.tion %s is not implemented"
+                    raise NotImplementedError("function %s is not implemented"
                                               % (function_name))
             elif node.op == 'call_method':
                 if str(node.target) == 'size':
