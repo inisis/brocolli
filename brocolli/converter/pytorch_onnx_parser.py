@@ -1,18 +1,16 @@
-# ----------------------------------------------------------------------------------------------
-#  Copyright (c) Microsoft Corporation. All rights reserved.
-#  Licensed under the MIT License. See License.txt in the project root for license information.
-# ----------------------------------------------------------------------------------------------
 import os
 import re
 import sys
 import numpy as np
-
+np.random.seed(0)
 from loguru import logger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import onnx_layers as ops
-from core.converter.pytorch.pytorch_graph import PytorchGraph
+from brocolli.converter.pytorch_graph import PytorchGraph
 
+import torch
+torch.manual_seed(0)
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 from torch.fx.node import Node
@@ -20,14 +18,19 @@ from torch.fx.graph_module import GraphModule
 
 import onnx
 from onnx import save, helper, checker
+import onnxruntime as rt
 
 
 class PytorchOnnxParser:
     def __init__(self, model, input_shape, fuse=False, concrete_args=None):
         super(PytorchOnnxParser, self).__init__()
         self.fuse = fuse
-        self.model = model
+        self.model = model.eval()
         self.input_shape = input_shape
+        if isinstance(input_shape, (tuple, list)) and all(
+            isinstance(element, int) for element in input_shape
+        ):
+            self.input_shape = [input_shape]
         self.concrete_args = concrete_args
 
         if isinstance(self.model, GraphModule):
@@ -48,7 +51,7 @@ class PytorchOnnxParser:
         self.out_tensor_value_info = []
         self.init_tensor = []
 
-    def run(self):
+    def convert(self):
         self.gen_ir()
 
     def fuse_all_conv_bn(self, model):
@@ -466,6 +469,7 @@ class PytorchOnnxParser:
                 raise NotImplementedError("op type %s is not implemented" % (node.op))
 
     def save(self, dest_path):
+        self.dest_path = dest_path
         graph_def = helper.make_graph(
             self.nodes,
             dest_path,
@@ -477,8 +481,80 @@ class PytorchOnnxParser:
         self.freeze()
         checker.check_model(self.model_def)
         logger.info("onnx model conversion completed")
-        save(self.model_def, dest_path + ".onnx")
+        save(self.model_def, dest_path)
         logger.info("onnx model saved to {}.onnx".format(dest_path))
+
+    def check_result(self):
+        self.pyotrch_inference()
+        self.onnx_inference()
+        pytorch_output_list = self.get_tensor_list(self.pytorch_output)
+        assert len(pytorch_output_list) == len(
+            self.onnx_output
+        ), "pytorch_output: %d vs onnx_output %d" % (
+            len(pytorch_output_list),
+            len(self.onnx_output),
+        )
+
+        for idx in range(len(self.onnx_output)):
+            np.testing.assert_allclose(
+                pytorch_output_list[idx].detach().numpy(),
+                self.onnx_output[idx],
+                rtol=1e-7,
+                atol=1e-3,
+            )
+        logger.info("accuracy test passed")
+
+    def gen_pytorch_input_tensor(self, shapes):
+        input_tensor = []
+        for shape in shapes:
+            if isinstance(shape, (tuple, list)):
+                if all(isinstance(element, int) for element in shape):
+                    input_tensor.append(torch.rand(shape).to(torch.float32))
+                else:
+                    input_tensor.append(self.gen_pytorch_input_tensor(shape))
+            else:
+                input_tensor.append(torch.rand(shape).to(torch.float32))
+
+        return input_tensor
+
+    def pyotrch_inference(self):
+        self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
+
+        self.pytorch_output = self.model(*self.dummy_input)
+
+        if isinstance(self.pytorch_output, torch.Tensor):
+            self.pytorch_output = [self.pytorch_output]
+
+    def get_tensor_list(self, dummy_inputs):
+        tensor_list = []
+        for dummy_input in dummy_inputs:
+            if isinstance(dummy_input, torch.Tensor):
+                tensor_list.append(dummy_input)
+            else:
+                tensor_list.extend(self.get_tensor_list(dummy_input))
+
+        return tensor_list
+
+    def get_onnx_input(self, sess, dummy_inputs):
+        dummy_input_list = self.get_tensor_list(dummy_inputs)
+
+        onnx_rt_dict = {}
+        for idx in range(len(dummy_input_list)):
+            img = dummy_input_list[idx].numpy()
+            onnx_rt_dict[sess.get_inputs()[idx].name] = img
+
+        return onnx_rt_dict
+
+    def onnx_inference(self):
+        sess_options = rt.SessionOptions()
+        sess_options.graph_optimization_level = (
+            rt.GraphOptimizationLevel.ORT_DISABLE_ALL
+        )
+        sess = rt.InferenceSession(self.dest_path, sess_options)
+        onnx_rt_dict = self.get_onnx_input(sess, self.dummy_input)
+
+        onnx_outname = [output.name for output in sess.get_outputs()]
+        self.onnx_output = sess.run(onnx_outname, onnx_rt_dict)
 
     def node_post_process(self, onnx_layer):
         if onnx_layer._node:

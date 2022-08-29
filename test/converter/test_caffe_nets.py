@@ -9,7 +9,7 @@ import warnings
 
 import torchvision.models as models
 
-from bin.converter.pytorch2caffe import Runner
+from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
 
 FUSE = True
 
@@ -17,101 +17,91 @@ os.makedirs("tmp", exist_ok=True)
 
 
 def test_alexnet(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.alexnet(pretrained=False)
-    runner = Runner("alexnet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.alexnet(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/alexnet')
     runner.check_result()
 
 
 def test_resnet18(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.resnet18(pretrained=False)
-    runner = Runner("resnet18", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.resnet18(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/resnet18')
     runner.check_result()
 
 
 def test_squeezenet(shape=(1, 3, 227, 227), opset_version=9, fuse=FUSE):
-    net = models.squeezenet1_0(pretrained=False)
-    runner = Runner("squeezenet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.squeezenet1_0(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/squeezenet')
     runner.check_result()
 
 
 def test_googlenet(shape=(1, 3, 224, 224), opset_version=13, fuse=FUSE):
-    net = models.googlenet(pretrained=False)
-    runner = Runner("googlenet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.googlenet(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/googlenet')
     runner.check_result()
 
 
 def test_mobilenet_v2(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.mobilenet_v2(pretrained=False)
-    runner = Runner("mobilenet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.mobilenet_v2(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/mobilenet')
     runner.check_result()
 
 
 def test_mobilenet_v3(shape=(1, 3, 224, 224), opset_version=13, fuse=FUSE):
-    net = models.mobilenet_v3_small(pretrained=False)
-    runner = Runner("mobilenet_v3", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.mobilenet_v3_small(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/mobilenet_v3')
     runner.check_result()
 
 
 def test_densenet121(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.densenet121(pretrained=False)
-    runner = Runner("densenet121", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.densenet121(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/densenet121')
     runner.check_result()
 
 
 def test_densenet161(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.densenet161(pretrained=False)
-    runner = Runner("densenet161", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.densenet161(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/densenet161')
     runner.check_result()
 
 
 def test_shufflenet(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.shufflenet_v2_x1_0(pretrained=False)
-    runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.shufflenet_v2_x1_0(pretrained=False)
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/shufflenet')
     runner.check_result()
 
 
 def test_ssd300_vgg16(shape=(1, 3, 300, 300), opset_version=13, fuse=FUSE):
     from custom_models.ssd import build_ssd
 
-    net = build_ssd("export")
-    runner = Runner("ssd300_vgg16", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = build_ssd("export")
+    runner = PytorchCaffeParser(model, shape, opset_version)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/ssd300_vgg16')
     runner.check_result()
 
 
 def test_yolov5(shape=(1, 3, 640, 640), opset_version=13, fuse=FUSE):
     import torch
     concrete_args = {"augment": False, "profile": False, "visualize": False}
-    net = torch.hub.load(
+    model = torch.hub.load(
         "ultralytics/yolov5",
         "yolov5s",
         autoshape=False,
@@ -136,16 +126,15 @@ def test_yolov5(shape=(1, 3, 640, 640), opset_version=13, fuse=FUSE):
 
             return x
 
-    name, _ = list(net.model.named_children())[-1]
+    name, _ = list(model.model.named_children())[-1]
     identity = Identity()
-    detect = getattr(net.model, name)
+    detect = getattr(model.model, name)
     identity.__dict__.update(detect.__dict__)
-    setattr(net.model, name, identity)
+    setattr(model.model, name, identity)
 
-    runner = Runner("yolov5", net, shape, opset_version, fuse, concrete_args)
-    runner.pyotrch_inference()
+    runner = PytorchCaffeParser(model, shape, opset_version, concrete_args=concrete_args)
     runner.convert()
-    runner.caffe_inference()
+    runner.save('tmp/yolov5')
     runner.check_result()
 
 

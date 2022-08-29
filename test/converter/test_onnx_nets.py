@@ -5,7 +5,7 @@ import argparse
 
 import torchvision.models as models
 
-from bin.converter.pytorch2onnx import Runner
+from brocolli.converter.pytorch_onnx_parser import PytorchOnnxParser
 
 FUSE = True
 
@@ -13,83 +13,74 @@ os.makedirs("tmp", exist_ok=True)
 
 
 def test_alexnet(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.alexnet(pretrained=False)
-    runner = Runner("alexnet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.alexnet(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/alexnet.onnx')
     runner.check_result()
 
 
 def test_resnet18(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.resnet18(pretrained=False)
-    runner = Runner("resnet18", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.resnet18(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/resnet18.onnx')
     runner.check_result()
 
 
 def test_squeezenet(shape=(1, 3, 227, 227), opset_version=9, fuse=FUSE):
-    net = models.squeezenet1_0(pretrained=False)
-    runner = Runner("squeezenet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.squeezenet1_0(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/squeezenet.onnx')
     runner.check_result()
 
 
 def test_googlenet(shape=(1, 3, 224, 224), opset_version=13, fuse=FUSE):
-    net = models.googlenet(pretrained=False)
-    runner = Runner("googlenet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.googlenet(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/googlenet.onnx')
     runner.check_result()
 
 
 def test_mobilenet_v2(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.mobilenet_v2(pretrained=False)
-    runner = Runner("mobilenet", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.mobilenet_v2(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/mobilenet.onnx')
     runner.check_result()
 
 
 def test_mobilenet_v3(shape=(1, 3, 224, 224), opset_version=13, fuse=FUSE):
-    net = models.mobilenet_v3_small(pretrained=False)
-    runner = Runner("mobilenet_v3", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.mobilenet_v3_small(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/mobilenet_v3.onnx')
     runner.check_result()
 
 
 def test_densenet121(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.densenet121(pretrained=False)
-    runner = Runner("densenet121", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.densenet121(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/densenet121.onnx')
     runner.check_result()
 
 
 def test_densenet161(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.densenet161(pretrained=False)
-    runner = Runner("densenet161", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.densenet161(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/densenet161.onnx')
     runner.check_result()
 
 
 def test_shufflenet(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
-    net = models.shufflenet_v2_x1_0(pretrained=False)
-    runner = Runner("shufflenet_v2_x1_0", net, shape, opset_version, fuse)
-    runner.pyotrch_inference()
+    model = models.shufflenet_v2_x1_0(pretrained=False)
+    runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.onnx_inference()
+    runner.save('tmp/shufflenet.onnx')
     runner.check_result()
 
 

@@ -1,9 +1,10 @@
-import re
 import numpy as np
 from loguru import logger
-from core.converter.pytorch.pytorch_graph import PytorchGraph
+from brocolli.converter.pytorch_graph import PytorchGraph
 import caffe.proto.caffe_pb2 as pb2
 
+import caffe
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
@@ -24,8 +25,12 @@ class PytorchCaffeParser:
     def __init__(self, model, input_shape, fuse=False, concrete_args=None):
         super(PytorchCaffeParser, self).__init__()
         self.fuse = fuse
-        self.model = model
+        self.model = model.eval()
         self.input_shape = input_shape
+        if isinstance(input_shape, (tuple, list)) and all(
+            isinstance(element, int) for element in input_shape
+        ):
+            self.input_shape = [input_shape]
         self.concrete_args = concrete_args
 
         if isinstance(self.model, GraphModule):
@@ -46,10 +51,11 @@ class PytorchCaffeParser:
         self.modules = dict(self.pytorch_graph.trace.named_modules())
         self.layers = []
 
-    def run(self):
+    def convert(self):
         self.text_net, self.binary_weights = self.gen_ir()
 
     def save(self, dest_path):
+        self.dest_path = dest_path
         self.save_to_proto(self.text_net, dest_path + ".prototxt")
         self.save_weights(self.binary_weights, dest_path + ".caffemodel")
         logger.info("prototxt saved to {}.prototxt".format(dest_path))
@@ -341,9 +347,62 @@ class PytorchCaffeParser:
 
         return text_net, binary_weights
 
-    ##########
-    # Layers #
-    ##########
+    def gen_pytorch_input_tensor(self, shapes):
+        input_tensor = []
+        for shape in shapes:
+            if isinstance(shape, (tuple, list)):
+                if all(isinstance(element, int) for element in shape):
+                    input_tensor.append(torch.rand(shape).to(torch.float32))
+                else:
+                    input_tensor.append(self.gen_pytorch_input_tensor(shape))
+            else:
+                input_tensor.append(torch.rand(shape).to(torch.float32))
+
+        return input_tensor
+
+    def pyotrch_inference(self, generate_onnx=False):
+        self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
+
+        self.pytorch_output = self.model(*self.dummy_input)
+
+        if isinstance(self.pytorch_output, torch.Tensor):
+            self.pytorch_output = [self.pytorch_output]
+
+    def caffe_inference(self):
+        prototxt = self.dest_path + ".prototxt"
+        caffemodel = self.dest_path + ".caffemodel"
+
+        self.net = caffe.Net(prototxt, caffe.TEST, weights=caffemodel)
+
+        if isinstance(self.input_shape, (tuple, list)):
+            for idx, _ in enumerate(self.input_shape):
+                img = self.dummy_input[idx].numpy()
+                self.net.blobs[self.net.inputs[idx]].data[...] = img
+        else:
+            img = self.dummy_input[0].numpy()
+            self.net.blobs[self.net.inputs[0]].data[...] = img
+
+        self.caffe_output = self.net.forward()
+
+    def check_result(self):
+        self.pyotrch_inference()
+        self.caffe_inference()
+        assert len(self.pytorch_output) == len(
+            self.caffe_output
+        ), "pytorch_output: %d vs caffe_output %d" % (
+            len(self.pytorch_output),
+            len(self.caffe_output),
+        )
+
+        for idx in range(len(self.caffe_output)):
+            np.testing.assert_allclose(
+                self.caffe_output[self.net.outputs[idx]],
+                self.pytorch_output[idx].detach().numpy(),
+                rtol=1e-7,
+                atol=1e-3,
+            )
+        logger.info("accuracy test passed")
+
     def rename_Data(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Input"

@@ -1,22 +1,20 @@
 class CaffeBaseTester(object):
     def __init__(self, name, model, shape, opset_version):
         super(CaffeBaseTester, self).__init__()
-        from bin.converter.pytorch2caffe import Runner as CaffeRunner
+        from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
 
-        self.runner = CaffeRunner(name, model, shape, opset_version)
-        self.runner.pyotrch_inference()
-        self.runner.convert()
-        self.runner.caffe_inference()
-        self.runner.check_result()
+        runner = PytorchCaffeParser(model, shape, opset_version)
+        runner.convert()
+        runner.save('tmp/' + name)
+        runner.check_result()
 
 
 class OnnxBaseTester(object):
     def __init__(self, name, model, shape, opset_version):
         super(OnnxBaseTester, self).__init__()
-        from bin.converter.pytorch2onnx import Runner as OnnxRunner
+        from brocolli.converter.pytorch_onnx_parser import PytorchOnnxParser
 
-        self.runner = OnnxRunner(name, model, shape, opset_version)
-        self.runner.pyotrch_inference()
-        self.runner.convert()
-        self.runner.onnx_inference()
-        self.runner.check_result()
+        runner = PytorchOnnxParser(model, shape, opset_version)
+        runner.convert()
+        runner.save('tmp/' + name)
+        runner.check_result()
