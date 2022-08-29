@@ -16,9 +16,7 @@ from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 from torch.fx.node import Node
 from torch.fx.graph_module import GraphModule
 
-import onnx
 from onnx import save, helper, checker
-import onnxruntime as rt
 
 
 class PytorchOnnxParser:
@@ -482,7 +480,7 @@ class PytorchOnnxParser:
         checker.check_model(self.model_def)
         logger.info("onnx model conversion completed")
         save(self.model_def, dest_path)
-        logger.info("onnx model saved to {}.onnx".format(dest_path))
+        logger.info("onnx model saved to {}".format(dest_path))
 
     def check_result(self):
         self.pyotrch_inference()
@@ -546,6 +544,7 @@ class PytorchOnnxParser:
         return onnx_rt_dict
 
     def onnx_inference(self):
+        import onnxruntime as rt
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = (
             rt.GraphOptimizationLevel.ORT_DISABLE_ALL

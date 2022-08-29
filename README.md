@@ -5,27 +5,20 @@ torch fx based pytorch model quantizier.
 
 Pytorch version 1.9.0 and above are all supported  
 
-# How to use
-Demo Case
+# installation
 ```
-git clone https://github.com/inisis/brocolli.git
-cd brocolli
-python test/fx/test_caffe_nets.py
+pip install brocolli
 ```
 
-## How to convert your own model
-user can follow this sample to convert your own model,
+# How to use
 ```
-from bin.fx.pytorch2caffe import Runner
-model = torchvision.models.resnet18(pretrained=False) # Here, you should use your ownd model
-runner = Runner("resnet18", model, [1, 3, 224, 224], 13)
-# "resnet18": is your converted model name, you should change to your own;
-# model: is your own pytorch model, it should be torch.nn.Module
-# [1, 3, 224, 224]: is the input shape of your model
-runner.pyotrch_inference()
-runner.convert()
-runner.caffe_inference()
-runner.check_result()
+import torchvision.models as models
+from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
+
+net = models.alexnet(pretrained=False)
+pytorch_parser = PytorchCaffeParser(net, [(1, 3, 224, 223)])
+pytorch_parser.convert()
+pytorch_parser.save('alexnet.onnx')
 ```
 user can run this script until you see "accuracy test passed" on screen, then you can get your caffe or trt model under tmp folder.
 
@@ -103,4 +96,4 @@ RNN support
 # Contact
  QQ Group: 597059928
  
- ![image](imgs/QGRPOUP.png)
+ ![image](https://raw.githubusercontent.com/inisis/brocolli/master/imgs/QGRPOUP.png)
