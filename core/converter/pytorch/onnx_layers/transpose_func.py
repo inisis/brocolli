@@ -10,11 +10,14 @@ class TransposeFunc(BaseLayer):
 
     def gen_transpose_attr(self):
         attr_dict = {"perm": []}
-        input_dim = len(self._source_node.args[0].meta['tensor_meta'].shape)
+        input_dim = len(self._source_node.args[0].meta["tensor_meta"].shape)
         axes = list(range(input_dim))
-        axes[self._source_node.args[1]], axes[self._source_node.args[2]] = axes[self._source_node.args[2]], axes[self._source_node.args[1]]
+        axes[self._source_node.args[1]], axes[self._source_node.args[2]] = (
+            axes[self._source_node.args[2]],
+            axes[self._source_node.args[1]],
+        )
 
-        attr_dict['perm'] = axes
+        attr_dict["perm"] = axes
 
         return attr_dict
 

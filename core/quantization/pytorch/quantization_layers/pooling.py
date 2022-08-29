@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from .base import BaseOperator
 from .utils import _pair
 
+
 class MaxPool2d(nn.Module, BaseOperator):
     def __init__(self, kernel_size, stride=None, padding=0, dilation=1):
         super(MaxPool2d, self).__init__()
@@ -14,11 +15,11 @@ class MaxPool2d(nn.Module, BaseOperator):
         self.dilation = _pair(dilation)
 
     def extra_repr(self):
-        s = ('kernel_size={kernel_size}, stride={stride}, padding={padding}, dilation={dilation}')
+        s = "kernel_size={kernel_size}, stride={stride}, padding={padding}, dilation={dilation}"
         return s.format(**self.__dict__)
 
     def _get_name(self):
-        return 'QuantizedMaxPool2d'
+        return "QuantizedMaxPool2d"
 
     @classmethod
     def from_float(cls, mod):
@@ -28,7 +29,9 @@ class MaxPool2d(nn.Module, BaseOperator):
 
     def forward(self, input):
         input = input.to(torch.float32)
-        out = F.max_pool2d(input, self.kernel_size, self.stride, self.padding, self.dilation)
+        out = F.max_pool2d(
+            input, self.kernel_size, self.stride, self.padding, self.dilation
+        )
         out = out.to(torch.int64)
 
         return out

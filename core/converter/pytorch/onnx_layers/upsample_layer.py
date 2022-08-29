@@ -14,22 +14,25 @@ class UpsampleLayer(BaseLayer):
         if self._module.scale_factor is None:
             size = self._module.size
             if isinstance(size, int):
-                dim = len(self._source_node.meta['tensor_meta'].shape)
-                output_size = self._source_node.meta['tensor_meta'].shape
-                input_size = self._source_node.args[0].meta['tensor_meta'].shape
+                dim = len(self._source_node.meta["tensor_meta"].shape)
+                output_size = self._source_node.meta["tensor_meta"].shape
+                input_size = self._source_node.args[0].meta["tensor_meta"].shape
                 size = [size] * len(dim)
 
-            scales = [1. if i < 2 else
-                      float(output_size[-(dim - i)]) / float(input_size[-(dim - i)])
-                      for i in range(0, dim)]
+            scales = [
+                1.0
+                if i < 2
+                else float(output_size[-(dim - i)]) / float(input_size[-(dim - i)])
+                for i in range(0, dim)
+            ]
         else:
             scale_factor = self._module.scale_factor
             if isinstance(scale_factor, float):
-                dim = self._source_node.meta['tensor_meta'].shape[2:]
+                dim = self._source_node.meta["tensor_meta"].shape[2:]
                 scale_factor = [scale_factor] * len(dim)
 
-            scales = [1, 1] +  scale_factor      
-            
+            scales = [1, 1] + scale_factor
+
         scales = np.array(scales)
         self.create_params(self._name + "_roi", np.array([]), tp.FLOAT)
         self.create_params(self._name + "_scale", scales, tp.FLOAT)

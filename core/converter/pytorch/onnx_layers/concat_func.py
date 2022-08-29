@@ -12,19 +12,19 @@ class ConcatFunc(BaseLayer):
 
     def get_concat_attr(self):
         attr_dict = {"axis": []}
-        if 'dim' in self._source_node.kwargs:
-            dim = self._source_node.kwargs['dim']
+        if "dim" in self._source_node.kwargs:
+            dim = self._source_node.kwargs["dim"]
         else:
-            dim = self.list_try_get(self._source_node.args, 1, 0)          
+            dim = self.list_try_get(self._source_node.args, 1, 0)
 
-        attr_dict['axis'] = dim
+        attr_dict["axis"] = dim
 
         return attr_dict
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         if name is not None:
             self._name = name
-            
+
         if attr_dict is None:
             attr_dict = self.get_concat_attr()
         node = helper.make_node(

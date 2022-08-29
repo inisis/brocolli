@@ -12,8 +12,6 @@ class MaxFunc(BaseLayer):
         super(MaxFunc, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        node = helper.make_node(
-            "Max", self._in_names, self._out_names, (self._name)
-        )
+        node = helper.make_node("Max", self._in_names, self._out_names, (self._name))
         logger.info("max_layer: " + self._name + " created")
         self._node.append(node)

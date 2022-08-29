@@ -15,7 +15,9 @@ class ConvFunc(BaseLayer):
         super(ConvFunc, self).__init__(source_node, module, auto_gen)
 
     def get_conv_attr(self):
-        function_name = re.findall(r"(?:function|method) ([a-z|_|0-9]+.*?)", str(self._source_node.target))[0]
+        function_name = re.findall(
+            r"(?:function|method) ([a-z|_|0-9]+.*?)", str(self._source_node.target)
+        )[0]
         conv_dim = int(re.findall(r"(?:conv)([0-9]d*?)", str(function_name))[0])
 
         if isinstance(self._module, nn.Conv1d):  # con1d
@@ -26,7 +28,7 @@ class ConvFunc(BaseLayer):
                 "pads": [0, 0],  # list of ints defaults to 0
                 "strides": [1],  # list of ints  defaults is 1
             }
-            
+
         else:
             attr_dict = {
                 "dilations": [1, 1],  # list of ints defaults is 1
@@ -36,17 +38,17 @@ class ConvFunc(BaseLayer):
                 "strides": [1, 1],  # list of ints  defaults is 1
             }
 
-        stride  = self._source_node.args[3]
+        stride = self._source_node.args[3]
         padding = self._source_node.args[4]
-        dilation  = self._source_node.args[5]
-        groups  = self._source_node.args[6]
+        dilation = self._source_node.args[5]
+        groups = self._source_node.args[6]
 
         if isinstance(dilation, tuple):
             attr_dict["dilations"] = dilation
         else:
             attr_dict["dilations"] = [dilation]
 
-        if isinstance(self.kernel_size , tuple):
+        if isinstance(self.kernel_size, tuple):
             attr_dict["kernel_shape"] = self.kernel_size
         else:
             attr_dict["kernel_shape"] = [self.kernel_size]
@@ -58,13 +60,13 @@ class ConvFunc(BaseLayer):
 
         if isinstance(padding, tuple):
             if len(padding) == 1:
-                attr_dict["pads"] = padding * conv_dim * 2    
-            else:        
+                attr_dict["pads"] = padding * conv_dim * 2
+            else:
                 attr_dict["pads"] = padding * 2
         else:
             attr_dict["pads"] = [padding] * conv_dim * 2
 
-        attr_dict["group"] = groups          
+        attr_dict["group"] = groups
 
         return attr_dict
 
@@ -81,4 +83,4 @@ class ConvFunc(BaseLayer):
         self.create_params(self._name + "_weight", params[0], tp.FLOAT)
         self.kernel_size = (params[0].shape[2], params[0].shape[3])
         if (len(params)) == 2:
-            self.create_params(self._name + "_bias", params[1], tp.FLOAT)      
+            self.create_params(self._name + "_bias", params[1], tp.FLOAT)

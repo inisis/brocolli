@@ -4,7 +4,8 @@ import warnings
 import argparse
 
 
-os.makedirs('tmp', exist_ok=True)
+os.makedirs("tmp", exist_ok=True)
+
 
 def test_mnist(shape=(1, 1, 28, 28)):
     import time
@@ -42,30 +43,38 @@ def test_mnist(shape=(1, 1, 28, 28)):
             return x
 
     model = Net()
-    url = 'http://120.224.26.73:15030/aifarm/best.pt'
-    state_dict = load_state_dict_from_url(url, map_location='cpu')
+    url = "http://120.224.26.73:15030/aifarm/best.pt"
+    state_dict = load_state_dict_from_url(url, map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
 
     class MNISTCHINA(datasets.MNIST):
-        mirrors = [
-            'http://120.224.26.73:15030/aifarm/mnist/'
-        ]
+        mirrors = ["http://120.224.26.73:15030/aifarm/mnist/"]
 
-        def __init__(self, root, train=True, transform=None,
-                     target_transform=None,
-                     download=False):
-            super(MNISTCHINA, self).__init__(root, train, transform=transform,
-                                             target_transform=target_transform,
-                                             download=download)
+        def __init__(
+            self,
+            root,
+            train=True,
+            transform=None,
+            target_transform=None,
+            download=False,
+        ):
+            super(MNISTCHINA, self).__init__(
+                root,
+                train,
+                transform=transform,
+                target_transform=target_transform,
+                download=download,
+            )
 
     def calibrate_func(model):
         test_acc = 0
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        transforms.Normalize((0.1307),
-                                                             (0.3081))])
-        dataset_train = MNISTCHINA('data', download=True,
-                                   train=True, transform=transform)
+        transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))]
+        )
+        dataset_train = MNISTCHINA(
+            "data", download=True, train=True, transform=transform
+        )
         train_loader = DataLoader(dataset_train, batch_size=8, num_workers=8)
         with torch.no_grad():
             tick = time.time()
@@ -75,20 +84,22 @@ def test_mnist(shape=(1, 1, 28, 28)):
                 test_acc += pred_label.eq(targets).sum().item()
             tok = time.time()
 
-        logger.info(f'float time: {tok - tick  : .4f} sec')
+        logger.info(f"float time: {tok - tick  : .4f} sec")
         test_acc /= len(train_loader.dataset)
 
         logger.info("calibrate acc: {}".format(test_acc))
 
     def evaluate_func(model):
         test_acc = 0
-        transform = transforms.Compose([transforms.ToTensor(),
-                                        transforms.Normalize((0.1307),
-                                                             (0.3081))])
-        dataset_test = MNISTCHINA('data', download=True,
-                                  train=False, transform=transform)
-        test_loader = DataLoader(dataset_test, batch_size=8,
-                                 shuffle=False, num_workers=8)
+        transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))]
+        )
+        dataset_test = MNISTCHINA(
+            "data", download=True, train=False, transform=transform
+        )
+        test_loader = DataLoader(
+            dataset_test, batch_size=8, shuffle=False, num_workers=8
+        )
         with torch.no_grad():
             tick = time.time()
             for (images, targets) in test_loader:
@@ -97,7 +108,7 @@ def test_mnist(shape=(1, 1, 28, 28)):
                 test_acc += pred_label.eq(targets).sum().item()
             tok = time.time()
 
-        logger.info(f'int8 time: {tok - tick  : .4f} sec')
+        logger.info(f"int8 time: {tok - tick  : .4f} sec")
         test_acc /= len(test_loader.dataset)
 
         logger.info("evaluate acc: {}".format(test_acc))
@@ -112,15 +123,16 @@ def test_mnist(shape=(1, 1, 28, 28)):
     pytorch_quantizer.profile(True)
 
 
-if __name__ == '__main__':
-    warnings.filterwarnings('ignore')
-    parser = argparse.ArgumentParser(description='Pytorch Quantization test.')
-    parser.add_argument('--cov', help='foo help')
+if __name__ == "__main__":
+    warnings.filterwarnings("ignore")
+    parser = argparse.ArgumentParser(description="Pytorch Quantization test.")
+    parser.add_argument("--cov", help="foo help")
     args = parser.parse_args()
-    if args.cov == '--cov':
-        cov = ['--cov', '--cov-report=html:tmp/onnx_report']
+    if args.cov == "--cov":
+        cov = ["--cov", "--cov-report=html:tmp/onnx_report"]
     else:
         cov = []
 
-    pytest.main(['-p', 'no:warnings', '-v',
-                 'test/quantization/test_quanzation_nets.py'] + cov)
+    pytest.main(
+        ["-p", "no:warnings", "-v", "test/quantization/test_quanzation_nets.py"] + cov
+    )

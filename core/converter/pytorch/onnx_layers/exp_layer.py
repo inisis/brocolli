@@ -11,8 +11,6 @@ class ExpLayer(BaseLayer):
         super(ExpLayer, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        node = helper.make_node(
-            "Exp", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("Exp", self._in_names, self._out_names, self._name)
         logging.info("exp_layer: " + self._name + " created")
         self._node.append(node)

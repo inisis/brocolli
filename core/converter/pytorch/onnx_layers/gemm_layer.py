@@ -19,10 +19,14 @@ class GemmLayer(BaseLayer):
         if name is not None:
             self._name = name
 
-        self.create_params(self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT)
+        self.create_params(
+            self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT
+        )
         if self._module.bias is not None:
-            self.create_params(self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT)
-        
+            self.create_params(
+                self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT
+            )
+
         attr_dict = self.get_gemm_attr()
         logger.debug(attr_dict)
         node = helper.make_node(

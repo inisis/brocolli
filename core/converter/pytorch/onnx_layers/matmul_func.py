@@ -10,9 +10,7 @@ class MatmulFunc(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
 
-        node = helper.make_node(
-            "MatMul", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("MatMul", self._in_names, self._out_names, self._name)
 
         logger.info("matmul_layer: " + self._name + " created")
         self._node.append(node)

@@ -14,10 +14,10 @@ class SumFunc(BaseLayer):
     def get_sum_attr(self):
         attr_dict = {"keepdims": 1}
 
-        if 'keepdims' in self._source_node.kwargs:
-            attr_dict['keepdims'] = self._source_node.kwargs['keepdims']
+        if "keepdims" in self._source_node.kwargs:
+            attr_dict["keepdims"] = self._source_node.kwargs["keepdims"]
         else:
-            attr_dict['keepdims'] = self.list_try_get(self._source_node.args, 2, False)
+            attr_dict["keepdims"] = self.list_try_get(self._source_node.args, 2, False)
 
         return attr_dict
 
@@ -25,7 +25,7 @@ class SumFunc(BaseLayer):
         axes = self._source_node.args[1]
         if isinstance(axes, int):
             axes = [axes]
-            
+
         params = np.array(axes)
 
         self.create_params(self._name + "_sum", params, tp.INT64)

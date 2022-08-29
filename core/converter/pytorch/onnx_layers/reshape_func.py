@@ -16,7 +16,7 @@ class ReshapeFunc(BaseLayer):
     def add_bottom_top(self, in_names=None, out_names=None):
         if in_names is None:
             in_names = [self.recursive_find_name(self._source_node.args[0])]
-        
+
         if out_names is None:
             out_names = [self._source_node.name]
         self._in_names.extend(in_names)
@@ -27,13 +27,11 @@ class ReshapeFunc(BaseLayer):
             self._name = name
 
         if params is None:
-            params = np.array(self._source_node.meta['tensor_meta'].shape)
-        
+            params = np.array(self._source_node.meta["tensor_meta"].shape)
+
         self.create_params(self._name + "_reshape", params, tp.INT64)
 
-        node = helper.make_node(
-            "Reshape", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("Reshape", self._in_names, self._out_names, self._name)
 
-        logger.info("reshape_layer: " + self._name + " created")       
+        logger.info("reshape_layer: " + self._name + " created")
         self._node.append(node)

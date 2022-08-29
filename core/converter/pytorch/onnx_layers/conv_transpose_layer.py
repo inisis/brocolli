@@ -24,7 +24,7 @@ class ConvTransposeLayer(BaseLayer):
         else:
             attr_dict["dilations"] = [self._module.dilation]
 
-        if isinstance(self._module.kernel_size , tuple):
+        if isinstance(self._module.kernel_size, tuple):
             attr_dict["kernel_shape"] = self._module.kernel_size
         else:
             attr_dict["kernel_shape"] = [self._module.kernel_size]
@@ -39,23 +39,23 @@ class ConvTransposeLayer(BaseLayer):
         else:
             attr_dict["pads"] = [self._module.padding] * 4
 
-        attr_dict["group"] = self._module.groups           
+        attr_dict["group"] = self._module.groups
 
         return attr_dict
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        self.create_params(self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT)
+        self.create_params(
+            self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT
+        )
         if self._module.bias is not None:
-            self.create_params(self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT)               
-  
+            self.create_params(
+                self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT
+            )
+
         attr_dict = self.get_conv_attr()
         logger.debug(attr_dict)
         node = helper.make_node(
-            "ConvTranspose",
-            self._in_names,
-            self._out_names,
-            self._name,
-            **attr_dict
+            "ConvTranspose", self._in_names, self._out_names, self._name, **attr_dict
         )
         logger.info("deconv_layer: " + self._name + " created")
         self._node.append(node)

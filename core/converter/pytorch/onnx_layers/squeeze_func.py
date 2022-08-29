@@ -20,9 +20,7 @@ class SqueezeFunc(BaseLayer):
 
         self.create_params(self._name + "_squeeze", params, tp.INT64)
 
-        node = helper.make_node(
-            "Squeeze", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("Squeeze", self._in_names, self._out_names, self._name)
 
         logger.info("squeeze_layer: " + self._name + " created")
         self._node.append(node)

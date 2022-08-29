@@ -10,20 +10,19 @@ class ReLU(nn.Module, BaseOperator):
         super(ReLU, self).__init__()
 
     def extra_repr(self):
-        s = ('scale={act_scale}, output_scale={output_scale}')
+        s = "scale={act_scale}, output_scale={output_scale}"
         return s.format(**self.__dict__)
 
     def _get_name(self):
-        return 'QuantizedInput'
+        return "QuantizedInput"
 
     @classmethod
     def from_float(cls, mod):
-        assert hasattr(mod, "qconfig"), \
-            "Relu float module must have qconfig defined."
+        assert hasattr(mod, "qconfig"), "Relu float module must have qconfig defined."
         activation_pre_process = mod.activation_pre_process
         activation_post_process = mod.activation_post_process
         act_scale = activation_pre_process.calculate_qparams()
-        output_scale = activation_post_process.calculate_qparams()        
+        output_scale = activation_post_process.calculate_qparams()
 
         qrelu = cls()
         qrelu.qbit = mod.qbit

@@ -19,11 +19,19 @@ class BatchNormLayer(BaseLayer):
         return attr_dict
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        self.create_params(self._name + "_scale", self._module.weight.detach().numpy(), tp.FLOAT)
-        self.create_params(self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT)
-        self.create_params(self._name + "_mean", self._module.running_mean.detach().numpy(), tp.FLOAT)
-        self.create_params(self._name + "_var", self._module.running_var.detach().numpy(), tp.FLOAT)  
-     
+        self.create_params(
+            self._name + "_scale", self._module.weight.detach().numpy(), tp.FLOAT
+        )
+        self.create_params(
+            self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT
+        )
+        self.create_params(
+            self._name + "_mean", self._module.running_mean.detach().numpy(), tp.FLOAT
+        )
+        self.create_params(
+            self._name + "_var", self._module.running_var.detach().numpy(), tp.FLOAT
+        )
+
         attr_dict = self.get_batchnorm_attr()
         logger.debug(attr_dict)
 

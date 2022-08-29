@@ -28,12 +28,22 @@ class OutputLayer(BaseLayer):
 
     def generate_output(self, name):
         if isinstance(self.tensor_meta, TensorMetadata):
-            output_tvi = helper.make_tensor_value_info(name, tp.FLOAT, self.tensor_meta.shape)
+            output_tvi = helper.make_tensor_value_info(
+                name, tp.FLOAT, self.tensor_meta.shape
+            )
             logger.info("output_layer: " + name + " created")
             self._out_tensor_value_info.append(output_tvi)
         else:
             shape_list = self.get_shape_list(self.tensor_meta)
             for idx, shape in enumerate(shape_list):
-                output_tvi = helper.make_tensor_value_info(name + "_" + str(idx), tp.FLOAT, shape)
-                logger.info("output_layer: " + self._source_node.args[0].name + "_" + str(idx) + " created")
+                output_tvi = helper.make_tensor_value_info(
+                    name + "_" + str(idx), tp.FLOAT, shape
+                )
+                logger.info(
+                    "output_layer: "
+                    + self._source_node.args[0].name
+                    + "_"
+                    + str(idx)
+                    + " created"
+                )
                 self._out_tensor_value_info.append(output_tvi)

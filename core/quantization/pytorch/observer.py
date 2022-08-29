@@ -5,7 +5,8 @@ from functools import partial
 import torch
 import torch.nn as nn
 
-ABC: Any = ABCMeta(str("ABC"), (object,), {})  # compatible with Python 2 *and* 3:
+ABC: Any = ABCMeta(str("ABC"), (object,), {})
+
 
 def _with_args(cls_or_self, **kwargs):
     r"""Wrapper that allows creation of class factories.
@@ -22,6 +23,7 @@ def _with_args(cls_or_self, **kwargs):
         >>> id(foo_instance1) == id(foo_instance2)
         False
     """
+
     class _PartialWrapper(object):
         def __init__(self, p):
             self.p = p
@@ -33,8 +35,10 @@ def _with_args(cls_or_self, **kwargs):
             return self.p.__repr__()
 
         with_args = _with_args
+
     r = _PartialWrapper(partial(cls_or_self, **kwargs))
     return r
+
 
 class ObserverBase(ABC, nn.Module):
     r"""Base observer Module.
@@ -48,6 +52,7 @@ class ObserverBase(ABC, nn.Module):
     Args:
         dtype: Quantized data type
     """
+
     def __init__(self, dtype):
         super(ObserverBase, self).__init__()
         self.dtype = dtype
@@ -68,8 +73,15 @@ class _ObserverBase(ObserverBase):
 
     eps: torch.Tensor
 
-    def __init__(self, dtype=torch.quint8, qscheme=torch.per_tensor_affine,
-                 reduce_range=False, quant_min=None, quant_max=None, factory_kwargs=None):
+    def __init__(
+        self,
+        dtype=torch.quint8,
+        qscheme=torch.per_tensor_affine,
+        reduce_range=False,
+        quant_min=None,
+        quant_max=None,
+        factory_kwargs=None,
+    ):
         factory_kwargs = torch.nn.factory_kwargs(factory_kwargs)
         super(_ObserverBase, self).__init__(dtype=dtype)
         self.qscheme = qscheme
@@ -79,7 +91,9 @@ class _ObserverBase(ObserverBase):
                     reduce_range will be deprecated in a future release of PyTorch."
             )
         self.reduce_range = reduce_range
-        self.register_buffer('eps', torch.tensor([torch.finfo(torch.float32).eps], **factory_kwargs))
+        self.register_buffer(
+            "eps", torch.tensor([torch.finfo(torch.float32).eps], **factory_kwargs)
+        )
         assert self.qscheme in (
             torch.per_tensor_affine,
             torch.per_tensor_symmetric,
@@ -102,8 +116,12 @@ class _ObserverBase(ObserverBase):
 
     @torch.jit.export
     def _validate_qmin_qmax(self, quant_min: int, quant_max: int):
-        assert quant_min <= 0 <= quant_max, "Used-specified quantization range must include 0."
-        assert quant_min < quant_max, "qmin must be strictly less than qmax for user-specified quantization range."
+        assert (
+            quant_min <= 0 <= quant_max
+        ), "Used-specified quantization range must include 0."
+        assert (
+            quant_min < quant_max
+        ), "qmin must be strictly less than qmax for user-specified quantization range."
 
     @torch.jit.export
     def _calculate_qmin_qmax(self):
@@ -134,7 +152,7 @@ class _ObserverBase(ObserverBase):
             return torch.tensor([1.0]), torch.tensor([0])
 
         if min_val.dim() == 0 or max_val.dim() == 0:
-            if min_val == float('inf') and max_val == float('-inf'):
+            if min_val == float("inf") and max_val == float("-inf"):
                 warnings.warn(
                     "must run observer before calling calculate_qparams.\
                                         Returning default scale and zero point "
@@ -145,9 +163,9 @@ class _ObserverBase(ObserverBase):
                 min_val, max_val
             )
         else:
-            assert torch.all(min_val <= max_val), "min {} should be less than max {}".format(
-                min_val, max_val
-            )
+            assert torch.all(
+                min_val <= max_val
+            ), "min {} should be less than max {}".format(min_val, max_val)
 
         quant_min, quant_max = self._calculate_qmin_qmax()
         min_val_neg = torch.min(min_val, torch.zeros_like(min_val))
@@ -155,7 +173,10 @@ class _ObserverBase(ObserverBase):
 
         scale = torch.ones(min_val_neg.size(), dtype=torch.float32)
 
-        if self.qscheme == torch.per_tensor_symmetric or self.qscheme == torch.per_channel_symmetric:
+        if (
+            self.qscheme == torch.per_tensor_symmetric
+            or self.qscheme == torch.per_channel_symmetric
+        ):
             max_val_pos = torch.max(-min_val_neg, max_val_pos)
             scale = max_val_pos / (float(quant_max - quant_min) / 2)
             scale = torch.max(scale, self.eps)
@@ -176,22 +197,35 @@ class MinMaxObserver(_ObserverBase):
     min_val: torch.Tensor
     max_val: torch.Tensor
 
-    def __init__(self, dtype=torch.quint8, qscheme=torch.per_tensor_affine,
-                 reduce_range=False, quant_min=None, quant_max=None, factory_kwargs=None):
-        super(MinMaxObserver, self).__init__(dtype=dtype,
-                                             qscheme=qscheme,
-                                             reduce_range=reduce_range,
-                                             quant_min=quant_min,
-                                             quant_max=quant_max,
-                                             factory_kwargs=factory_kwargs)
+    def __init__(
+        self,
+        dtype=torch.quint8,
+        qscheme=torch.per_tensor_affine,
+        reduce_range=False,
+        quant_min=None,
+        quant_max=None,
+        factory_kwargs=None,
+    ):
+        super(MinMaxObserver, self).__init__(
+            dtype=dtype,
+            qscheme=qscheme,
+            reduce_range=reduce_range,
+            quant_min=quant_min,
+            quant_max=quant_max,
+            factory_kwargs=factory_kwargs,
+        )
         factory_kwargs = torch.nn.factory_kwargs(factory_kwargs)
-        self.register_buffer('min_val', torch.tensor(float('inf'), **factory_kwargs))
-        self.register_buffer('max_val', torch.tensor(float('-inf'), **factory_kwargs))
-        if self.qscheme == torch.per_tensor_symmetric and \
-           self.reduce_range and \
-           self.dtype == torch.quint8:
-            raise NotImplementedError("Cannot reduce range for symmetric \
-                                       quantization for quint8")
+        self.register_buffer("min_val", torch.tensor(float("inf"), **factory_kwargs))
+        self.register_buffer("max_val", torch.tensor(float("-inf"), **factory_kwargs))
+        if (
+            self.qscheme == torch.per_tensor_symmetric
+            and self.reduce_range
+            and self.dtype == torch.quint8
+        ):
+            raise NotImplementedError(
+                "Cannot reduce range for symmetric \
+                                       quantization for quint8"
+            )
 
     def forward(self, x_orig):
         if x_orig.numel() == 0:
@@ -214,23 +248,33 @@ class MinMaxObserver(_ObserverBase):
     def extra_repr(self):
         return "min_val={}, max_val={}".format(self.min_val, self.max_val)
 
+
 class PerChannelMinMaxObserver(_ObserverBase):
     min_vals: torch.Tensor
     max_vals: torch.Tensor
 
-    def __init__(self, ch_axis=0, dtype=torch.quint8,
-                 qscheme=torch.per_channel_affine, reduce_range=False,
-                 quant_min=None, quant_max=None, factory_kwargs=None):
-        super(PerChannelMinMaxObserver, self).__init__(dtype=dtype,
-                                                       qscheme=qscheme,
-                                                       reduce_range=reduce_range,
-                                                       quant_min=quant_min,
-                                                       quant_max=quant_max,
-                                                       factory_kwargs=factory_kwargs)
+    def __init__(
+        self,
+        ch_axis=0,
+        dtype=torch.quint8,
+        qscheme=torch.per_channel_affine,
+        reduce_range=False,
+        quant_min=None,
+        quant_max=None,
+        factory_kwargs=None,
+    ):
+        super(PerChannelMinMaxObserver, self).__init__(
+            dtype=dtype,
+            qscheme=qscheme,
+            reduce_range=reduce_range,
+            quant_min=quant_min,
+            quant_max=quant_max,
+            factory_kwargs=factory_kwargs,
+        )
         factory_kwargs = torch.nn.factory_kwargs(factory_kwargs)
         self.ch_axis = ch_axis
-        self.register_buffer('min_vals', torch.tensor([], **factory_kwargs))
-        self.register_buffer('max_vals', torch.tensor([], **factory_kwargs))
+        self.register_buffer("min_vals", torch.tensor([], **factory_kwargs))
+        self.register_buffer("max_vals", torch.tensor([], **factory_kwargs))
         if (
             self.qscheme == torch.per_channel_symmetric
             and self.reduce_range
@@ -278,5 +322,8 @@ class PerChannelMinMaxObserver(_ObserverBase):
     def extra_repr(self):
         return "min_val={}, max_val={}".format(self.min_vals, self.max_vals)
 
+
 default_observer = MinMaxObserver.with_args()
-default_weight_observer = PerChannelMinMaxObserver.with_args(dtype=torch.qint8, qscheme=torch.per_channel_symmetric)
+default_weight_observer = PerChannelMinMaxObserver.with_args(
+    dtype=torch.qint8, qscheme=torch.per_channel_symmetric
+)

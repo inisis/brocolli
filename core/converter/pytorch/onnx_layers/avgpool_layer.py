@@ -18,9 +18,9 @@ class AvgPoolLayer(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         pad_layer = ops.PadLayer(self._source_node, self._module, auto_gen=False)
 
-        pad_layer.add_bottom_top(out_names=[self._source_node.name+"_pad"])
+        pad_layer.add_bottom_top(out_names=[self._source_node.name + "_pad"])
 
-        if isinstance(self._module.padding , tuple):
+        if isinstance(self._module.padding, tuple):
             if len(self._module.padding) == 1:
                 pad_h = pad_w = self._module.padding[0]
             else:
@@ -36,10 +36,16 @@ class AvgPoolLayer(BaseLayer):
 
         params = [np.array(pads), np.array(0)]
 
-        pad_layer.generate_node(self._source_node.name+"_pad", params=params, attr_dict={'mode': 'constant'})
-        self.node_post_process(pad_layer)                         
+        pad_layer.generate_node(
+            self._source_node.name + "_pad",
+            params=params,
+            attr_dict={"mode": "constant"},
+        )
+        self.node_post_process(pad_layer)
 
-        pooling_layer = ops.PoolingLayer(self._source_node, self._module, auto_gen=False)
-        pooling_layer.add_bottom_top(in_names=[self._source_node.name+"_pad"])
+        pooling_layer = ops.PoolingLayer(
+            self._source_node, self._module, auto_gen=False
+        )
+        pooling_layer.add_bottom_top(in_names=[self._source_node.name + "_pad"])
         pooling_layer.generate_node(self._source_node.name)
         self.node_post_process(pooling_layer)

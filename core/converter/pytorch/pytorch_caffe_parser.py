@@ -19,7 +19,8 @@ def as_blob(array):
     blob.data.extend(array.astype(float).flat)
     return blob
 
-class PytorchCaffeParser():
+
+class PytorchCaffeParser:
     def __init__(self, model, input_shape, fuse=False, concrete_args=None):
         super(PytorchCaffeParser, self).__init__()
         self.fuse = fuse
@@ -33,11 +34,14 @@ class PytorchCaffeParser():
             if self.fuse:
                 self.fuse_all_conv_bn(self.model)
         else:
-            raise Exception("model must be a torch.nn.Module \
-                            or a torch.fx.GraphModule")
+            raise Exception(
+                "model must be a torch.nn.Module \
+                            or a torch.fx.GraphModule"
+            )
 
-        self.pytorch_graph = PytorchGraph(self.model, self.input_shape,
-                                          self.concrete_args)
+        self.pytorch_graph = PytorchGraph(
+            self.model, self.input_shape, self.concrete_args
+        )
         self.state_dict = self.pytorch_graph.trace.state_dict()
         self.modules = dict(self.pytorch_graph.trace.named_modules())
         self.layers = []
@@ -52,11 +56,11 @@ class PytorchCaffeParser():
         logger.info("caffemodel saved to {}.caffemodel".format(dest_path))
 
     def save_to_proto(self, net, filename):
-        with open(filename, 'wb') as f:
+        with open(filename, "wb") as f:
             f.write(google.protobuf.text_format.MessageToString(net).encode())
 
     def save_weights(self, weights, filename):
-        with open(filename, 'wb') as f:
+        with open(filename, "wb") as f:
             f.write(weights.SerializeToString())
 
     def fuse_all_conv_bn(self, model):
@@ -69,16 +73,18 @@ class PytorchCaffeParser():
                 if not stack:
                     continue
                 if isinstance(stack[-1][1], nn.Conv2d):
-                    setattr(model, stack[-1][0],
-                            fuse_conv_bn_eval(stack[-1][1], module))
+                    setattr(
+                        model, stack[-1][0], fuse_conv_bn_eval(stack[-1][1], module)
+                    )
                     setattr(model, name, nn.Identity())
 
             elif isinstance(module, nn.BatchNorm1d):
                 if not stack:
                     continue
                 if isinstance(stack[-1][1], nn.Linear):
-                    setattr(model, stack[-1][0],
-                            fuse_linear_bn_eval(stack[-1][1], module))
+                    setattr(
+                        model, stack[-1][0], fuse_linear_bn_eval(stack[-1][1], module)
+                    )
                     setattr(model, name, nn.Identity())
             else:
                 stack.append((name, module))
@@ -90,24 +96,24 @@ class PytorchCaffeParser():
             return default
 
     def find_name(self, node):
-        if node.op == 'placeholder':
+        if node.op == "placeholder":
             return node.name
-        elif node.op == 'call_module':
+        elif node.op == "call_module":
             module = self.modules[node.target]
             if isinstance(module, nn.Identity):
                 node_ = node.args[0]
                 return self.find_name(node_)
             else:
                 return node.name
-        elif node.op == 'call_function':
+        elif node.op == "call_function":
             function_name = get_function_name(node.target)
             if function_name == "getitem":
-                node_name = node.args[0].name + '_' + str(node.args[1])
+                node_name = node.args[0].name + "_" + str(node.args[1])
                 return node_name
             else:
                 return node.name
-        elif node.op == 'call_method':
-            if str(node.target) == 'contiguous':
+        elif node.op == "call_method":
+            if str(node.target) == "contiguous":
                 node_ = node.args[0]
                 return self.find_name(node_)
             else:
@@ -134,10 +140,10 @@ class PytorchCaffeParser():
 
     def gen_ir(self):
         for node in self.pytorch_graph.nodes:
-            if node.op == 'placeholder':
+            if node.op == "placeholder":
                 layer_data = self.rename_Data(node)
                 self.layers.append(layer_data)
-            elif node.op == 'call_module':
+            elif node.op == "call_module":
                 module = self.modules[node.target]
                 if isinstance(module, nn.Conv2d):
                     layer_data = self.rename_Conv(node, module)
@@ -194,13 +200,12 @@ class PytorchCaffeParser():
                 elif isinstance(module, nn.LeakyReLU):
                     layer_data = self.rename_LeakyRelu(node, module)
                     self.layers.append(layer_data)
-                elif str(module) == 'L2Norm()':
+                elif str(module) == "L2Norm()":
                     layer_data = self.rename_L2Norm(node, module)
                     self.layers.append(layer_data)
                 else:
-                    raise NotImplementedError("module %s is not implemented"
-                                              % (module))
-            elif node.op == 'call_function':
+                    raise NotImplementedError("module %s is not implemented" % (module))
+            elif node.op == "call_function":
                 function_name = get_function_name(node.target)
                 if function_name == "relu":
                     layer_data = self.rename_relu(node)
@@ -282,26 +287,27 @@ class PytorchCaffeParser():
                 elif function_name == "getattr":
                     pass
                 else:
-                    raise NotImplementedError("function %s is not implemented"
-                                              % (function_name))
-            elif node.op == 'call_method':
-                if str(node.target) == 'size':
+                    raise NotImplementedError(
+                        "function %s is not implemented" % (function_name)
+                    )
+            elif node.op == "call_method":
+                if str(node.target) == "size":
                     pass
-                elif str(node.target) == 'view':
+                elif str(node.target) == "view":
                     layer_data = self.rename_view(node)
                     self.layers.append(layer_data)
-                elif str(node.target) == 'contiguous':
+                elif str(node.target) == "contiguous":
                     pass
-                elif str(node.target) == 'chunk':
+                elif str(node.target) == "chunk":
                     layer_data = self.rename_chunk(node)
                     self.layers.append(layer_data)
-                elif str(node.target) == 'mean':
+                elif str(node.target) == "mean":
                     layer_data = self.rename_adaptive_avg_pool2d(node)
                     self.layers.append(layer_data)
-                elif str(node.target) == 'permute':
+                elif str(node.target) == "permute":
                     layer_data = self.rename_permute(node)
                     self.layers.append(layer_data)
-                elif str(node.target) == 'flatten':
+                elif str(node.target) == "flatten":
                     layer_data = self.rename_view(node)
                     self.layers.append(layer_data)
                 elif str(node.target) == "sigmoid":
@@ -311,15 +317,15 @@ class PytorchCaffeParser():
                     layer_data = self.rename_view(node)
                     self.layers.append(layer_data)
                 else:
-                    raise NotImplementedError("method %s is not implemented"
-                                              % (str(node.target)))
-            elif node.op == 'output':
+                    raise NotImplementedError(
+                        "method %s is not implemented" % (str(node.target))
+                    )
+            elif node.op == "output":
                 pass
-            elif node.op == 'get_attr':
+            elif node.op == "get_attr":
                 pass
             else:
-                raise NotImplementedError("op type %s is not implemented"
-                                          % (node.op))
+                raise NotImplementedError("op type %s is not implemented" % (node.op))
 
         text_net = pb2.NetParameter()
         binary_weights = pb2.NetParameter()
@@ -340,9 +346,9 @@ class PytorchCaffeParser():
     ##########
     def rename_Data(self, source_node):
         layer = pb2.LayerParameter()
-        layer.type = 'Input'
+        layer.type = "Input"
         input_shape = pb2.BlobShape()
-        input_shape.dim.extend(source_node.meta['tensor_meta'].shape)
+        input_shape.dim.extend(source_node.meta["tensor_meta"].shape)
         layer.input_param.shape.extend([input_shape])
         layer.top.append(source_node.name)
         layer.name = source_node.name
@@ -389,8 +395,8 @@ class PytorchCaffeParser():
 
         layer.convolution_param.group = groups
 
-        bias_name = '{0}.bias'.format(source_node.target)
-        weights_name = '{0}.weight'.format(source_node.target)
+        bias_name = "{0}.bias".format(source_node.target)
+        weights_name = "{0}.weight".format(source_node.target)
 
         weight = self.state_dict[weights_name].numpy()
 
@@ -426,25 +432,26 @@ class PytorchCaffeParser():
         layer_bn.batch_norm_param.use_global_stats = 1
         layer_bn.batch_norm_param.eps = module.eps
 
-        mean_name = '{0}.running_mean'.format(source_node.target)
-        var_name = '{0}.running_var'.format(source_node.target)
+        mean_name = "{0}.running_mean".format(source_node.target)
+        var_name = "{0}.running_var".format(source_node.target)
 
         mean = self.state_dict[mean_name].numpy()
         variance = self.state_dict[var_name].numpy()
 
-        layer_bn.blobs.extend([as_blob(mean), as_blob(variance),
-                              as_blob(np.array([1.]))])
+        layer_bn.blobs.extend(
+            [as_blob(mean), as_blob(variance), as_blob(np.array([1.0]))]
+        )
 
         layer_bn.bottom.append(source_node.args[0].name)
 
-        layer_bn.top.append(source_node.name + '_bn')
-        layer_bn.name = source_node.name + '_bn'
+        layer_bn.top.append(source_node.name + "_bn")
+        layer_bn.name = source_node.name + "_bn"
 
         layer_scale = pb2.LayerParameter()
         layer_scale.type = "Scale"
 
-        bias_name = '{0}.bias'.format(source_node.target)
-        weights_name = '{0}.weight'.format(source_node.target)
+        bias_name = "{0}.bias".format(source_node.target)
+        weights_name = "{0}.weight".format(source_node.target)
 
         weight = self.state_dict[weights_name].numpy()
 
@@ -456,7 +463,7 @@ class PytorchCaffeParser():
             layer_scale.scale_param.bias_term = False
             layer_scale.blobs.extend([as_blob(weight)])
 
-        layer_scale.bottom.append(source_node.name + '_bn')
+        layer_scale.bottom.append(source_node.name + "_bn")
         layer_scale.top.append(source_node.name)
         layer_scale.name = source_node.name
 
@@ -523,7 +530,7 @@ class PytorchCaffeParser():
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
         if isinstance(module, nn.AdaptiveAvgPool2d):
-            dim = source_node.meta['tensor_meta'].shape[2:]
+            dim = source_node.meta["tensor_meta"].shape[2:]
             if isinstance(module.output_size, int):
                 output_size = [module.output_size] * len(dim)
             else:
@@ -599,8 +606,8 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "InnerProduct"
 
-        bias_name = '{0}.bias'.format(source_node.target)
-        weights_name = '{0}.weight'.format(source_node.target)
+        bias_name = "{0}.bias".format(source_node.target)
+        weights_name = "{0}.weight".format(source_node.target)
 
         weight = self.state_dict[weights_name].numpy()
 
@@ -654,8 +661,8 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "Concat"
 
-        if 'dim' in source_node.kwargs:
-            layer.concat_param.axis = source_node.kwargs['dim']
+        if "dim" in source_node.kwargs:
+            layer.concat_param.axis = source_node.kwargs["dim"]
         else:
             layer.concat_param.axis = source_node.args[1]
 
@@ -698,28 +705,28 @@ class PytorchCaffeParser():
             layer_flatten.type = "Flatten"
             layer_flatten.flatten_param.axis = 1
             layer_flatten.bottom.append(second_input.name)
-            layer_flatten.top.append(node_name + '_flatten')
-            layer_flatten.name = node_name + '_flatten'
+            layer_flatten.top.append(node_name + "_flatten")
+            layer_flatten.name = node_name + "_flatten"
 
             layer_scale = pb2.LayerParameter()
             layer_scale.type = "Scale"
             layer_scale.scale_param.axis = 0
             layer_scale.bottom.append(first_input.name)
-            layer_scale.bottom.append(node_name + '_flatten')
+            layer_scale.bottom.append(node_name + "_flatten")
             layer_scale.top.append(node_name)
             layer_scale.name = node_name
 
             return layer_flatten, layer_scale
 
-        shape = list(source_node.args[0].meta['tensor_meta'].shape)
+        shape = list(source_node.args[0].meta["tensor_meta"].shape)
         if shape[-2:] == [1, 1]:
-            return add_flatten_before_mul(source_node.name,
-                                          source_node.args[1],
-                                          source_node.args[0])
+            return add_flatten_before_mul(
+                source_node.name, source_node.args[1], source_node.args[0]
+            )
         elif shape[-2:] == [1, 1]:
-            return add_flatten_before_mul(source_node.name,
-                                          source_node.args[0],
-                                          source_node.args[1])
+            return add_flatten_before_mul(
+                source_node.name, source_node.args[0], source_node.args[1]
+            )
         else:
             layer = pb2.LayerParameter()
             layer.type = "Scale"
@@ -732,7 +739,7 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "Reshape"
 
-        for shape in source_node.meta['tensor_meta'].shape:
+        for shape in source_node.meta["tensor_meta"].shape:
             layer.reshape_param.shape.dim.extend([shape])
 
         bottom_name = self.find_name(source_node.args[0])
@@ -746,21 +753,21 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "Slice"
 
-        if 'dim' in source_node.kwargs:
-            layer.slice_param.axis = source_node.kwargs['dim']
+        if "dim" in source_node.kwargs:
+            layer.slice_param.axis = source_node.kwargs["dim"]
         else:
             layer.slice_param.axis = source_node.args[1]
 
         sum_ = 0
-        for idx in range(len(source_node.meta['tensor_meta']) - 1):
-            tensor_meta = source_node.meta['tensor_meta'][idx]
+        for idx in range(len(source_node.meta["tensor_meta"]) - 1):
+            tensor_meta = source_node.meta["tensor_meta"][idx]
             sum_ = sum_ + tensor_meta.shape[layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
         layer.bottom.append(bottom_name)
-        for idx in range(len(source_node.meta['tensor_meta'])):
-            layer.top.append(source_node.name + '_' + str(idx))
+        for idx in range(len(source_node.meta["tensor_meta"])):
+            layer.top.append(source_node.name + "_" + str(idx))
         layer.name = source_node.name
 
         return layer
@@ -796,15 +803,15 @@ class PytorchCaffeParser():
         layer_sigmoid.type = "Sigmoid"
         layer_sigmoid.bottom.append(self.find_name(source_node.args[0]))
 
-        layer_sigmoid.top.append(source_node.name + '_sigmoid')
-        layer_sigmoid.name = source_node.name + '_sigmoid'
+        layer_sigmoid.top.append(source_node.name + "_sigmoid")
+        layer_sigmoid.name = source_node.name + "_sigmoid"
 
         layer_scale = pb2.LayerParameter()
         layer_scale.type = "Scale"
         layer_scale.scale_param.axis = 0
 
         layer_scale.bottom.append(self.find_name(source_node.args[0]))
-        layer_scale.bottom.append(source_node.name + '_sigmoid')
+        layer_scale.bottom.append(source_node.name + "_sigmoid")
         layer_scale.top.append(source_node.name)
         layer_scale.name = source_node.name
 
@@ -814,7 +821,7 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "ReLU6"
 
-        layer.relu6_param.threshold = source_node.kwargs['max_val']
+        layer.relu6_param.threshold = source_node.kwargs["max_val"]
 
         self.add_bottom_top(layer, source_node)
 
@@ -848,8 +855,8 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "Concat"
 
-        if 'dim' in source_node.kwargs:
-            layer.concat_param.axis = source_node.kwargs['dim']
+        if "dim" in source_node.kwargs:
+            layer.concat_param.axis = source_node.kwargs["dim"]
         else:
             layer.concat_param.axis = source_node.args[1]
 
@@ -885,28 +892,28 @@ class PytorchCaffeParser():
             layer_flatten.type = "Flatten"
             layer_flatten.flatten_param.axis = 1
             layer_flatten.bottom.append(second_input.name)
-            layer_flatten.top.append(node_name + '_flatten')
-            layer_flatten.name = node_name + '_flatten'
+            layer_flatten.top.append(node_name + "_flatten")
+            layer_flatten.name = node_name + "_flatten"
 
             layer_scale = pb2.LayerParameter()
             layer_scale.type = "Scale"
             layer_scale.scale_param.axis = 0
             layer_scale.bottom.append(first_input.name)
-            layer_scale.bottom.append(node_name + '_flatten')
+            layer_scale.bottom.append(node_name + "_flatten")
             layer_scale.top.append(node_name)
             layer_scale.name = node_name
 
             return layer_flatten, layer_scale
 
-        shape = list(source_node.args[0].meta['tensor_meta'].shape)
+        shape = list(source_node.args[0].meta["tensor_meta"].shape)
         if shape[-2:] == [1, 1]:
-            return add_flatten_before_mul(source_node.name,
-                                          source_node.args[1],
-                                          source_node.args[0])
+            return add_flatten_before_mul(
+                source_node.name, source_node.args[1], source_node.args[0]
+            )
         elif shape[-2:] == [1, 1]:
-            return add_flatten_before_mul(source_node.name,
-                                          source_node.args[0],
-                                          source_node.args[1])
+            return add_flatten_before_mul(
+                source_node.name, source_node.args[0], source_node.args[1]
+            )
         else:
             layer = pb2.LayerParameter()
             layer.type = "Scale"
@@ -931,7 +938,7 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "ReLU"
 
-        layer.relu_param.negative_slope = source_node.kwargs['negative_slope']
+        layer.relu_param.negative_slope = source_node.kwargs["negative_slope"]
 
         self.add_bottom_top(layer, source_node)
 
@@ -947,12 +954,12 @@ class PytorchCaffeParser():
 
     def rename_softmax(self, source_node):
         layer = pb2.LayerParameter()
-        layer.type = 'Softmax'
+        layer.type = "Softmax"
 
-        dim = source_node.kwargs['dim']
+        dim = source_node.kwargs["dim"]
         if dim is None:
             stacklevel = 3
-            shape = source_node.args[0].meta['tensor_meta'].shape
+            shape = source_node.args[0].meta["tensor_meta"].shape
             dim = F._get_softmax_dim("softmax", len(shape), stacklevel)
 
         layer.softmax_param.axis = dim
@@ -1055,9 +1062,9 @@ class PytorchCaffeParser():
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
         function_name = get_function_name(source_node.target)
-        if function_name == 'adaptive_avg_pool2d':
+        if function_name == "adaptive_avg_pool2d":
             output_size = source_node.args[1]
-            dim = source_node.args[0].meta['tensor_meta'].shape[2:]
+            dim = source_node.args[0].meta["tensor_meta"].shape[2:]
             if isinstance(output_size, int):
                 output_size = [output_size] * len(dim)
             else:
@@ -1133,11 +1140,11 @@ class PytorchCaffeParser():
         layer.pooling_param.pool = pb2.PoolingParameter.MAX
 
         kernel_size = source_node.args[1]
-        stride = source_node.kwargs['stride']
-        padding = source_node.kwargs['padding']
-        dilation = source_node.kwargs['dilation']
-        ceil_mode = source_node.kwargs['ceil_mode']
-        return_indices = source_node.kwargs['return_indices']
+        stride = source_node.kwargs["stride"]
+        padding = source_node.kwargs["padding"]
+        dilation = source_node.kwargs["dilation"]
+        ceil_mode = source_node.kwargs["ceil_mode"]
+        return_indices = source_node.kwargs["return_indices"]
 
         if isinstance(padding, tuple):
             if padding[0] == padding[1]:
@@ -1171,8 +1178,8 @@ class PytorchCaffeParser():
         if return_indices:
             bottom_name = self.find_name(source_node.args[0])
             layer.bottom.append(bottom_name)
-            layer.top.append(source_node.name + '_' + str(0))
-            layer.top.append(source_node.name + '_' + str(1))
+            layer.top.append(source_node.name + "_" + str(0))
+            layer.top.append(source_node.name + "_" + str(1))
             layer.name = source_node.name
         else:
             self.add_bottom_top(layer, source_node)
@@ -1182,21 +1189,21 @@ class PytorchCaffeParser():
     def rename_chunk(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Slice"
-        if 'dim' in source_node.kwargs:
-            layer.slice_param.axis = source_node.kwargs['dim']
+        if "dim" in source_node.kwargs:
+            layer.slice_param.axis = source_node.kwargs["dim"]
         else:
             layer.slice_param.axis = source_node.args[2]
 
         sum_ = 0
-        for idx in range(len(source_node.meta['tensor_meta']) - 1):
-            tensor_meta = source_node.meta['tensor_meta'][idx]
+        for idx in range(len(source_node.meta["tensor_meta"]) - 1):
+            tensor_meta = source_node.meta["tensor_meta"][idx]
             sum_ = sum_ + tensor_meta.shape[layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
         layer.bottom.append(bottom_name)
-        for idx in range(len(source_node.meta['tensor_meta'])):
-            layer.top.append(source_node.name + '_' + str(idx))
+        for idx in range(len(source_node.meta["tensor_meta"])):
+            layer.top.append(source_node.name + "_" + str(idx))
         layer.name = source_node.name
 
         return layer
@@ -1204,18 +1211,18 @@ class PytorchCaffeParser():
     def rename_split(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Slice"
-        layer.slice_param.axis = source_node.kwargs['dim']
+        layer.slice_param.axis = source_node.kwargs["dim"]
 
         sum_ = 0
-        for idx in range(len(source_node.meta['tensor_meta']) - 1):
-            tensor_meta = source_node.meta['tensor_meta'][idx]
+        for idx in range(len(source_node.meta["tensor_meta"]) - 1):
+            tensor_meta = source_node.meta["tensor_meta"][idx]
             sum_ = sum_ + tensor_meta.shape[layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
         layer.bottom.append(bottom_name)
-        for idx in range(len(source_node.meta['tensor_meta'])):
-            layer.top.append(source_node.name + '_' + str(idx))
+        for idx in range(len(source_node.meta["tensor_meta"])):
+            layer.top.append(source_node.name + "_" + str(idx))
         layer.name = source_node.name
 
         return layer
@@ -1224,10 +1231,12 @@ class PytorchCaffeParser():
         layer = pb2.LayerParameter()
         layer.type = "Permute"
 
-        input_dim = len(source_node.args[0].meta['tensor_meta'].shape)
+        input_dim = len(source_node.args[0].meta["tensor_meta"].shape)
         axes = list(range(input_dim))
-        axes[source_node.args[1]], axes[source_node.args[2]] = \
-            axes[source_node.args[2]], axes[source_node.args[1]]
+        axes[source_node.args[1]], axes[source_node.args[2]] = (
+            axes[source_node.args[2]],
+            axes[source_node.args[1]],
+        )
         for axe in axes:
             layer.permute_param.order.extend([axe])
 

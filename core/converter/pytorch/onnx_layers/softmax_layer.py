@@ -14,8 +14,12 @@ class SoftmaxLayer(BaseLayer):
         dim = self._module.dim
         if dim is None:
             stacklevel = 3
-            dim = nn.functional._get_softmax_dim("softmax", len(self._source_node.args[0].meta['tensor_meta'].shape), stacklevel)
-        
+            dim = nn.functional._get_softmax_dim(
+                "softmax",
+                len(self._source_node.args[0].meta["tensor_meta"].shape),
+                stacklevel,
+            )
+
         node = helper.make_node(
             "Softmax", self._in_names, self._out_names, self._name, axis=dim
         )

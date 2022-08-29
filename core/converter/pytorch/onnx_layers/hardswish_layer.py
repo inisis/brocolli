@@ -10,6 +10,7 @@ class HardswishLayer(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         node = helper.make_node(
-            "HardSwish", self._in_names, self._out_names, self._name)
+            "HardSwish", self._in_names, self._out_names, self._name
+        )
         logger.info("hardswish_layer: " + self._name + " created")
         self._node.append(node)

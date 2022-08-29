@@ -13,8 +13,8 @@ class TileFunc(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         if params is None:
-            if 'dims' in self._source_node.kwargs:
-                repeats = self._source_node.kwargs['dims']
+            if "dims" in self._source_node.kwargs:
+                repeats = self._source_node.kwargs["dims"]
             elif isinstance(self._source_node.args[1], int):
                 repeats = []
                 for arg in self._source_node.args:
@@ -27,9 +27,7 @@ class TileFunc(BaseLayer):
 
         self.create_params(self._name + "_tile", params, tp.INT64)
 
-        node = helper.make_node(
-            "Tile", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("Tile", self._in_names, self._out_names, self._name)
 
         logger.info("tile_layer: " + self._name + " created")
         self._node.append(node)

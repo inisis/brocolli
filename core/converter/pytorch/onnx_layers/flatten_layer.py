@@ -13,13 +13,11 @@ class FlattenLayer(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         if params is None:
-            params = np.array(self._source_node.meta['tensor_meta'].shape)
-        
+            params = np.array(self._source_node.meta["tensor_meta"].shape)
+
         self.create_params(self._name + "_flatten", params, tp.INT64)
 
-        node = helper.make_node(
-            "Reshape", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("Reshape", self._in_names, self._out_names, self._name)
 
         logger.info("flatten_layer: " + self._name + " created")
         self._node.append(node)

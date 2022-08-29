@@ -7,11 +7,11 @@ class Output(nn.Module, BaseOperator):
         super(Output, self).__init__()
 
     def extra_repr(self):
-        s = ('scale={scale}')
+        s = "scale={scale}"
         return s.format(**self.__dict__)
 
     def _get_name(self):
-        return 'DeQuantizedOutput'
+        return "DeQuantizedOutput"
 
     @classmethod
     def from_float(cls, mod):

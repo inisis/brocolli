@@ -15,8 +15,7 @@ class BrocolliTracer(Tracer):
         self.customed_leaf_module = customed_leaf_module
 
     def is_leaf_module(self, m: torch.nn.Module, module_qualified_name: str):
-        if self.customed_leaf_module and \
-                isinstance(m, self.customed_leaf_module):
+        if self.customed_leaf_module and isinstance(m, self.customed_leaf_module):
 
             return True
 
@@ -46,8 +45,10 @@ class PytorchGraph:
                 self.trace_prune(self.trace)
             self.shape_inference()
         else:
-            raise Exception("model must be a torch.nn.Module \
-                            or a torch.fx.GraphModule")
+            raise Exception(
+                "model must be a torch.nn.Module \
+                            or a torch.fx.GraphModule"
+            )
 
         self.graph = self.trace.graph
         self.nodes = list(self.trace.graph.nodes)
@@ -57,8 +58,7 @@ class PytorchGraph:
         for node in list(trace.graph.nodes):
             if node.op == "placeholder" and node.next.op == "call_function":
                 function_name = get_function_name(node.next.target)
-                if function_name == "eq" and \
-                        node.next.next.op == "call_function":
+                if function_name == "eq" and node.next.next.op == "call_function":
                     function_name = get_function_name(node.next.next.target)
                     if function_name == "_assert":
                         trace.graph.erase_node(node.next.next)

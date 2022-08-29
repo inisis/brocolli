@@ -18,7 +18,7 @@ class GemmFunc(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         if name is not None:
             self._name = name
-        
+
         attr_dict = self.get_gemm_attr()
         logger.debug(attr_dict)
         node = helper.make_node(
@@ -29,5 +29,5 @@ class GemmFunc(BaseLayer):
 
     def generate_params(self, params):
         self.create_params(self._name + "_weight", params[0], tp.FLOAT)
-        if (len(params)) == 2:    
-            self.create_params(self._name + "_bias", params[1], tp.FLOAT)   
+        if (len(params)) == 2:
+            self.create_params(self._name + "_bias", params[1], tp.FLOAT)

@@ -17,10 +17,8 @@ class SliceFunc(BaseLayer):
         self.create_params(self._name + "_start", params[0], tp.INT64)
         self.create_params(self._name + "_end", params[1], tp.INT64)
         self.create_params(self._name + "_axes", params[2], tp.INT64)
-        self.create_params(self._name + "_steps", params[3], tp.INT64) 
+        self.create_params(self._name + "_steps", params[3], tp.INT64)
 
-        node = helper.make_node(
-            "Slice", self._in_names, self._out_names, self._name
-        )
+        node = helper.make_node("Slice", self._in_names, self._out_names, self._name)
         logger.info("slice_layer: " + self._name + " created")
         self._node.append(node)

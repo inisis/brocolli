@@ -7,16 +7,15 @@ class Input(nn.Module, BaseOperator):
         super(Input, self).__init__()
 
     def extra_repr(self):
-        s = ('scale={scale}')
+        s = "scale={scale}"
         return s.format(**self.__dict__)
 
     def _get_name(self):
-        return 'QuantizedInput'
+        return "QuantizedInput"
 
     @classmethod
     def from_float(cls, mod):
-        assert hasattr(mod, "qconfig"), \
-            "Input float module must have qconfig defined."
+        assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined."
         activation_pre_process = mod.activation_pre_process
         scale = activation_pre_process.calculate_qparams()
         output_min_value = activation_pre_process.min_val
@@ -26,7 +25,7 @@ class Input(nn.Module, BaseOperator):
         qinput.scale = float(scale)
         qinput.qbit = mod.qbit
         qinput.output_min_value = output_min_value
-        qinput.output_max_value = output_max_value        
+        qinput.output_max_value = output_max_value
 
         return qinput
 

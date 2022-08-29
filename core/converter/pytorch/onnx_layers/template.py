@@ -23,7 +23,7 @@ class Template(BaseLayer):
         if params is None:
             # handle non user-defined situation optional
             params = np.array([self._source_node.args[1]])
-        
+
         if attr_dict is None:
             # handle non user-defined situation optional
             attr_dict = self.get_template_attr()

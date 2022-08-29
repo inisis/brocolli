@@ -16,6 +16,7 @@ class HardsigmoidFunc(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         attr_dict = self.get_hardsigmoid_attr()
         node = helper.make_node(
-            "HardSigmoid", self._in_names, self._out_names, self._name, **attr_dict)
+            "HardSigmoid", self._in_names, self._out_names, self._name, **attr_dict
+        )
         logger.info("hardsigmoid_layer: " + self._name + " created")
         self._node.append(node)

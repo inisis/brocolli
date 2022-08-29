@@ -14,13 +14,13 @@ class Linear(nn.Module, BaseOperator):
         self.bias = bias
 
     def extra_repr(self):
-        s = ('in_features={in_features}, out_features={out_features}')
+        s = "in_features={in_features}, out_features={out_features}"
         if self.bias is None:
-            s += ', bias=False'        
+            s += ", bias=False"
         return s.format(**self.__dict__)
 
     def _get_name(self):
-        return 'QuantizedLinear'
+        return "QuantizedLinear"
 
     @classmethod
     def from_float(cls, mod):
@@ -28,7 +28,11 @@ class Linear(nn.Module, BaseOperator):
         weight_post_process(mod.weight)
         qweight, wt_scale = _quantize_weight(mod.weight.float(), weight_post_process)
         act_scale = mod.activation_pre_process.calculate_qparams()
-        qbias = _quantize_bias(mod.bias.float(), wt_scale * act_scale) if mod.bias is not None else None
+        qbias = (
+            _quantize_bias(mod.bias.float(), wt_scale * act_scale)
+            if mod.bias is not None
+            else None
+        )
         output_scale = mod.activation_post_process.calculate_qparams()
         qlinear = cls(mod.in_features, mod.out_features, mod.bias)
 
@@ -44,7 +48,11 @@ class Linear(nn.Module, BaseOperator):
         return qlinear
 
     def forward(self, input):
-        out = F.linear(input.to(torch.int64), self.weight.to(torch.int64), self.bias.to(torch.int64))
+        out = F.linear(
+            input.to(torch.int64),
+            self.weight.to(torch.int64),
+            self.bias.to(torch.int64),
+        )
 
         out = out * self.act_scale * self.wt_scale / self.output_scale
         out = self.clamp(out)

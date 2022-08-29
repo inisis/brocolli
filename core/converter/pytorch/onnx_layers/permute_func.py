@@ -22,7 +22,7 @@ class PermuteFunc(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         if name is not None:
             self._name = name
-        
+
         if attr_dict is None:
             attr_dict = self.gen_transpose_attr()
 

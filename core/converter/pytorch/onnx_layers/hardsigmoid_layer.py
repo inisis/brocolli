@@ -10,6 +10,7 @@ class HardsigmoidLayer(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         node = helper.make_node(
-            "HardSigmoid", self._in_names, self._out_names, self._name)
+            "HardSigmoid", self._in_names, self._out_names, self._name
+        )
         logger.info("hardsigmoid_layer: " + self._name + " created")
         self._node.append(node)

@@ -11,7 +11,7 @@ class EluFunc(BaseLayer):
     def get_relu_attr(self):
         attr_dict = {"alpha": 1.0}
 
-        attr_dict["alpha"] = self._source_node.kwargs['alpha']
+        attr_dict["alpha"] = self._source_node.kwargs["alpha"]
 
         return attr_dict
 

@@ -22,7 +22,7 @@ class PoolingLayer(BaseLayer):
         pool_dim = int(re.findall(r"(?:Pool)([0-9]d*?)", str(self._module))[0])
 
         if isinstance(self._module, (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d)):
-            dim = self._source_node.args[0].meta['tensor_meta'].shape[2:]
+            dim = self._source_node.args[0].meta["tensor_meta"].shape[2:]
             if isinstance(self._module.output_size, int):
                 output_size = [self._module.output_size] * len(dim)
             else:
@@ -30,8 +30,11 @@ class PoolingLayer(BaseLayer):
 
             mod = [dim[i] % output_size[i] for i in range(0, len(dim))]
             if mod != [0] * len(mod):
-                raise Exception("module %s Unsupported output size is not factor of input siz" % (self._module))
-           
+                raise Exception(
+                    "module %s Unsupported output size is not factor of input siz"
+                    % (self._module)
+                )
+
             k = [int(dim[i] / output_size[i]) for i in range(0, len(dim))]
             if len(k) == 1:
                 attr_dict["strides"] = attr_dict["kernel_shape"] = [k[0]] * pool_dim
@@ -45,7 +48,7 @@ class PoolingLayer(BaseLayer):
         stride = self._module.stride
         padding = self._module.padding
 
-        if isinstance(kernel_size , tuple):
+        if isinstance(kernel_size, tuple):
             if len(kernel_size) == 1:
                 attr_dict["kernel_shape"] = kernel_size * pool_dim
             else:
@@ -53,7 +56,7 @@ class PoolingLayer(BaseLayer):
         else:
             attr_dict["kernel_shape"] = [kernel_size] * pool_dim
 
-        if isinstance(stride , tuple):
+        if isinstance(stride, tuple):
             if len(stride) == 1:
                 attr_dict["strides"] = stride * pool_dim
             else:
@@ -61,7 +64,7 @@ class PoolingLayer(BaseLayer):
         else:
             attr_dict["strides"] = [stride] * pool_dim
 
-        if isinstance(padding , tuple):
+        if isinstance(padding, tuple):
             if len(padding) == 1:
                 attr_dict["pads"] = padding * pool_dim * 2
             else:
@@ -85,11 +88,7 @@ class PoolingLayer(BaseLayer):
         if isinstance(self._module, (nn.MaxPool1d, nn.MaxPool2d)):
             attr_dict = self.get_pooling_attr()
             node = helper.make_node(
-                "MaxPool",
-                self._in_names,
-                self._out_names,
-                self._name,
-                **attr_dict
+                "MaxPool", self._in_names, self._out_names, self._name, **attr_dict
             )
         elif isinstance(self._module, (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d)):
             if isinstance(self._module.output_size, int):
@@ -98,7 +97,7 @@ class PoolingLayer(BaseLayer):
             else:
                 output_size = [int(v) for v in self._module.output_size]
                 output_size_len = len(self._module.output_size)
-            if output_size == [1] * output_size_len:          
+            if output_size == [1] * output_size_len:
                 node = helper.make_node(
                     "GlobalAveragePool",
                     self._in_names,
@@ -113,15 +112,11 @@ class PoolingLayer(BaseLayer):
                     self._out_names,
                     self._name,
                     **attr_dict
-                )                
+                )
         elif isinstance(self._module, (nn.AvgPool1d, nn.AvgPool2d)):
             attr_dict = self.get_pooling_attr()
             node = helper.make_node(
-                "AveragePool",
-                self._in_names,
-                self._out_names,
-                self._name,
-                **attr_dict
+                "AveragePool", self._in_names, self._out_names, self._name, **attr_dict
             )
         logger.info("pooling_layer: " + self._name + " created")
         self._node.append(node)

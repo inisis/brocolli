@@ -25,7 +25,7 @@ class ConvLayer(BaseLayer):
                 "pads": [0, 0],  # list of ints defaults to 0
                 "strides": [1],  # list of ints  defaults is 1
             }
-            
+
         else:
             attr_dict = {
                 "dilations": [1, 1],  # list of ints defaults is 1
@@ -46,7 +46,7 @@ class ConvLayer(BaseLayer):
         else:
             attr_dict["dilations"] = [dilation]
 
-        if isinstance(kernel_size , tuple):
+        if isinstance(kernel_size, tuple):
             attr_dict["kernel_shape"] = kernel_size
         else:
             attr_dict["kernel_shape"] = [kernel_size]
@@ -58,8 +58,8 @@ class ConvLayer(BaseLayer):
 
         if isinstance(padding, tuple):
             if len(padding) == 1:
-                attr_dict["pads"] = padding * conv_dim * 2    
-            else:        
+                attr_dict["pads"] = padding * conv_dim * 2
+            else:
                 attr_dict["pads"] = padding * 2
         else:
             attr_dict["pads"] = [padding] * conv_dim * 2
@@ -69,9 +69,13 @@ class ConvLayer(BaseLayer):
         return attr_dict
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        self.create_params(self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT)
+        self.create_params(
+            self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT
+        )
         if self._module.bias is not None:
-            self.create_params(self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT)      
+            self.create_params(
+                self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT
+            )
 
         attr_dict = self.get_conv_attr()
         logger.debug(attr_dict)
