@@ -523,7 +523,7 @@ class PytorchOnnxParser:
         if isinstance(self.pytorch_output, torch.Tensor):
             self.pytorch_output = [self.pytorch_output]
 
-    def get_tensor_list(self, dummy_inputs):
+    def get_tensor_list(self, dummy_inputs):  # for lstm
         tensor_list = []
         for dummy_input in dummy_inputs:
             if isinstance(dummy_input, torch.Tensor):

@@ -12,7 +12,7 @@ def test_mnist(shape=(1, 1, 28, 28)):
     import torch
     import torch.nn as nn
     from loguru import logger
-    from core.quantization.pytorch.quantizer import PytorchQuantizer
+    from brocolli.quantization.quantizer import PytorchQuantizer
     from torchvision import datasets, transforms
     from torch.utils.data import DataLoader
     from torchvision.models.utils import load_state_dict_from_url
@@ -21,8 +21,10 @@ def test_mnist(shape=(1, 1, 28, 28)):
         def __init__(self):
             super(Net, self).__init__()
             self.conv1 = nn.Conv2d(1, 32, 3, 1)
+            self.bn1 = nn.BatchNorm2d(32)
             self.relu1 = nn.ReLU()
             self.conv2 = nn.Conv2d(32, 64, 3, 1)
+            self.bn2 = nn.BatchNorm2d(64)
             self.relu2 = nn.ReLU()
             self.max_pool = nn.MaxPool2d(2)
             self.fc1 = nn.Linear(9216, 128)
@@ -31,8 +33,10 @@ def test_mnist(shape=(1, 1, 28, 28)):
 
         def forward(self, x):
             x = self.conv1(x)
+            x = self.bn1(x)
             x = self.relu1(x)
             x = self.conv2(x)
+            x = self.bn2(x)
             x = self.relu2(x)
             x = self.max_pool(x)
             x = torch.flatten(x, 1)
@@ -116,6 +120,7 @@ def test_mnist(shape=(1, 1, 28, 28)):
     calibrate_func(model)
 
     pytorch_quantizer = PytorchQuantizer(model, shape)
+    pytorch_quantizer.fuse()
     pytorch_quantizer.prepare()
     pytorch_quantizer.calibrate(calibrate_func)
     pytorch_quantizer.convert()
