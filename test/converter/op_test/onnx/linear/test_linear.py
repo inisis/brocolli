@@ -2,7 +2,7 @@ import torch
 import pytest
 import warnings
 
-from bin.converter.utils import OnnxBaseTester as Tester
+from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
 def test_Linear_basic(shape=[1, 3], opset_version=13):

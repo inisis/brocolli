@@ -3,7 +3,7 @@ import torch.nn as nn
 import pytest
 import warnings
 
-from bin.converter.utils import OnnxBaseTester as Tester
+from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
 def test_Conv2d_basic(shape=[1, 3, 32, 32], opset_version=13):

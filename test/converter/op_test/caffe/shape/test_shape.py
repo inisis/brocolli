@@ -4,7 +4,7 @@ import torch
 import pytest
 import warnings
 
-from bin.converter.utils import CaffeBaseTester as Tester
+from brocolli.testing.common_utils import CaffeBaseTester as Tester
 
 
 class TorchChunk(torch.nn.Module):

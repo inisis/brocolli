@@ -2,7 +2,7 @@ import torch.nn as nn
 import pytest
 import warnings
 
-from bin.converter.utils import OnnxBaseTester as Tester
+from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
 def test_RNN_basic(shape=[5, 3, 10], opset_version=13):

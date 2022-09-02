@@ -2,7 +2,7 @@ import torch
 import pytest
 import warnings
 
-from bin.converter.utils import OnnxBaseTester as Tester
+from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
 class TorchChunk(torch.nn.Module):

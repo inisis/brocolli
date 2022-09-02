@@ -4,7 +4,7 @@ import torch
 import pytest
 import warnings
 
-from bin.converter.utils import CaffeBaseTester as Tester
+from brocolli.testing.common_utils import CaffeBaseTester as Tester
 
 
 def test_ReLU(shape=[1, 3, 32, 32], opset_version=13):
