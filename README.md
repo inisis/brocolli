@@ -5,22 +5,40 @@ torch fx based pytorch model quantizier.
 
 Pytorch version 1.9.0 and above are all supported  
 
-# installation
+# Installation
 ```
 pip install brocolli
 ```
 
 # How to use
-```
-import torchvision.models as models
-from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
+* torch2caffe
+    * caffe installation
+    ```bash
+    pip install brocolli-caffe
+    ```
 
-net = models.alexnet(pretrained=False)
-pytorch_parser = PytorchCaffeParser(net, [(1, 3, 224, 223)])
-pytorch_parser.convert()
-pytorch_parser.save('alexnet.onnx')
-```
-user can run this script until you see "accuracy test passed" on screen, then you can get your caffe or trt model under tmp folder.
+    ```
+    import torchvision.models as models
+    from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
+
+    net = models.alexnet(pretrained=False)
+    pytorch_parser = PytorchCaffeParser(net, [(1, 3, 224, 223)])
+    pytorch_parser.convert()
+    pytorch_parser.save('alexnet')
+    ```
+    run this script until you see "accuracy test passed" on screen, then you can get alexnet.caffemodel and alexnet.prototxt under under current folder.
+
+* torch2onnx
+    ```
+    import torchvision.models as models
+    from brocolli.converter.pytorch_onnx_parser import PytorchOnnxParser
+
+    net = models.alexnet(pretrained=False)
+    pytorch_parser = PytorchCaffeParser(net, [(1, 3, 224, 223)])
+    pytorch_parser.convert()
+    pytorch_parser.save('alexnet.onnx')
+    ```
+    run this script until you see "accuracy test passed" on screen, then you can get alexnet.onnx under under current folder.
 
 # Notice 
 * ✔️ : support 
