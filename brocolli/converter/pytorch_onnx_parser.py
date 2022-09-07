@@ -284,10 +284,12 @@ class PytorchOnnxParser:
                 elif function_name == "conv2d":
                     conv_layer = ops.ConvFunc(node, auto_gen=False)
                     conv_layer.add_bottom_top()
-                    weight = self.model.weight.detach().numpy()
-                    bias = self.model.bias
-                    if bias is not None:
-                        params_conv = [weight, bias.detach().numpy()]
+                    weight_node = node.args[1]
+                    bias_node = node.args[2]
+                    weight = getattr(self.model, weight_node.target).detach().numpy()
+                    if bias_node is not None:
+                        bias = getattr(self.model, bias_node.target).detach().numpy()
+                        params_conv = [weight, bias]
                     else:
                         params_conv = [weight]
                     conv_layer.generate_params(params_conv)
@@ -295,15 +297,16 @@ class PytorchOnnxParser:
                     self.node_post_process(conv_layer)
                 elif function_name == "linear":
                     gemm_layer = ops.GemmFunc(node, auto_gen=False)
-
                     gemm_layer.add_bottom_top()
-                    weight = self.model.weight.detach().numpy()
-                    bias = self.model.bias
-                    if bias is not None:
-                        params_conv = [weight, bias.detach().numpy()]
+                    weight_node = node.args[1]
+                    bias_node = node.args[2]
+                    weight = getattr(self.model, weight_node.target).detach().numpy()
+                    if bias_node is not None:
+                        bias = getattr(self.model, bias_node.target).detach().numpy()
+                        params_linear = [weight, bias]
                     else:
-                        params_conv = [weight]
-                    gemm_layer.generate_params(params_conv)
+                        params_linear = [weight]
+                    gemm_layer.generate_params(params_linear)
                     gemm_layer.generate_node()
                     self.node_post_process(gemm_layer)
                 elif function_name == "avg_pool2d" or function_name == "avg_pool1d":
