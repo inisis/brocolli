@@ -80,3 +80,4 @@ from onnx_layers.split_func import SplitFunc
 from onnx_layers.softplus_func import SoftplusFunc
 from onnx_layers.upsample_func import UpsampleFunc
 from onnx_layers.avgpool_func import AvgPoolFunc
+from onnx_layers.normalize_func import NormalizeFunc

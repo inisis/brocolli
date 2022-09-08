@@ -299,7 +299,7 @@ class PytorchOnnxParser:
                     gemm_layer = ops.GemmFunc(node, auto_gen=False)
                     gemm_layer.add_bottom_top()
                     weight_node = node.args[1]
-                    bias_node = node.args[2]
+                    bias_node = node.kwargs['bias']
                     weight = getattr(self.model, weight_node.target).detach().numpy()
                     if bias_node is not None:
                         bias = getattr(self.model, bias_node.target).detach().numpy()
@@ -400,6 +400,9 @@ class PytorchOnnxParser:
                 elif function_name == "tile":
                     tile_layer = ops.TileFunc(node)
                     self.node_post_process(tile_layer)
+                elif function_name == "normalize":
+                    normalize_layer = ops.NormalizeFunc(node)
+                    self.node_post_process(normalize_layer)                    
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
