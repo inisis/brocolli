@@ -5,9 +5,6 @@ import warnings
 
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
-# def test_BatchNorm2d(shape = [1, 3, 32, 32], opset_version=13):
-#     model = torch.nn.BatchNorm2d(3)
-#     Tester("BatchNorm2d", model, shape, opset_version)
 
 class L2Norm(nn.Module):
     def __init__(self,):
@@ -18,8 +15,6 @@ class L2Norm(nn.Module):
 
 def test_L2Norm(shape = (1, 3, 32, 32), opset_version=13):
     model = L2Norm()
-    # dummy_input = torch.rand(shape).to(torch.float32)
-    # torch.onnx.export(model, (dummy_input,), "l2norm.onnx", opset_version=13, enable_onnx_checker=False)
     Tester("L2Norm", model, shape, opset_version)
 
 if __name__ == '__main__':
