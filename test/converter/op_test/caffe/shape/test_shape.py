@@ -66,30 +66,6 @@ def test_Cat_neg_dim(shape=((1, 4, 4), (1, 3, 4), (1, 17, 4)), opset_version=13)
     Tester("Cat_neg_dim", model, shape, opset_version)
 
 
-class Permute(torch.nn.Module):
-    def __init__(self, *args):
-        super(Permute, self).__init__()
-        self.args = args
-
-    def forward(self, x):
-        return x.permute(*self.args).contiguous()
-
-
-def test_Permute_0231(shape=[1, 3, 32, 32], opset_version=13):
-    model = Permute(0, 2, 3, 1)
-    Tester("Permute_0123", model, shape, opset_version)
-
-
-def test_Permute_0312(shape=[1, 3, 32, 32], opset_version=13):
-    model = Permute(0, 3, 1, 2)
-    Tester("Permute_0123", model, shape, opset_version)
-
-
-def test_Permute_04132(shape=[1, 2, 3, 4, 5], opset_version=13):
-    model = Permute(0, 4, 1, 3, 2)
-    Tester("Permute_04132", model, shape, opset_version)
-
-
 class TorchSplit(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super(TorchSplit, self).__init__()
@@ -128,22 +104,6 @@ def test_TensorSplit_1x1(shape=[1, 3, 3, 3], opset_version=9):
 def test_TensorSplit_2x1(shape=[1, 3, 3, 3], opset_version=9):
     model = TorchSplit(2, 1)
     Tester("TensorSplit_2x1", model, shape, opset_version)
-
-
-class Transpose(torch.nn.Module):
-    def __init__(self, *args, **kwargs):
-        super(Transpose, self).__init__()
-        self.args = args
-        self.kwargs = kwargs
-
-    def forward(self, x):
-        print(self.args)
-        return torch.transpose(x, *self.args).contiguous()
-
-
-def test_Transpose_basic(shape=([1, 3, 3, 3]), opset_version=9):
-    model = Transpose(1, 2)
-    Tester("Transpose_basic", model, shape, opset_version)
 
 
 class View(torch.nn.Module):

@@ -573,7 +573,7 @@ class PytorchCaffeParser:
         else:
             layer.pooling_param.kernel_size = module.kernel_size
 
-        layer.pooling_param.ceil_mode = module.ceil_mode
+        layer.pooling_param.round_mode = not module.ceil_mode
 
         self.add_bottom_top(layer, source_node)
 
@@ -651,7 +651,7 @@ class PytorchCaffeParser:
             else:
                 layer.pooling_param.kernel_size = kernel_size
 
-            layer.pooling_param.ceil_mode = ceil_mode
+            layer.pooling_param.round_mode = not ceil_mode
 
             self.add_bottom_top(layer, source_node)
 
@@ -1187,7 +1187,7 @@ class PytorchCaffeParser:
             else:
                 layer.pooling_param.kernel_size = kernel_size
 
-            layer.pooling_param.ceil_mode = ceil_mode
+            layer.pooling_param.round_mode = not ceil_mode
 
             bottom_name = self.find_name(source_node.args[0])
             layer.bottom.append(bottom_name)
@@ -1236,7 +1236,7 @@ class PytorchCaffeParser:
         else:
             layer.pooling_param.kernel_size = kernel_size
 
-        layer.pooling_param.ceil_mode = ceil_mode
+        layer.pooling_param.round_mode = not ceil_mode
 
         if return_indices:
             bottom_name = self.find_name(source_node.args[0])
