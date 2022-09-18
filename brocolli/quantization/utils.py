@@ -6,7 +6,7 @@ def activation_pre_hook(self, input):
 
 def activation_post_hook(self, input, output):
     if hasattr(self, "activation_post_process"):
-        self.activation_post_process(output[0])
+        self.activation_post_process(output)
 
 def _parent_name(target):
     """
