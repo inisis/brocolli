@@ -1,7 +1,7 @@
 import re
 from onnx import helper
 from onnx import TensorProto as tp
-
+import torch
 from torch.fx.node import Node
 
 
@@ -15,7 +15,30 @@ class BaseLayer(object):
         self._out_tensor_value_info = []
         self._node = []
         self._name = self._source_node.name
-        self.tensor_meta = self._source_node.meta["tensor_meta"]
+        if len(self._source_node.all_input_nodes) != 0:
+            self._input_shape = []
+            for node in self._source_node.all_input_nodes:
+                if node.meta["type"] is torch.Tensor:
+                    self._input_shape.append(node.meta["tensor_meta"]["shape"])
+                elif node.meta["type"] is tuple:
+                    for tensor in node.meta["tensor_meta"]:
+                        if type(tensor) is tuple:
+                            for tensor_ in tensor:
+                                self._input_shape.append(tensor_["shape"])
+                        else:
+                            self._input_shape.append(tensor["shape"])
+
+        self._output_type = self._source_node.meta["type"]
+        if self._output_type is not torch.Tensor:
+            self._output_shape = []
+            for tensor in self._source_node.meta["tensor_meta"]:
+                if type(tensor) is tuple:
+                    for tensor_ in tensor:
+                        self._output_shape.append(tensor_["shape"])
+                else:
+                    self._output_shape.append(tensor["shape"])
+        else:
+            self._output_shape = [self._source_node.meta["tensor_meta"]["shape"]]
 
         self._in_names = []
         self._out_names = []

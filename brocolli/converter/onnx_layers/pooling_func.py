@@ -27,7 +27,7 @@ class PoolingFunc(BaseLayer):
             or function_name == "adaptive_avg_pool2d"
         ):
             output_size = self._source_node.args[1]
-            dim = self._source_node.args[0].meta["tensor_meta"].shape[2:]
+            dim = self._input_shape[0][2:]
             if isinstance(output_size, int):
                 output_size = [output_size] * len(dim)
             else:

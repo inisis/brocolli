@@ -12,7 +12,7 @@ class FlattenFunc(BaseLayer):
         super(FlattenFunc, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        params = np.array(self._source_node.meta["tensor_meta"].shape)
+        params = np.array(self._output_shape[0])
 
         self.create_params(self._name + "_flatten", params, tp.INT64)
 

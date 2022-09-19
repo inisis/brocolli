@@ -4,7 +4,7 @@ from torch.fx import GraphModule
 
 
 class BrocolliGraphModule(GraphModule):
-    def __init__(self, root, graph, class_name='GraphModule'):
+    def __init__(self, root, graph, class_name="GraphModule"):
         super().__init__(root, graph, class_name)
         self.class_name = class_name
 

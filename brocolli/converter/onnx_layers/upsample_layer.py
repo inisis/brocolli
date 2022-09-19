@@ -14,9 +14,9 @@ class UpsampleLayer(BaseLayer):
         if self._module.scale_factor is None:
             size = self._module.size
             if isinstance(size, int):
-                dim = len(self._source_node.meta["tensor_meta"].shape)
-                output_size = self._source_node.meta["tensor_meta"].shape
-                input_size = self._source_node.args[0].meta["tensor_meta"].shape
+                dim = len(self._output_shape[0])
+                output_size = self._output_shape[0]
+                input_size = self._input_shape[0]
                 size = [size] * len(dim)
 
             scales = [
@@ -28,7 +28,7 @@ class UpsampleLayer(BaseLayer):
         else:
             scale_factor = self._module.scale_factor
             if isinstance(scale_factor, float):
-                dim = self._source_node.meta["tensor_meta"].shape[2:]
+                dim = self._output_shape[0][2:]
                 scale_factor = [scale_factor] * len(dim)
 
             scales = [1, 1] + scale_factor

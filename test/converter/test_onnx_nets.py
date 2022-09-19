@@ -16,7 +16,7 @@ def test_alexnet(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
     model = models.alexnet(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/alexnet.onnx')
+    runner.save("tmp/alexnet.onnx")
     runner.check_result()
 
 
@@ -24,7 +24,7 @@ def test_resnet18(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
     model = models.resnet18(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/resnet18.onnx')
+    runner.save("tmp/resnet18.onnx")
     runner.check_result()
 
 
@@ -32,7 +32,7 @@ def test_squeezenet(shape=(1, 3, 227, 227), opset_version=9, fuse=FUSE):
     model = models.squeezenet1_0(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/squeezenet.onnx')
+    runner.save("tmp/squeezenet.onnx")
     runner.check_result()
 
 
@@ -40,7 +40,7 @@ def test_googlenet(shape=(1, 3, 224, 224), opset_version=13, fuse=FUSE):
     model = models.googlenet(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/googlenet.onnx')
+    runner.save("tmp/googlenet.onnx")
     runner.check_result()
 
 
@@ -48,7 +48,7 @@ def test_mobilenet_v2(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
     model = models.mobilenet_v2(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/mobilenet.onnx')
+    runner.save("tmp/mobilenet.onnx")
     runner.check_result()
 
 
@@ -56,7 +56,7 @@ def test_mobilenet_v3(shape=(1, 3, 224, 224), opset_version=13, fuse=FUSE):
     model = models.mobilenet_v3_small(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/mobilenet_v3.onnx')
+    runner.save("tmp/mobilenet_v3.onnx")
     runner.check_result()
 
 
@@ -64,7 +64,7 @@ def test_densenet121(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
     model = models.densenet121(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/densenet121.onnx')
+    runner.save("tmp/densenet121.onnx")
     runner.check_result()
 
 
@@ -72,7 +72,7 @@ def test_densenet161(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
     model = models.densenet161(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/densenet161.onnx')
+    runner.save("tmp/densenet161.onnx")
     runner.check_result()
 
 
@@ -80,7 +80,7 @@ def test_shufflenet(shape=(1, 3, 224, 224), opset_version=9, fuse=FUSE):
     model = models.shufflenet_v2_x1_0(pretrained=False)
     runner = PytorchOnnxParser(model, shape, opset_version)
     runner.convert()
-    runner.save('tmp/shufflenet.onnx')
+    runner.save("tmp/shufflenet.onnx")
     runner.check_result()
 
 

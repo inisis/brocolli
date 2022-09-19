@@ -1,6 +1,7 @@
 from loguru import logger
 from onnx import helper
 from onnx import TensorProto as tp
+import torch
 from torch.fx.passes.shape_prop import TensorMetadata
 
 from onnx_layers.base_layer import BaseLayer
@@ -16,26 +17,15 @@ class OutputLayer(BaseLayer):
     def add_bottom_top(self, in_names=None, out_names=None):
         pass
 
-    def get_shape_list(self, tensor_meta):
-        shape_list = []
-        for tensor in tensor_meta:
-            if isinstance(tensor, TensorMetadata):
-                shape_list.append(tensor.shape)
-            else:
-                shape_list.extend(self.get_shape_list(tensor))
-
-        return shape_list
-
     def generate_output(self, name):
-        if isinstance(self.tensor_meta, TensorMetadata):
+        if self._output_type is torch.Tensor:
             output_tvi = helper.make_tensor_value_info(
-                name, tp.FLOAT, self.tensor_meta.shape
+                name, tp.FLOAT, self._output_shape[0]
             )
             logger.info("output_layer: " + name + " created")
             self._out_tensor_value_info.append(output_tvi)
         else:
-            shape_list = self.get_shape_list(self.tensor_meta)
-            for idx, shape in enumerate(shape_list):
+            for idx, shape in enumerate(self._output_shape):
                 output_tvi = helper.make_tensor_value_info(
                     name + "_" + str(idx), tp.FLOAT, shape
                 )

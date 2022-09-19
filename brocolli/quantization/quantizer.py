@@ -15,8 +15,12 @@ from .fuser import is_match
 from .profiler import FXProfiler
 from .qconfig import get_qconfig
 from .pattern import get_default_fusion_patterns
-from .utils import (replace_node_module, check_result,
-                    activation_pre_hook, activation_post_hook)
+from .utils import (
+    replace_node_module,
+    check_result,
+    activation_pre_hook,
+    activation_post_hook,
+)
 from .graph_modules import BrocolliGraphModule
 
 from .quantization_layers.input import Input
@@ -108,8 +112,9 @@ class PytorchQuantizer:
         modules = dict(graph_module.named_modules())
         fusion_patterns = get_default_fusion_patterns()
         fusion_pairs = self._find_matches(
-            graph_module, graph_module.graph, fusion_patterns)
-        logger.debug('fusion_pairs: {}', fusion_pairs)
+            graph_module, graph_module.graph, fusion_patterns
+        )
+        logger.debug("fusion_pairs: {}", fusion_pairs)
         fused_graph = graph_module.graph
         env = {}
 
@@ -135,8 +140,7 @@ class PytorchQuantizer:
 
         return output
 
-    def _find_matches(
-            self, root, graph, patterns):
+    def _find_matches(self, root, graph, patterns):
         modules = dict(root.named_modules())
         match_map = {}
 
@@ -155,7 +159,7 @@ class PytorchQuantizer:
             if node.name not in match_map:
                 for pattern, value in patterns.items():
                     if is_match(modules, node, pattern):
-                        logger.debug('matched patter {}', pattern)
+                        logger.debug("matched patter {}", pattern)
                         apply_match(pattern, node, (node, value(self, node)))
 
         return match_map
@@ -165,7 +169,7 @@ class PytorchQuantizer:
         Return:
             A GraphModule with observer (configured by qconfig_dict), ready for calibration
         """
-        if hasattr(self, 'fused_model'):
+        if hasattr(self, "fused_model"):
             graph_module = copy.deepcopy(self.fused_model)
         else:
             graph_module = copy.deepcopy(self.graph_module)
@@ -257,9 +261,7 @@ class PytorchQuantizer:
 
                 node.replace_input_with(prev_node, new_node)
 
-        self.quanted_model = torch.fx.GraphModule(
-            graph_module, graph_module.graph
-        )
+        self.quanted_model = torch.fx.GraphModule(graph_module, graph_module.graph)
         self.print_tabular(self.quanted_model)
         logger.info("quantization finish")
 

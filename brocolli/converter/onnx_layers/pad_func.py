@@ -30,7 +30,7 @@ class PadFunc(BaseLayer):
             self._name = name
 
         if params is None:
-            output_dim = len(list(self._source_node.meta["tensor_meta"].shape))
+            output_dim = len(self._output_shape[0])
             pads = [0] * output_dim * 2
             padding = self._source_node.args[1]
 

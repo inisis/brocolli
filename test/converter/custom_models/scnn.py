@@ -5,12 +5,7 @@ import torchvision.models as models
 
 
 class SCNN(nn.Module):
-    def __init__(
-            self,
-            input_size,
-            ms_ks=9,
-            pretrained=True
-    ):
+    def __init__(self, input_size, ms_ks=9, pretrained=True):
         """
         Argument
             ms_ks: kernel size in message passing conv
@@ -25,18 +20,20 @@ class SCNN(nn.Module):
         self.scale_seg = 1.0
         self.scale_exist = 0.1
 
-        self.ce_loss = nn.CrossEntropyLoss(weight=torch.tensor([self.scale_background, 1, 1, 1, 1]))
+        self.ce_loss = nn.CrossEntropyLoss(
+            weight=torch.tensor([self.scale_background, 1, 1, 1, 1])
+        )
         self.bce_loss = nn.BCELoss()
 
     def forward(self, img, seg_gt=None, exist_gt=None):
         x = self.backbone(img)
- 
+
         x = self.layer1(x)
 
-        x = self.message_passing_forward(x) 
+        x = self.message_passing_forward(x)
         x = self.layer2(x)
- 
-        seg_pred = F.interpolate(x, scale_factor=8, mode='bilinear', align_corners=True)
+
+        seg_pred = F.interpolate(x, scale_factor=8, mode="bilinear", align_corners=True)
         x = self.layer3(x)
         x = x.view(-1, self.fc_input_feature)
         exist_pred = self.fc(x)
@@ -90,20 +87,25 @@ class SCNN(nn.Module):
 
     def net_init(self, input_size, ms_ks):
         input_w, input_h = input_size
-        self.fc_input_feature = 5 * int(input_w/16) * int(input_h/16)
+        self.fc_input_feature = 5 * int(input_w / 16) * int(input_h / 16)
         self.backbone = models.vgg16_bn(pretrained=self.pretrained).features
 
         # ----------------- process backbone -----------------
         for i in [34, 37, 40]:
             conv = self.backbone._modules[str(i)]
             dilated_conv = nn.Conv2d(
-                conv.in_channels, conv.out_channels, conv.kernel_size, stride=conv.stride,
-                padding=tuple(p * 2 for p in conv.padding), dilation=2, bias=(conv.bias is not None)
+                conv.in_channels,
+                conv.out_channels,
+                conv.kernel_size,
+                stride=conv.stride,
+                padding=tuple(p * 2 for p in conv.padding),
+                dilation=2,
+                bias=(conv.bias is not None),
             )
             dilated_conv.load_state_dict(conv.state_dict())
             self.backbone._modules[str(i)] = dilated_conv
-        self.backbone._modules.pop('33')
-        self.backbone._modules.pop('43')
+        self.backbone._modules.pop("33")
+        self.backbone._modules.pop("43")
 
         # ----------------- SCNN part -----------------
         self.layer1 = nn.Sequential(
@@ -112,23 +114,32 @@ class SCNN(nn.Module):
             nn.ReLU(),
             nn.Conv2d(1024, 128, 1, bias=False),
             nn.BatchNorm2d(128),
-            nn.ReLU()  # (nB, 128, 36, 100)
+            nn.ReLU(),  # (nB, 128, 36, 100)
         )
 
         # ----------------- add message passing -----------------
         self.message_passing = nn.ModuleList()
-        self.message_passing.add_module('up_down', nn.Conv2d(128, 128, (1, ms_ks), padding=(0, ms_ks // 2), bias=False))
-        self.message_passing.add_module('down_up', nn.Conv2d(128, 128, (1, ms_ks), padding=(0, ms_ks // 2), bias=False))
-        self.message_passing.add_module('left_right',
-                                        nn.Conv2d(128, 128, (ms_ks, 1), padding=(ms_ks // 2, 0), bias=False))
-        self.message_passing.add_module('right_left',
-                                        nn.Conv2d(128, 128, (ms_ks, 1), padding=(ms_ks // 2, 0), bias=False))
+        self.message_passing.add_module(
+            "up_down",
+            nn.Conv2d(128, 128, (1, ms_ks), padding=(0, ms_ks // 2), bias=False),
+        )
+        self.message_passing.add_module(
+            "down_up",
+            nn.Conv2d(128, 128, (1, ms_ks), padding=(0, ms_ks // 2), bias=False),
+        )
+        self.message_passing.add_module(
+            "left_right",
+            nn.Conv2d(128, 128, (ms_ks, 1), padding=(ms_ks // 2, 0), bias=False),
+        )
+        self.message_passing.add_module(
+            "right_left",
+            nn.Conv2d(128, 128, (ms_ks, 1), padding=(ms_ks // 2, 0), bias=False),
+        )
         # (nB, 128, 36, 100)
 
         # ----------------- SCNN part -----------------
         self.layer2 = nn.Sequential(
-            nn.Dropout2d(0.1),
-            nn.Conv2d(128, 5, 1)  # get (nB, 5, 36, 100)
+            nn.Dropout2d(0.1), nn.Conv2d(128, 5, 1)  # get (nB, 5, 36, 100)
         )
 
         self.layer3 = nn.Sequential(
@@ -139,7 +150,7 @@ class SCNN(nn.Module):
             nn.Linear(self.fc_input_feature, 128),
             nn.ReLU(),
             nn.Linear(128, 4),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def weight_init(self):
@@ -147,5 +158,5 @@ class SCNN(nn.Module):
             if isinstance(m, nn.Conv2d):
                 m.reset_parameters()
             elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data[:] = 1.
+                m.weight.data[:] = 1.0
                 m.bias.data.zero_()

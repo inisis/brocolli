@@ -9,7 +9,7 @@ class NormalizeFunc(BaseLayer):
         super(NormalizeFunc, self).__init__(source_node, module, auto_gen)
 
     def get_relu_attr(self):
-        attr_dict = {"axis": -1, 'p': 2}
+        attr_dict = {"axis": -1, "p": 2}
 
         attr_dict["axis"] = self._source_node.kwargs["dim"]
         attr_dict["p"] = self._source_node.kwargs["p"]

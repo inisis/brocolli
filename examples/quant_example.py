@@ -50,21 +50,26 @@ state_dict = load_state_dict_from_url(
 model.load_state_dict(state_dict)
 model.eval()
 
+
 class MNISTCHINA(datasets.MNIST):
-    mirrors = [
-        'http://120.224.26.73:15030/aifarm/mnist/'
-    ]
+    mirrors = ["http://120.224.26.73:15030/aifarm/mnist/"]
 
     def __init__(
-                self,
-                root,
-                train = True,
-                transform = None,
-                target_transform = None,
-                download = False,
-        ):
-            super(MNISTCHINA, self).__init__(root, train, transform=transform,
-                                        target_transform=target_transform, download=download)
+        self,
+        root,
+        train=True,
+        transform=None,
+        target_transform=None,
+        download=False,
+    ):
+        super(MNISTCHINA, self).__init__(
+            root,
+            train,
+            transform=transform,
+            target_transform=target_transform,
+            download=download,
+        )
+
 
 def calibrate_func(model):
     test_acc = 0

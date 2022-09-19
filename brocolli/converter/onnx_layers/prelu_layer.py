@@ -15,7 +15,7 @@ class PReluLayer(BaseLayer):
         param_name = self._name + "_prelu"
         params = self._module.weight.detach().numpy()
 
-        output_shape = list(self._source_node.meta["tensor_meta"].shape)
+        output_shape = list(self._output_shape)
 
         param_type = tp.FLOAT
         param_shape = [1] * len(output_shape)
@@ -34,7 +34,7 @@ class PReluLayer(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         if params is None:
             weight = self._module.weight.detach().numpy()
-            shape = self._source_node.meta["tensor_meta"].shape
+            shape = self._output_shape[0]
             param_shape = [1] * len(shape)
             param_shape[1] = weight.shape[0]
             params = weight.reshape(param_shape)

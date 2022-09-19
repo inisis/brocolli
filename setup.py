@@ -12,10 +12,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/inisis/brocolli",
-    install_requires=["loguru",
-                      "onnx==1.9.0",
-                      "onnxruntime==1.8.0",
-                      "tabulate"],
+    install_requires=["loguru", "onnx==1.9.0", "onnxruntime==1.8.0", "tabulate"],
     project_urls={
         "Bug Tracker": "https://github.com/inisis/brocolli/issues",
     },

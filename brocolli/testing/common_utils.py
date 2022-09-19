@@ -5,7 +5,7 @@ class CaffeBaseTester(object):
 
         runner = PytorchCaffeParser(model, shape, opset_version)
         runner.convert()
-        runner.save('tmp/' + name)
+        runner.save("tmp/" + name)
         runner.check_result()
 
 
@@ -16,5 +16,5 @@ class OnnxBaseTester(object):
 
         runner = PytorchOnnxParser(model, shape, opset_version)
         runner.convert()
-        runner.save('tmp/' + name)
+        runner.save("tmp/" + name)
         runner.check_result()

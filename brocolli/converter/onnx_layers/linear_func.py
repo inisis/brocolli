@@ -21,9 +21,8 @@ class ChunkFunc(BaseLayer):
             axis = self._source_node.args[2]
 
         sum_ = 0
-        for idx in range(len(self._source_node.meta["tensor_meta"])):
-            tensor_meta = self._source_node.meta["tensor_meta"][idx]
-            slice_shape = tensor_meta.shape[axis]
+        for idx in range(len(self._input_shape)):
+            slice_shape = self._input_shape[idx][axis]
             slice_layer = ops.SliceFunc(self._source_node, auto_gen=False)
             slice_layer.add_bottom_top(
                 out_names=[self._source_node.name + "_" + str(idx)]

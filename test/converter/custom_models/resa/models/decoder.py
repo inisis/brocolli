@@ -1,6 +1,7 @@
 from torch import nn
 import torch.nn.functional as F
 
+
 class PlainDecoder(nn.Module):
     def __init__(self, cfg):
         super(PlainDecoder, self).__init__()
@@ -12,8 +13,12 @@ class PlainDecoder(nn.Module):
     def forward(self, x):
         x = self.dropout(x)
         x = self.conv8(x)
-        x = F.interpolate(x, size=[self.cfg.img_height,  self.cfg.img_width],
-                           mode='bilinear', align_corners=False)
+        x = F.interpolate(
+            x,
+            size=[self.cfg.img_height, self.cfg.img_width],
+            mode="bilinear",
+            align_corners=False,
+        )
 
         return x
 
@@ -28,18 +33,34 @@ class non_bottleneck_1d(nn.Module):
         super().__init__()
 
         self.conv3x1_1 = nn.Conv2d(
-            chann, chann, (3, 1), stride=1, padding=(1, 0), bias=True)
+            chann, chann, (3, 1), stride=1, padding=(1, 0), bias=True
+        )
 
         self.conv1x3_1 = nn.Conv2d(
-            chann, chann, (1, 3), stride=1, padding=(0, 1), bias=True)
+            chann, chann, (1, 3), stride=1, padding=(0, 1), bias=True
+        )
 
         self.bn1 = nn.BatchNorm2d(chann, eps=1e-03)
 
-        self.conv3x1_2 = nn.Conv2d(chann, chann, (3, 1), stride=1, padding=(1 * dilated, 0), bias=True,
-                                   dilation=(dilated, 1))
+        self.conv3x1_2 = nn.Conv2d(
+            chann,
+            chann,
+            (3, 1),
+            stride=1,
+            padding=(1 * dilated, 0),
+            bias=True,
+            dilation=(dilated, 1),
+        )
 
-        self.conv1x3_2 = nn.Conv2d(chann, chann, (1, 3), stride=1, padding=(0, 1 * dilated), bias=True,
-                                   dilation=(1, dilated))
+        self.conv1x3_2 = nn.Conv2d(
+            chann,
+            chann,
+            (1, 3),
+            stride=1,
+            padding=(0, 1 * dilated),
+            bias=True,
+            dilation=(1, dilated),
+        )
 
         self.bn2 = nn.BatchNorm2d(chann, eps=1e-03)
 
@@ -57,7 +78,7 @@ class non_bottleneck_1d(nn.Module):
         output = self.conv1x3_2(output)
         output = self.bn2(output)
 
-        if (self.dropout.p != 0):
+        if self.dropout.p != 0:
             output = self.dropout(output)
 
         # +input = identity (residual connection)
@@ -69,7 +90,8 @@ class UpsamplerBlock(nn.Module):
         super().__init__()
 
         self.conv = nn.ConvTranspose2d(
-            ninput, noutput, 3, stride=2, padding=1, output_padding=1, bias=True)
+            ninput, noutput, 3, stride=2, padding=1, output_padding=1, bias=True
+        )
 
         self.bn = nn.BatchNorm2d(noutput, eps=1e-3, track_running_stats=True)
 
@@ -82,7 +104,8 @@ class UpsamplerBlock(nn.Module):
         self.up_height = up_height
         self.interpolate_conv = conv1x1(ninput, noutput)
         self.interpolate_bn = nn.BatchNorm2d(
-            noutput, eps=1e-3, track_running_stats=True)
+            noutput, eps=1e-3, track_running_stats=True
+        )
 
     def forward(self, input):
         output = self.conv(input)
@@ -95,10 +118,15 @@ class UpsamplerBlock(nn.Module):
         interpolate_output = self.interpolate_bn(interpolate_output)
         interpolate_output = F.relu(interpolate_output)
 
-        interpolate = F.interpolate(interpolate_output, size=[self.up_height,  self.up_width],
-                                    mode='bilinear', align_corners=False)
+        interpolate = F.interpolate(
+            interpolate_output,
+            size=[self.up_height, self.up_width],
+            mode="bilinear",
+            align_corners=False,
+        )
 
         return out + interpolate
+
 
 class BUSD(nn.Module):
     def __init__(self, cfg):
@@ -109,12 +137,30 @@ class BUSD(nn.Module):
 
         self.layers = nn.ModuleList()
 
-        self.layers.append(UpsamplerBlock(ninput=128, noutput=64,
-                                          up_height=int(img_height)//4, up_width=int(img_width)//4))
-        self.layers.append(UpsamplerBlock(ninput=64, noutput=32,
-                                          up_height=int(img_height)//2, up_width=int(img_width)//2))
-        self.layers.append(UpsamplerBlock(ninput=32, noutput=16,
-                                          up_height=int(img_height)//1, up_width=int(img_width)//1))
+        self.layers.append(
+            UpsamplerBlock(
+                ninput=128,
+                noutput=64,
+                up_height=int(img_height) // 4,
+                up_width=int(img_width) // 4,
+            )
+        )
+        self.layers.append(
+            UpsamplerBlock(
+                ninput=64,
+                noutput=32,
+                up_height=int(img_height) // 2,
+                up_width=int(img_width) // 2,
+            )
+        )
+        self.layers.append(
+            UpsamplerBlock(
+                ninput=32,
+                noutput=16,
+                up_height=int(img_height) // 1,
+                up_width=int(img_width) // 1,
+            )
+        )
 
         self.output_conv = conv1x1(16, num_classes)
 

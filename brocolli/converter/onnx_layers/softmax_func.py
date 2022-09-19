@@ -16,7 +16,7 @@ class SoftmaxFunc(BaseLayer):
             stacklevel = 3
             dim = nn.functional._get_softmax_dim(
                 "softmax",
-                len(self._source_node.args[0].meta["tensor_meta"].shape),
+                len(self._input_shape[0]),
                 stacklevel,
             )
 

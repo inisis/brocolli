@@ -405,7 +405,13 @@ class PytorchCaffeParser:
 
     def export_onnx(self, name, opset_version=13):
         self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
-        torch.onnx.export(self.model, tuple(self.dummy_input), name, opset_version=opset_version, enable_onnx_checker=False)
+        torch.onnx.export(
+            self.model,
+            tuple(self.dummy_input),
+            name,
+            opset_version=opset_version,
+            enable_onnx_checker=False,
+        )
 
     def rename_Data(self, source_node):
         layer = pb2.LayerParameter()

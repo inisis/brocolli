@@ -18,7 +18,7 @@ class PReluFunc(BaseLayer):
         self._node.append(node)
 
     def generate_params(self, params):
-        shape = self._source_node.meta["tensor_meta"].shape
+        shape = self._output_shape[0]
         param_shape = [1] * len(shape)
         param_shape[1] = params.shape[0]
         params = params.reshape(param_shape)

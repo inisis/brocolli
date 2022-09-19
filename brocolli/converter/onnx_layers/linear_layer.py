@@ -15,8 +15,7 @@ class LinearLayer(BaseLayer):
         pass
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        shape = self._source_node.meta["tensor_meta"].shape
-        if len(shape) == 2:
+        if len(self._output_shape) == 2:
             gemm_layer = ops.GemmLayer(self._source_node, self._module)
             self.node_post_process(gemm_layer)
         else:

@@ -17,9 +17,9 @@ class UpsampleFunc(BaseLayer):
             size = self._source_node.kwargs["size"]
 
             if isinstance(size, int):
-                dim = len(self._source_node.meta["tensor_meta"].shape)
-                output_size = self._source_node.meta["tensor_meta"].shape
-                input_size = self._source_node.args[0].meta["tensor_meta"].shape
+                dim = len(self._output_shape[0])
+                output_size = self._output_shape[0]
+                input_size = self._input_shape[0]
                 size = [size] * dim
 
             scales = [
@@ -30,7 +30,7 @@ class UpsampleFunc(BaseLayer):
             ]
         else:
             if isinstance(scale_factor, float):
-                dim = self._source_node.meta["tensor_meta"].shape[2:]
+                dim = self._output_shape[0][2:]
                 scale_factor = [scale_factor] * len(dim)
 
             scales = [1, 1] + scale_factor

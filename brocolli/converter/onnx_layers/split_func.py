@@ -28,7 +28,7 @@ class SplitFunc(BaseLayer):
 
         if out_names is None:
             out_names = []
-            for idx in range(len(self._source_node.meta["tensor_meta"])):
+            for idx in range(len(self._output_shape)):
                 out_names.append(self._name + "_" + str(idx))
 
         self._in_names.extend(in_names)
@@ -42,9 +42,8 @@ class SplitFunc(BaseLayer):
                 axis = self._source_node.args[2]
 
             shape = []
-            for idx in range(len(self._source_node.meta["tensor_meta"])):
-                tensor_meta = self._source_node.meta["tensor_meta"][idx]
-                slice_shape = tensor_meta.shape[axis]
+            for idx in range(len(self._output_shape)):
+                slice_shape = self._output_shape[idx][axis]
                 shape.append(slice_shape)
 
             params = np.array(shape)

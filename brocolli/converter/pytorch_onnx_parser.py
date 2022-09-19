@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import numpy as np
+
 np.random.seed(0)
 from loguru import logger
 
@@ -10,6 +11,7 @@ import onnx_layers as ops
 from brocolli.converter.pytorch_graph import PytorchGraph
 
 import torch
+
 torch.manual_seed(0)
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
@@ -20,7 +22,9 @@ from onnx import save, helper, checker
 
 
 class PytorchOnnxParser:
-    def __init__(self, model, input_shape, fuse=False, concrete_args=None):
+    def __init__(
+        self, model, input_shape, fuse=False, concrete_args=None, dynamic_batch=False
+    ):
         super(PytorchOnnxParser, self).__init__()
         self.fuse = fuse
         self.model = model.eval()
@@ -30,6 +34,7 @@ class PytorchOnnxParser:
         ):
             self.input_shape = [input_shape]
         self.concrete_args = concrete_args
+        self.dynamic_batch = dynamic_batch
 
         if isinstance(self.model, GraphModule):
             pass
@@ -40,10 +45,10 @@ class PytorchOnnxParser:
             raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
 
         self.pytorch_graph = PytorchGraph(
-            self.model, self.input_shape, self.concrete_args
+            self.model, self.input_shape, self.concrete_args, self.dynamic_batch
         )
-        self.state_dict = self.pytorch_graph.trace.state_dict()
-        self.modules = dict(self.pytorch_graph.trace.named_modules())
+        self.state_dict = self.pytorch_graph.graph_module.state_dict()
+        self.modules = dict(self.pytorch_graph.graph_module.named_modules())
         self.in_tensor_value_info = []
         self.nodes = []  # nodes in graph
         self.out_tensor_value_info = []
@@ -299,7 +304,7 @@ class PytorchOnnxParser:
                     gemm_layer = ops.GemmFunc(node, auto_gen=False)
                     gemm_layer.add_bottom_top()
                     weight_node = node.args[1]
-                    bias_node = node.kwargs['bias']
+                    bias_node = node.kwargs["bias"]
                     weight = getattr(self.model, weight_node.target).detach().numpy()
                     if bias_node is not None:
                         bias = getattr(self.model, bias_node.target).detach().numpy()
@@ -402,7 +407,7 @@ class PytorchOnnxParser:
                     self.node_post_process(tile_layer)
                 elif function_name == "normalize":
                     normalize_layer = ops.NormalizeFunc(node)
-                    self.node_post_process(normalize_layer)                    
+                    self.node_post_process(normalize_layer)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -551,6 +556,7 @@ class PytorchOnnxParser:
 
     def onnx_inference(self):
         import onnxruntime as rt
+
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = (
             rt.GraphOptimizationLevel.ORT_DISABLE_ALL
@@ -563,7 +569,13 @@ class PytorchOnnxParser:
 
     def export_onnx(self, name, opset_version=13):
         self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
-        torch.onnx.export(self.model, tuple(self.dummy_input), name, opset_version=opset_version, enable_onnx_checker=False)
+        torch.onnx.export(
+            self.model,
+            tuple(self.dummy_input),
+            name,
+            opset_version=opset_version,
+            enable_onnx_checker=False,
+        )
 
     def node_post_process(self, onnx_layer):
         if onnx_layer._node:

@@ -22,7 +22,7 @@ class PoolingLayer(BaseLayer):
         pool_dim = int(re.findall(r"(?:Pool)([0-9]d*?)", str(self._module))[0])
 
         if isinstance(self._module, (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d)):
-            dim = self._source_node.args[0].meta["tensor_meta"].shape[2:]
+            dim = self._input_shape[0][2:]
             if isinstance(self._module.output_size, int):
                 output_size = [self._module.output_size] * len(dim)
             else:
