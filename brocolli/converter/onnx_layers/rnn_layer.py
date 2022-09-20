@@ -2,16 +2,19 @@ from loguru import logger
 import numpy as np
 from onnx import helper
 from onnx import TensorProto as tp
-import onnx_layers as ops
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.slice_func import SliceFunc
+from brocolli.converter.onnx_layers.concat_func import ConcatFunc
+from brocolli.converter.onnx_layers.squeeze_func import SqueezeFunc
+from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
+from brocolli.converter.onnx_layers.permute_func import PermuteFunc
+from brocolli.converter.onnx_layers.transpose_func import TransposeFunc
 
 
 class RNNLayer(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         self.num_layers = module.num_layers
-        self.num_inputs = len(source_node.args)
-        self.num_outputs = len(source_node.meta["tensor_meta"])
         self.num_direction = 2 if module.bidirectional else 1
         super().__init__(source_node, module, auto_gen)
 
@@ -24,7 +27,7 @@ class RNNLayer(BaseLayer):
                 out_names = [self._name + "_layer_0_out"]
             else:
                 out_names = [self._name + "_0"]
-            if self.num_outputs != 1:
+            if len(self._output_shape) != 1:
                 out_names.append(self._name + "_1")
         else:
             if idx == self.num_layers - 1:  # last layer
@@ -34,11 +37,11 @@ class RNNLayer(BaseLayer):
                     ]
                 else:
                     out_names = [self._name + "_0"]
-                if self.num_outputs != 1:
+                if len(self._output_shape) != 1:
                     out_names.append(self._name + "_layer_" + str(idx) + "_out_last")
             else:
                 out_names = [self._name + "_layer_" + str(idx) + "_out"]
-                if self.num_outputs != 1:
+                if len(self._output_shape) != 1:
                     out_names.append(self._name + "_layer_" + str(idx) + "_out_last")
 
         return out_names
@@ -46,7 +49,7 @@ class RNNLayer(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         if self.num_layers == 1:
             if self._module.batch_first:
-                transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+                transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
                 transpose_layer.add_bottom_top(
                     in_names=[self.recursive_find_name(self._source_node.args[0])],
                     out_names=[self._name + "_input_transpose"],
@@ -60,7 +63,7 @@ class RNNLayer(BaseLayer):
                 in_names = [self._name + "_input_transpose"]
             else:
                 in_names = [self.recursive_find_name(self._source_node.args[0])]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.append(self.recursive_find_name(self._source_node.args[1]))
 
             out_names = self.gen_rnn_block_outnames()
@@ -68,7 +71,7 @@ class RNNLayer(BaseLayer):
             self.node_post_process(rnn_block)
         else:
             if self._module.batch_first:
-                transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+                transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
                 transpose_layer.add_bottom_top(
                     in_names=[self.recursive_find_name(self._source_node.args[0])],
                     out_names=[self._name + "_input_transpose"],
@@ -82,7 +85,7 @@ class RNNLayer(BaseLayer):
                 in_names = [self._name + "_input_transpose"]
             else:
                 in_names = [self.recursive_find_name(self._source_node.args[0])]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.append(self.recursive_find_name(self._source_node.args[1]))
 
             out_names = self.gen_rnn_block_outnames(0)
@@ -91,7 +94,7 @@ class RNNLayer(BaseLayer):
 
             for idx in range(1, self._module.num_layers - 1):
                 rnn_block = RNNBlock(self._source_node, self._module)
-                if self.num_inputs == 1:
+                if len(self._input_shape) == 1:
                     in_names = [
                         self._source_node.name + "_layer_" + str(idx - 1) + "_out"
                     ]
@@ -105,7 +108,7 @@ class RNNLayer(BaseLayer):
                 self.node_post_process(rnn_block)
 
             rnn_block = RNNBlock(self._source_node, self._module)
-            if self.num_inputs == 1:
+            if len(self._input_shape) == 1:
                 in_names = [
                     self._source_node.name
                     + "_layer_"
@@ -129,7 +132,7 @@ class RNNLayer(BaseLayer):
             self.node_post_process(rnn_block)
 
             # add concat but if not marked as output, it will be removed later
-            concat_layer = ops.ConcatFunc(self._source_node, auto_gen=False)
+            concat_layer = ConcatFunc(self._source_node, auto_gen=False)
             concat_layer.add_bottom_top(
                 in_names=[
                     self._name + "_layer_" + str(idx) + "_out_last"
@@ -143,7 +146,7 @@ class RNNLayer(BaseLayer):
             self.node_post_process(concat_layer)
 
         if self._module.batch_first:
-            transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+            transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
             transpose_layer.add_bottom_top(
                 in_names=[self._name + "_layer_" + str(self.num_layers - 1) + "_out"],
                 out_names=[self._name + "_0"],
@@ -158,8 +161,6 @@ class RNNBlock(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         super(RNNBlock, self).__init__(source_node, module, auto_gen)
         self.num_layers = self._module.num_layers
-        self.num_inputs = len(self._source_node.args)
-        self.num_outputs = len(self._source_node.meta["tensor_meta"])
         self.num_direction = 2 if self._module.bidirectional else 1
 
     def generate_node(self, name=None, params=None, attr_dict=None):
@@ -248,8 +249,8 @@ class RNNBlock(BaseLayer):
         return params
 
     def generate_block(self, block_id, in_names=None, out_names=None):
-        if self.num_inputs != 1:
-            slice_layer = ops.SliceFunc(self._source_node, auto_gen=False)
+        if len(self._input_shape) != 1:
+            slice_layer = SliceFunc(self._source_node, auto_gen=False)
             slice_layer.add_bottom_top(
                 in_names=[in_names[1]],
                 out_names=[self._source_node.name + "_" + str(block_id) + "_slice"],
@@ -266,7 +267,7 @@ class RNNBlock(BaseLayer):
             self.node_post_process(slice_layer)
 
         rnn_cell = RNNCell(self._source_node, self._module, auto_gen=False)
-        if self.num_outputs == 2:
+        if len(self._output_shape) == 2:
             rnn_cell.add_bottom_top(
                 in_names=[in_names[0]],
                 out_names=[
@@ -283,7 +284,7 @@ class RNNBlock(BaseLayer):
         params = self.get_rnn_params(block_id)
 
         rnn_cell.generate_params(params, self._source_node.name + "_" + str(block_id))
-        if self.num_inputs != 1:
+        if len(self._input_shape) != 1:
             rnn_cell._in_names.append(
                 self._source_node.name + "_" + str(block_id) + "_slice"
             )
@@ -292,7 +293,7 @@ class RNNBlock(BaseLayer):
         self.node_post_process(rnn_cell)
 
         if self._module.bidirectional is False:
-            squeeze_layer = ops.SqueezeFunc(self._source_node, auto_gen=False)
+            squeeze_layer = SqueezeFunc(self._source_node, auto_gen=False)
             squeeze_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_out"],
                 out_names=[out_names[0]],
@@ -303,7 +304,7 @@ class RNNBlock(BaseLayer):
             )
             self.node_post_process(squeeze_layer)
         else:
-            permute_layer = ops.PermuteFunc(self._source_node, auto_gen=False)
+            permute_layer = PermuteFunc(self._source_node, auto_gen=False)
             permute_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_out"],
                 out_names=[self._source_node.name + "_" + str(block_id) + "_permute"],
@@ -314,7 +315,7 @@ class RNNBlock(BaseLayer):
             )
             self.node_post_process(permute_layer)
 
-            reshape_layer = ops.ReshapeFunc(self._source_node, auto_gen=False)
+            reshape_layer = ReshapeFunc(self._source_node, auto_gen=False)
             reshape_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_permute"],
                 out_names=[out_names[0]],

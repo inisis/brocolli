@@ -23,12 +23,7 @@ from .utils import (
 )
 from .graph_modules import BrocolliGraphModule
 
-from .quantization_layers.input import Input
-from .quantization_layers.output import Output
-from .quantization_layers.conv import Conv2d
-from .quantization_layers.relu import ReLU
-from .quantization_layers.pooling import MaxPool2d
-from .quantization_layers.linear import Linear
+from brocolli.quantization.quantization_layers import *
 
 
 class BrocolliTracer(Tracer):

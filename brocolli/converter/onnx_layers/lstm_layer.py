@@ -2,17 +2,20 @@ from loguru import logger
 import numpy as np
 from onnx import helper
 from onnx import TensorProto as tp
-import onnx_layers as ops
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.slice_func import SliceFunc
+from brocolli.converter.onnx_layers.concat_func import ConcatFunc
+from brocolli.converter.onnx_layers.squeeze_func import SqueezeFunc
+from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
+from brocolli.converter.onnx_layers.permute_func import PermuteFunc
+from brocolli.converter.onnx_layers.transpose_func import TransposeFunc
 
 
 class LSTMLayer(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         self.num_layers = module.num_layers
-        self.num_inputs = 3 if len(source_node.args) == 2 else 1
-        self.num_outputs = 3 if len(source_node.meta["tensor_meta"]) == 2 else 1
-        self.num_direction = 2 if module.bidirectional else 1
+        self.num_direction = 2 if module.bidirectional else 1          
         super(LSTMLayer, self).__init__(source_node, module, auto_gen)
 
     def add_bottom_top(self, in_names=None, out_names=None):
@@ -24,7 +27,7 @@ class LSTMLayer(BaseLayer):
                 out_names = [self._name + "_layer_0_out"]
             else:
                 out_names = [self._name + "_0"]
-            if self.num_outputs != 1:
+            if len(self._output_shape) != 1:
                 out_names.extend([self._name + "_1", self._name + "_2"])
         else:
             if idx == self.num_layers - 1:
@@ -34,7 +37,7 @@ class LSTMLayer(BaseLayer):
                     ]
                 else:
                     out_names = [self._name + "_0"]
-                if self.num_outputs != 1:
+                if len(self._output_shape) != 1:
                     out_names.extend(
                         [
                             self._name + "_layer_" + str(idx) + "_out_last_hidden",
@@ -43,7 +46,7 @@ class LSTMLayer(BaseLayer):
                     )
             else:
                 out_names = [self._name + "_layer_" + str(idx) + "_out"]
-                if self.num_outputs != 1:
+                if len(self._output_shape) != 1:
                     out_names.extend(
                         [
                             self._name + "_layer_" + str(idx) + "_out_last_hidden",
@@ -56,7 +59,7 @@ class LSTMLayer(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         if self._module.num_layers == 1:
             if self._module.batch_first:
-                transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+                transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
                 transpose_layer.add_bottom_top(
                     in_names=[self.recursive_find_name(self._source_node.args[0])],
                     out_names=[self._name + "_input_transpose"],
@@ -70,7 +73,7 @@ class LSTMLayer(BaseLayer):
                 in_names = [self._name + "_input_transpose"]
             else:
                 in_names = [self.recursive_find_name(self._source_node.args[0])]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.extend(
                     [
                         self.recursive_find_name(self._source_node.args[1]) + "_0",
@@ -82,7 +85,7 @@ class LSTMLayer(BaseLayer):
             self.node_post_process(lstm_block)
         else:
             if self._module.batch_first:
-                transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+                transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
                 transpose_layer.add_bottom_top(
                     in_names=[self.recursive_find_name(self._source_node.args[0])],
                     out_names=[self._name + "_input_transpose"],
@@ -96,7 +99,7 @@ class LSTMLayer(BaseLayer):
                 in_names = [self._name + "_input_transpose"]
             else:
                 in_names = [self.recursive_find_name(self._source_node.args[0])]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.extend(
                     [
                         self.recursive_find_name(self._source_node.args[1]) + "_0",
@@ -109,7 +112,7 @@ class LSTMLayer(BaseLayer):
 
             for idx in range(1, self._module.num_layers - 1):
                 lstm_block = LSTMBlock(self._source_node, self._module)
-                if self.num_inputs == 1:
+                if len(self._input_shape) == 1:
                     in_names = [
                         self._source_node.name + "_layer_" + str(idx - 1) + "_out"
                     ]
@@ -124,7 +127,7 @@ class LSTMLayer(BaseLayer):
                 self.node_post_process(lstm_block)
 
             lstm_block = LSTMBlock(self._source_node, self._module)
-            if self.num_inputs == 1:
+            if len(self._input_shape) == 1:
                 in_names = [
                     self._source_node.name
                     + "_layer_"
@@ -147,7 +150,7 @@ class LSTMLayer(BaseLayer):
             )
             self.node_post_process(lstm_block)
 
-            concat_layer = ops.ConcatFunc(self._source_node, auto_gen=False)
+            concat_layer = ConcatFunc(self._source_node, auto_gen=False)
             concat_layer.add_bottom_top(
                 in_names=[
                     self._name + "_layer_" + str(idx) + "_out_last_hidden"
@@ -161,7 +164,7 @@ class LSTMLayer(BaseLayer):
             self.node_post_process(concat_layer)
 
             # add concat but if not marked as output, it will be removed later
-            concat_layer = ops.ConcatFunc(self._source_node, auto_gen=False)
+            concat_layer = ConcatFunc(self._source_node, auto_gen=False)
             concat_layer.add_bottom_top(
                 in_names=[
                     self._name + "_layer_" + str(idx) + "_out_last_cell"
@@ -175,7 +178,7 @@ class LSTMLayer(BaseLayer):
             self.node_post_process(concat_layer)
 
         if self._module.batch_first:
-            transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+            transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
             transpose_layer.add_bottom_top(
                 in_names=[self._name + "_layer_" + str(self.num_layers - 1) + "_out"],
                 out_names=[self._name + "_0"],
@@ -190,8 +193,6 @@ class LSTMBlock(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         super(LSTMBlock, self).__init__(source_node, module, auto_gen)
         self.num_layers = module.num_layers
-        self.num_inputs = 3 if len(source_node.args) == 2 else 1
-        self.num_outputs = 3 if len(source_node.meta["tensor_meta"]) == 2 else 1
         self.num_direction = 2 if module.bidirectional else 1
 
     def generate_node(self, name=None, params=None, attr_dict=None):
@@ -283,7 +284,7 @@ class LSTMBlock(BaseLayer):
         return params
 
     def generate_slice(self, name, block_id, in_names, out_names):
-        slice_layer = ops.SliceFunc(self._source_node, auto_gen=False)
+        slice_layer = SliceFunc(self._source_node, auto_gen=False)
         slice_layer.add_bottom_top(in_names=in_names, out_names=out_names)
         params_slice = [
             np.array([block_id * self.num_direction]),
@@ -295,7 +296,7 @@ class LSTMBlock(BaseLayer):
         self.node_post_process(slice_layer)
 
     def generate_block(self, block_id, in_names, out_names):
-        if self.num_inputs != 1:
+        if len(self._input_shape) != 1:
             self.generate_slice(
                 self._source_node.name + "_" + str(block_id) + "_hidden_slice",
                 block_id,
@@ -314,7 +315,7 @@ class LSTMBlock(BaseLayer):
             )
 
         lstm_cell = LSTMCell(self._source_node, self._module, auto_gen=False)
-        if self.num_outputs != 1:
+        if len(self._output_shape) != 1:
             lstm_cell.add_bottom_top(
                 in_names=[in_names[0]],
                 out_names=[
@@ -332,7 +333,7 @@ class LSTMBlock(BaseLayer):
         params = self.get_lstm_params(block_id)
 
         lstm_cell.generate_params(params, self._source_node.name + "_" + str(block_id))
-        if self.num_inputs != 1:
+        if len(self._input_shape) != 1:
             lstm_cell._in_names.append(
                 self._source_node.name + "_" + str(block_id) + "_hidden_slice"
             )
@@ -343,7 +344,7 @@ class LSTMBlock(BaseLayer):
         self.node_post_process(lstm_cell)
 
         if self._module.bidirectional is False:
-            squeeze_layer = ops.SqueezeFunc(self._source_node, auto_gen=False)
+            squeeze_layer = SqueezeFunc(self._source_node, auto_gen=False)
             squeeze_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_out"],
                 out_names=[out_names[0]],
@@ -354,7 +355,7 @@ class LSTMBlock(BaseLayer):
             )
             self.node_post_process(squeeze_layer)
         else:
-            permute_layer = ops.PermuteFunc(self._source_node, auto_gen=False)
+            permute_layer = PermuteFunc(self._source_node, auto_gen=False)
             permute_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_out"],
                 out_names=[self._source_node.name + "_" + str(block_id) + "_permute"],
@@ -365,7 +366,7 @@ class LSTMBlock(BaseLayer):
             )
             self.node_post_process(permute_layer)
 
-            reshape_layer = ops.ReshapeFunc(self._source_node, auto_gen=False)
+            reshape_layer = ReshapeFunc(self._source_node, auto_gen=False)
             reshape_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_permute"],
                 out_names=[out_names[0]],

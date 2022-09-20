@@ -1,10 +1,10 @@
 import re
 from loguru import logger
-from onnx import helper
-import onnx_layers as ops
 import numpy as np
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.pad_func import PadFunc
+from brocolli.converter.onnx_layers.pooling_func import PoolingFunc
 
 
 class AvgPoolFunc(BaseLayer):
@@ -15,7 +15,7 @@ class AvgPoolFunc(BaseLayer):
         pass
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        pad_layer = ops.PadFunc(self._source_node, auto_gen=False)
+        pad_layer = PadFunc(self._source_node, auto_gen=False)
         pad_layer.add_bottom_top(out_names=[self._source_node.name + "_pad"])
 
         padding = self.list_try_get(self._source_node.args, 3, 0)
@@ -47,7 +47,7 @@ class AvgPoolFunc(BaseLayer):
 
         self.node_post_process(pad_layer)
 
-        pooling_layer = ops.PoolingFunc(self._source_node, auto_gen=False)
+        pooling_layer = PoolingFunc(self._source_node, auto_gen=False)
         pooling_layer.add_bottom_top(in_names=[self._source_node.name + "_pad"])
         pooling_layer.generate_node(self._source_node.name)
         self.node_post_process(pooling_layer)

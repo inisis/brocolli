@@ -4,7 +4,7 @@ from onnx import TensorProto as tp
 
 import numpy as np
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
 
 
 class Relu6Layer(BaseLayer):

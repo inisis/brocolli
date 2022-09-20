@@ -1,11 +1,10 @@
 from loguru import logger
-from onnx import helper
-from onnx import TensorProto as tp
-import onnx_layers as ops
 import numpy as np
 import torch.nn as nn
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.pad_layer import PadLayer
+from brocolli.converter.onnx_layers.pooling_layer import PoolingLayer
 
 
 class AvgPoolLayer(BaseLayer):
@@ -16,7 +15,7 @@ class AvgPoolLayer(BaseLayer):
         pass
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        pad_layer = ops.PadLayer(self._source_node, self._module, auto_gen=False)
+        pad_layer = PadLayer(self._source_node, self._module, auto_gen=False)
 
         pad_layer.add_bottom_top(out_names=[self._source_node.name + "_pad"])
 
@@ -43,7 +42,7 @@ class AvgPoolLayer(BaseLayer):
         )
         self.node_post_process(pad_layer)
 
-        pooling_layer = ops.PoolingLayer(
+        pooling_layer = PoolingLayer(
             self._source_node, self._module, auto_gen=False
         )
         pooling_layer.add_bottom_top(in_names=[self._source_node.name + "_pad"])

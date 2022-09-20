@@ -2,7 +2,7 @@ from loguru import logger
 from onnx import helper
 from onnx import TensorProto as tp
 import torch
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
 
 
 class InputLayer(BaseLayer):

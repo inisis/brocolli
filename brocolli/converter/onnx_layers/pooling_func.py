@@ -4,7 +4,7 @@ from onnx import helper
 
 import torch.nn as nn
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
 
 
 class PoolingFunc(BaseLayer):

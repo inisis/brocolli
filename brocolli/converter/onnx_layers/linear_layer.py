@@ -1,10 +1,9 @@
 from loguru import logger
-from onnx import helper
-from onnx import TensorProto as tp
-import onnx_layers as ops
 import numpy as np
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.gemm_layer import GemmLayer
+from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
 
 
 class LinearLayer(BaseLayer):
@@ -16,10 +15,10 @@ class LinearLayer(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         if len(self._output_shape[0]) == 2:
-            gemm_layer = ops.GemmLayer(self._source_node, self._module)
+            gemm_layer = GemmLayer(self._source_node, self._module)
             self.node_post_process(gemm_layer)
         else:
-            reshape_layer = ops.ReshapeFunc(
+            reshape_layer = ReshapeFunc(
                 self._source_node, self._module, auto_gen=False
             )
             reshape_layer.add_bottom_top(
@@ -31,7 +30,7 @@ class LinearLayer(BaseLayer):
             )
             self.node_post_process(reshape_layer)
 
-            gemm_layer = ops.GemmLayer(self._source_node, self._module, auto_gen=False)
+            gemm_layer = GemmLayer(self._source_node, self._module, auto_gen=False)
             gemm_layer.add_bottom_top(in_names=[self._source_node.name + "_reshape"])
             gemm_layer.generate_node(self._source_node.name)
             self.node_post_process(gemm_layer)

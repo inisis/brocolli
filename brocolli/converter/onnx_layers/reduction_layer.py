@@ -3,7 +3,7 @@ import numpy as np
 from onnx import helper
 
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
 
 
 class ReductionLayer(BaseLayer):

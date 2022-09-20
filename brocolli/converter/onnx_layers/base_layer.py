@@ -1,8 +1,25 @@
-import re
 from onnx import helper
 from onnx import TensorProto as tp
-import torch
 from torch.fx.node import Node
+from brocolli.converter.utils import get_function_name
+
+
+def get_shape(obj):
+    return obj["shape"]
+
+
+def map_aggregate(args, fn):
+    shape_list = []
+    if isinstance(args, tuple):
+        shape = sum(list(map_aggregate(elem, fn) for elem in args), [])
+    elif isinstance(args, list):
+        shape = sum(list(map_aggregate(elem, fn) for elem in args), [])
+    else:
+        shape = [fn(args)]
+
+    shape_list.extend(shape)
+
+    return shape_list
 
 
 class BaseLayer(object):
@@ -15,30 +32,19 @@ class BaseLayer(object):
         self._out_tensor_value_info = []
         self._node = []
         self._name = self._source_node.name
+        self._input_shape = []
         if len(self._source_node.all_input_nodes) != 0:
-            self._input_shape = []
             for node in self._source_node.all_input_nodes:
-                if node.meta["type"] is torch.Tensor:
-                    self._input_shape.append(node.meta["tensor_meta"]["shape"])
-                elif node.meta["type"] is tuple:
-                    for tensor in node.meta["tensor_meta"]:
-                        if type(tensor) is tuple:
-                            for tensor_ in tensor:
-                                self._input_shape.append(tensor_["shape"])
-                        else:
-                            self._input_shape.append(tensor["shape"])
+                if "tensor_meta" in list(node.meta.keys()):
+                    self._input_shape.extend(
+                        map_aggregate(node.meta["tensor_meta"], get_shape)
+                    )
 
         self._output_type = self._source_node.meta["type"]
-        if self._output_type is not torch.Tensor:
-            self._output_shape = []
-            for tensor in self._source_node.meta["tensor_meta"]:
-                if type(tensor) is tuple:
-                    for tensor_ in tensor:
-                        self._output_shape.append(tensor_["shape"])
-                else:
-                    self._output_shape.append(tensor["shape"])
-        else:
-            self._output_shape = [self._source_node.meta["tensor_meta"]["shape"]]
+        self._output_shape = []
+        self._output_shape.extend(
+            map_aggregate(self._source_node.meta["tensor_meta"], get_shape)
+        )
 
         self._in_names = []
         self._out_names = []
@@ -81,9 +87,7 @@ class BaseLayer(object):
         elif node.op == "call_module":
             return node.name
         elif node.op == "call_function":
-            function_name = re.findall(
-                r"(?:function|method) ([a-z|_|0-9]+.*?)", str(node.target)
-            )[0]
+            function_name = get_function_name(node.target)
             if function_name == "getitem":
                 if isinstance(node.args[1], int):
                     node_name = node.args[0].name + "_" + str(node.args[1])

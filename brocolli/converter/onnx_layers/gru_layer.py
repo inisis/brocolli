@@ -2,16 +2,19 @@ from loguru import logger
 import numpy as np
 from onnx import helper
 from onnx import TensorProto as tp
-import onnx_layers as ops
 
-from onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from brocolli.converter.onnx_layers.slice_func import SliceFunc
+from brocolli.converter.onnx_layers.concat_func import ConcatFunc
+from brocolli.converter.onnx_layers.squeeze_func import SqueezeFunc
+from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
+from brocolli.converter.onnx_layers.permute_func import PermuteFunc
+from brocolli.converter.onnx_layers.transpose_func import TransposeFunc
 
 
 class GRULayer(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         self.num_layers = module.num_layers
-        self.num_inputs = len(source_node.args)
-        self.num_outputs = len(source_node.meta["tensor_meta"])
         self.num_direction = 2 if module.bidirectional else 1
         super(GRULayer, self).__init__(source_node, module, auto_gen)
 
@@ -24,7 +27,7 @@ class GRULayer(BaseLayer):
                 out_names = [self._name + "_layer_0_out"]
             else:
                 out_names = [self._name + "_0"]
-            if self.num_outputs != 1:
+            if len(self._output_shape) != 1:
                 out_names.append(self._name + "_1")
         else:
             if idx == self.num_layers - 1:  # last layer
@@ -34,11 +37,11 @@ class GRULayer(BaseLayer):
                     ]
                 else:
                     out_names = [self._name + "_0"]
-                if self.num_outputs != 1:
+                if len(self._output_shape) != 1:
                     out_names.append(self._name + "_layer_" + str(idx) + "_out_last")
             else:
                 out_names = [self._name + "_layer_" + str(idx) + "_out"]
-                if self.num_outputs != 1:
+                if len(self._output_shape) != 1:
                     out_names.append(self._name + "_layer_" + str(idx) + "_out_last")
 
         return out_names
@@ -46,7 +49,7 @@ class GRULayer(BaseLayer):
     def generate_node(self, name=None, params=None, attr_dict=None):
         if self._module.num_layers == 1:
             if self._module.batch_first:
-                transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+                transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
                 transpose_layer.add_bottom_top(
                     in_names=[self.recursive_find_name(self._source_node.args[0])],
                     out_names=[self._name + "_input_transpose"],
@@ -60,7 +63,7 @@ class GRULayer(BaseLayer):
                 in_names = [self._name + "_input_transpose"]
             else:
                 in_names = [self.recursive_find_name(self._source_node.args[0])]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.append(self.recursive_find_name(self._source_node.args[1]))
 
             out_names = self.gen_gru_block_outnames()
@@ -68,7 +71,7 @@ class GRULayer(BaseLayer):
             self.node_post_process(gru_block)
         else:
             if self._module.batch_first:
-                transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+                transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
                 transpose_layer.add_bottom_top(
                     in_names=[self.recursive_find_name(self._source_node.args[0])],
                     out_names=[self._name + "_input_transpose"],
@@ -82,7 +85,7 @@ class GRULayer(BaseLayer):
                 in_names = [self._name + "_input_transpose"]
             else:
                 in_names = [self.recursive_find_name(self._source_node.args[0])]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.append(self.recursive_find_name(self._source_node.args[1]))
 
             out_names = self.gen_gru_block_outnames(0)
@@ -92,7 +95,7 @@ class GRULayer(BaseLayer):
             for idx in range(1, self._module.num_layers - 1):
                 gru_block = GRUBlock(self._source_node, self._module)
                 in_name = [self._source_node.name + "_layer_" + str(idx - 1) + "_out"]
-                if self.num_inputs != 1:
+                if len(self._input_shape) != 1:
                     in_names.append(self.recursive_find_name(self._source_node.args[1]))
 
                 out_names = self.gen_gru_block_outnames(idx)
@@ -103,7 +106,7 @@ class GRULayer(BaseLayer):
             in_names = [
                 self._source_node.name + "_layer_" + str(self.num_layers - 2) + "_out"
             ]
-            if self.num_inputs != 1:
+            if len(self._input_shape) != 1:
                 in_names.append(self.recursive_find_name(self._source_node.args[1]))
 
             out_names = self.gen_gru_block_outnames(self.num_layers - 1)
@@ -114,7 +117,7 @@ class GRULayer(BaseLayer):
             self.node_post_process(gru_block)
 
             # add concat but if not marked as output, it will be removed
-            concat_layer = ops.ConcatFunc(self._source_node, auto_gen=False)
+            concat_layer = ConcatFunc(self._source_node, auto_gen=False)
             concat_layer.add_bottom_top(
                 in_names=[
                     self._name + "_layer_" + str(idx) + "_out_last"
@@ -128,7 +131,7 @@ class GRULayer(BaseLayer):
             self.node_post_process(concat_layer)
 
         if self._module.batch_first:
-            transpose_layer = ops.TransposeFunc(self._source_node, auto_gen=False)
+            transpose_layer = TransposeFunc(self._source_node, auto_gen=False)
             transpose_layer.add_bottom_top(
                 in_names=[self._name + "_layer_" + str(self.num_layers - 1) + "_out"],
                 out_names=[self._name + "_0"],
@@ -143,8 +146,6 @@ class GRUBlock(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         super(GRUBlock, self).__init__(source_node, module, auto_gen)
         self.num_layers = self._module.num_layers
-        self.num_inputs = len(self._source_node.args)
-        self.num_outputs = len(self._source_node.meta["tensor_meta"])
         self.num_direction = 2 if self._module.bidirectional else 1
 
     def generate_node(self, name=None, params=None, attr_dict=None):
@@ -236,8 +237,8 @@ class GRUBlock(BaseLayer):
         return params
 
     def generate_block(self, block_id, in_names, out_names):
-        if self.num_inputs != 1:
-            slice_layer = ops.SliceFunc(self._source_node, auto_gen=False)
+        if len(self._input_shape) != 1:
+            slice_layer = SliceFunc(self._source_node, auto_gen=False)
             slice_layer.add_bottom_top(
                 in_names=[in_names[1]],
                 out_names=[self._source_node.name + "_" + str(block_id) + "_slice"],
@@ -254,7 +255,7 @@ class GRUBlock(BaseLayer):
             self.node_post_process(slice_layer)
 
         gru_cell = GRUCell(self._source_node, self._module, auto_gen=False)
-        if self.num_outputs == 2:
+        if len(self._output_shape) == 2:
             gru_cell.add_bottom_top(
                 in_names=[in_names[0]],
                 out_names=[
@@ -271,7 +272,7 @@ class GRUBlock(BaseLayer):
         params = self.get_gru_params(block_id)
 
         gru_cell.generate_params(params, self._source_node.name + "_" + str(block_id))
-        if self.num_inputs != 1:
+        if len(self._input_shape) != 1:
             gru_cell._in_names.append(
                 self._source_node.name + "_" + str(block_id) + "_slice"
             )
@@ -280,7 +281,7 @@ class GRUBlock(BaseLayer):
         self.node_post_process(gru_cell)
 
         if self._module.bidirectional is False:
-            squeeze_layer = ops.SqueezeFunc(self._source_node, auto_gen=False)
+            squeeze_layer = SqueezeFunc(self._source_node, auto_gen=False)
             squeeze_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_out"],
                 out_names=[out_names[0]],
@@ -291,7 +292,7 @@ class GRUBlock(BaseLayer):
             )
             self.node_post_process(squeeze_layer)
         else:
-            permute_layer = ops.PermuteFunc(self._source_node, auto_gen=False)
+            permute_layer = PermuteFunc(self._source_node, auto_gen=False)
             permute_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_out"],
                 out_names=[self._source_node.name + "_" + str(block_id) + "_permute"],
@@ -302,7 +303,7 @@ class GRUBlock(BaseLayer):
             )
             self.node_post_process(permute_layer)
 
-            reshape_layer = ops.ReshapeFunc(self._source_node, auto_gen=False)
+            reshape_layer = ReshapeFunc(self._source_node, auto_gen=False)
             reshape_layer.add_bottom_top(
                 in_names=[self._source_node.name + "_" + str(block_id) + "_permute"],
                 out_names=[out_names[0]],

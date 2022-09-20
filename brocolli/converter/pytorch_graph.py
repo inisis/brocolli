@@ -42,7 +42,7 @@ class BrocolliShapeRunner(Interpreter):
             shape = list(result.shape)
             if self.dynamic_batch:
                 shape[0] = -1
-            meta_info["shape"] = shape
+            meta_info["shape"] = torch.Size(shape)
             meta_info["dtype"] = result.dtype
 
             return meta_info
