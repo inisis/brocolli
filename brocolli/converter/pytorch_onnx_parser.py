@@ -1,11 +1,21 @@
 import numpy as np
 
 np.random.seed(0)
+
 from loguru import logger
 
 from brocolli.converter.onnx_layers import *
 from brocolli.converter.pytorch_graph import PytorchGraph
-from brocolli.converter.utils import fuse_all_conv_bn, get_function_name
+from brocolli.converter.utils import (
+    fuse_all_conv_bn,
+    get_function_name,
+    map_replace,
+    get_torch_size,
+    gen_torch_tensor,
+    map_reduce,
+    gen_numpy_data,
+)
+
 import torch
 
 torch.manual_seed(0)
@@ -22,11 +32,9 @@ class PytorchOnnxParser:
         super(PytorchOnnxParser, self).__init__()
         self.fuse = fuse
         self.model = model.eval()
-        self.input_shape = input_shape
-        if isinstance(input_shape, (tuple, list)) and all(
-            isinstance(element, int) for element in input_shape
-        ):
-            self.input_shape = [input_shape]
+        self.input_shape = map_replace(input_shape, get_torch_size)
+        if isinstance(self.input_shape, torch.Size):
+            self.input_shape = [self.input_shape]
         self.concrete_args = concrete_args
         self.dynamic_batch = dynamic_batch
 
@@ -173,52 +181,8 @@ class PytorchOnnxParser:
                     mul_layer = MulFunc(node)
                     self.node_post_process(mul_layer)
                 elif function_name == "getitem":
-                    if isinstance(node.args[1], tuple):
-                        if all(
-                            isinstance(function, slice) for function in node.args[1]
-                        ):
-                            params_slices = []
-                            for idx, function in enumerate(node.args[1]):
-                                if (
-                                    function.start is None
-                                    and function.stop is None
-                                    and function.step is None
-                                ):
-                                    continue
-                                else:
-                                    start_ = (
-                                        function.start
-                                        if function.start is not None
-                                        else 0
-                                    )
-                                    end_ = (
-                                        function.stop
-                                        if function.stop is not None
-                                        else 1
-                                    )  # maybe a bug
-                                    axes_ = idx
-                                    step_ = (
-                                        function.step
-                                        if function.step is not None
-                                        else 1
-                                    )
-
-                                    params_slice = [
-                                        np.array([start_]),
-                                        np.array([end_]),
-                                        np.array([axes_]),
-                                        np.array([step_]),
-                                    ]
-                                    params_slices.append(params_slice)
-
-                            if len(params_slices) == 1:
-                                slice_layer = SliceFunc(node, auto_gen=False)
-                                slice_layer.add_bottom_top()
-                                slice_layer.generate_node(params=params_slices[0])
-                                self.node_post_process(slice_layer)
-                        else:
-                            raise
-                    pass
+                    getitem_layer = GetItemFunc(node)
+                    self.node_post_process(getitem_layer)
                 elif function_name == "floordiv":
                     pass
                 elif function_name == "transpose":
@@ -463,7 +427,7 @@ class PytorchOnnxParser:
     def check_result(self):
         self.pyotrch_inference()
         self.onnx_inference()
-        pytorch_output_list = self.get_tensor_list(self.pytorch_output)
+        pytorch_output_list = map_reduce(self.pytorch_output, gen_numpy_data)
         assert len(pytorch_output_list) == len(
             self.onnx_output
         ), "pytorch_output: %d vs onnx_output %d" % (
@@ -473,51 +437,26 @@ class PytorchOnnxParser:
 
         for idx in range(len(self.onnx_output)):
             np.testing.assert_allclose(
-                pytorch_output_list[idx].detach().numpy(),
+                pytorch_output_list[idx],
                 self.onnx_output[idx],
                 rtol=1e-7,
                 atol=1e-3,
             )
         logger.info("accuracy test passed")
 
-    def gen_pytorch_input_tensor(self, shapes):
-        input_tensor = []
-        for shape in shapes:
-            if isinstance(shape, (tuple, list)):
-                if all(isinstance(element, int) for element in shape):
-                    input_tensor.append(torch.rand(shape).to(torch.float32))
-                else:
-                    input_tensor.append(self.gen_pytorch_input_tensor(shape))
-            else:
-                input_tensor.append(torch.rand(shape).to(torch.float32))
-
-        return input_tensor
-
     def pyotrch_inference(self):
-        self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
-
-        self.pytorch_output = self.model(*self.dummy_input)
+        self.dummy_input = map_replace(self.input_shape, gen_torch_tensor)
+        with torch.no_grad():
+            self.pytorch_output = self.model(*self.dummy_input)
 
         if isinstance(self.pytorch_output, torch.Tensor):
             self.pytorch_output = [self.pytorch_output]
 
-    def get_tensor_list(self, dummy_inputs):  # for lstm
-        tensor_list = []
-        for dummy_input in dummy_inputs:
-            if isinstance(dummy_input, torch.Tensor):
-                tensor_list.append(dummy_input)
-            else:
-                tensor_list.extend(self.get_tensor_list(dummy_input))
-
-        return tensor_list
-
     def get_onnx_input(self, sess, dummy_inputs):
-        dummy_input_list = self.get_tensor_list(dummy_inputs)
-
+        dummy_input_list = map_reduce(dummy_inputs, gen_numpy_data)
         onnx_rt_dict = {}
         for idx in range(len(dummy_input_list)):
-            img = dummy_input_list[idx].numpy()
-            onnx_rt_dict[sess.get_inputs()[idx].name] = img
+            onnx_rt_dict[sess.get_inputs()[idx].name] = dummy_input_list[idx]
 
         return onnx_rt_dict
 
@@ -535,7 +474,7 @@ class PytorchOnnxParser:
         self.onnx_output = sess.run(onnx_outname, onnx_rt_dict)
 
     def export_onnx(self, name, opset_version=13):
-        self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
+        self.dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         torch.onnx.export(
             self.model,
             tuple(self.dummy_input),

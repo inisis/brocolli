@@ -1,25 +1,7 @@
 from onnx import helper
 from onnx import TensorProto as tp
 from torch.fx.node import Node
-from brocolli.converter.utils import get_function_name
-
-
-def get_shape(obj):
-    return obj["shape"]
-
-
-def map_aggregate(args, fn):
-    shape_list = []
-    if isinstance(args, tuple):
-        shape = sum(list(map_aggregate(elem, fn) for elem in args), [])
-    elif isinstance(args, list):
-        shape = sum(list(map_aggregate(elem, fn) for elem in args), [])
-    else:
-        shape = [fn(args)]
-
-    shape_list.extend(shape)
-
-    return shape_list
+from brocolli.converter.utils import get_function_name, get_shape, map_reduce
 
 
 class BaseLayer(object):
@@ -37,14 +19,15 @@ class BaseLayer(object):
             for node in self._source_node.all_input_nodes:
                 if "tensor_meta" in list(node.meta.keys()):
                     self._input_shape.extend(
-                        map_aggregate(node.meta["tensor_meta"], get_shape)
+                        map_reduce(node.meta["tensor_meta"], get_shape)
                     )
 
         self._output_type = self._source_node.meta["type"]
         self._output_shape = []
-        self._output_shape.extend(
-            map_aggregate(self._source_node.meta["tensor_meta"], get_shape)
-        )
+        if "tensor_meta" in list(self._source_node.meta.keys()):
+            self._output_shape.extend(
+                map_reduce(self._source_node.meta["tensor_meta"], get_shape)
+            )
 
         self._in_names = []
         self._out_names = []

@@ -6,7 +6,7 @@ from torch.fx import Tracer, Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import map_aggregate
 
-from .utils import get_function_name
+from .utils import get_function_name, map_replace, gen_torch_tensor
 
 
 class BrocolliTracer(Tracer):
@@ -89,7 +89,6 @@ class PytorchGraph:
 
         self.graph = self.graph_module.graph
         self.nodes = list(self.graph_module.graph.nodes)
-        print(self.graph.print_tabular())
 
     def placeholder_prune(self, graph_module):
         for node in list(graph_module.graph.nodes):
@@ -105,20 +104,7 @@ class PytorchGraph:
     def trace_prune(self, graph_module):
         self.placeholder_prune(graph_module)
 
-    def gen_input_tensor(self, shapes):
-        input_tensor = []
-        for shape in shapes:
-            if isinstance(shape, (tuple, list)):
-                if all(isinstance(element, int) for element in shape):
-                    input_tensor.append(torch.rand(shape).to(torch.float32))
-                else:
-                    input_tensor.append(self.gen_input_tensor(shape))
-            else:
-                input_tensor.append(torch.rand(shape).to(torch.float32))
-
-        return input_tensor
-
     def shape_inference(self):
-        dummy_input = self.gen_input_tensor(self.input_shape)
+        dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         shape_runner = BrocolliShapeRunner(self.graph_module, self.dynamic_batch)
         shape_runner.run(*dummy_input)

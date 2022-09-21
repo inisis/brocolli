@@ -15,7 +15,7 @@ from brocolli.converter.onnx_layers.transpose_func import TransposeFunc
 class LSTMLayer(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         self.num_layers = module.num_layers
-        self.num_direction = 2 if module.bidirectional else 1          
+        self.num_direction = 2 if module.bidirectional else 1
         super(LSTMLayer, self).__init__(source_node, module, auto_gen)
 
     def add_bottom_top(self, in_names=None, out_names=None):

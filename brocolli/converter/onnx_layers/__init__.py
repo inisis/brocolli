@@ -81,3 +81,4 @@ from .softplus_func import SoftplusFunc
 from .upsample_func import UpsampleFunc
 from .avgpool_func import AvgPoolFunc
 from .normalize_func import NormalizeFunc
+from .getitem_func import GetItemFunc

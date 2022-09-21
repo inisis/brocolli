@@ -1,7 +1,48 @@
 import re
-
+import torch
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
+
+
+def get_shape(obj):
+    return obj["shape"]
+
+
+def map_reduce(args, fn):
+    shape_list = []
+    if isinstance(args, tuple):
+        shape = sum(list(map_reduce(elem, fn) for elem in args), [])
+    elif isinstance(args, list):
+        shape = sum(list(map_reduce(elem, fn) for elem in args), [])
+    else:
+        shape = [fn(args)]
+
+    shape_list.extend(shape)
+
+    return shape_list
+
+
+def get_torch_size(obj):
+    return torch.Size(obj)
+
+
+def gen_torch_tensor(obj):
+    return torch.rand(obj)
+
+
+def gen_numpy_data(obj):
+    return obj.numpy()
+
+
+def map_replace(args, fn):
+    if all(isinstance(element, int) for element in args):
+        return fn(args)
+    elif isinstance(args, tuple):
+        return list(map_replace(elem, fn) for elem in args)
+    elif isinstance(args, list):
+        return list(map_replace(elem, fn) for elem in args)
+    else:
+        return fn(args)
 
 
 def fuse_all_conv_bn(model):

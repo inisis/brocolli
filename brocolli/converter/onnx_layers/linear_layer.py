@@ -18,9 +18,7 @@ class LinearLayer(BaseLayer):
             gemm_layer = GemmLayer(self._source_node, self._module)
             self.node_post_process(gemm_layer)
         else:
-            reshape_layer = ReshapeFunc(
-                self._source_node, self._module, auto_gen=False
-            )
+            reshape_layer = ReshapeFunc(self._source_node, self._module, auto_gen=False)
             reshape_layer.add_bottom_top(
                 out_names=[self._source_node.name + "_reshape"]
             )

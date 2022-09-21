@@ -42,9 +42,7 @@ class AvgPoolLayer(BaseLayer):
         )
         self.node_post_process(pad_layer)
 
-        pooling_layer = PoolingLayer(
-            self._source_node, self._module, auto_gen=False
-        )
+        pooling_layer = PoolingLayer(self._source_node, self._module, auto_gen=False)
         pooling_layer.add_bottom_top(in_names=[self._source_node.name + "_pad"])
         pooling_layer.generate_node(self._source_node.name)
         self.node_post_process(pooling_layer)
