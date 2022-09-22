@@ -11,7 +11,7 @@ class LeakyReluFunc(BaseLayer):
     def get_relu_attr(self):
         attr_dict = {"alpha": 0}
 
-        attr_dict["alpha"] = self._source_node.kwargs["negative_slope"]
+        attr_dict["alpha"] = float(self._source_node.kwargs["negative_slope"])
 
         return attr_dict
 

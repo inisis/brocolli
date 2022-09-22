@@ -11,7 +11,7 @@ class LeakyReluLayer(BaseLayer):
     def get_leakyrelu_attr(self):
         attr_dict = {"alpha": 0}
 
-        attr_dict["alpha"] = self._module.negative_slope
+        attr_dict["alpha"] = float(self._module.negative_slope)
 
         return attr_dict
 

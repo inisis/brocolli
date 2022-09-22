@@ -13,8 +13,8 @@ class MeanFunc(BaseLayer):
     def get_mean_attr(self):
         attr_dict = {"keepdims": 1}
 
-        if "keepdims" in self._source_node.kwargs:
-            attr_dict["keepdims"] = self._source_node.kwargs["keepdims"]
+        if "keepdim" in self._source_node.kwargs:
+            attr_dict["keepdims"] = self._source_node.kwargs["keepdim"]
         else:
             attr_dict["keepdims"] = self.list_try_get(self._source_node.args, 2, False)
 
