@@ -2,7 +2,7 @@ import re
 import torch
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
-
+import onnx_graphsurgeon as gs
 
 def get_shape(obj):
     return obj["shape"]
@@ -73,3 +73,9 @@ def get_function_name(node_target):
     )[0]
 
     return function_name
+
+def optimize_model(model):
+    graph = gs.import_onnx(model)
+    graph.cleanup()
+    model = gs.export_onnx(graph)
+    return model

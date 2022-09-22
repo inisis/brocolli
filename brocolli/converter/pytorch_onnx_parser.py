@@ -14,6 +14,7 @@ from brocolli.converter.utils import (
     gen_torch_tensor,
     map_reduce,
     gen_numpy_data,
+    optimize_model,
 )
 
 import torch
@@ -339,6 +340,16 @@ class PytorchOnnxParser:
                 elif function_name == "normalize":
                     normalize_layer = NormalizeFunc(node)
                     self.node_post_process(normalize_layer)
+                elif function_name == "clamp":
+                    clip_layer = ClipFunc(node, auto_gen=False)
+                    clip_layer.add_bottom_top()
+                    params_clip = [
+                        np.array(node.kwargs["min"]),
+                        np.array(node.kwargs["max"]),
+                    ]
+                    clip_layer.generate_params(params_clip)
+                    clip_layer.generate_node()
+                    self.node_post_process(clip_layer)                    
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -396,6 +407,9 @@ class PytorchOnnxParser:
                 elif str(node.target) == "sqrt":
                     sqrt_layer = SqrtFunc(node)
                     self.node_post_process(sqrt_layer)
+                elif str(node.target) == "transpose":
+                    transpose_layer = TransposeFunc(node)
+                    self.node_post_process(transpose_layer)                    
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
@@ -419,6 +433,7 @@ class PytorchOnnxParser:
         )
         self.model_def = helper.make_model(graph_def, producer_name="pytorch")
         self.freeze()
+        self.model_def = optimize_model(self.model_def)
         checker.check_model(self.model_def)
         logger.info("onnx model conversion completed")
         save(self.model_def, dest_path)
