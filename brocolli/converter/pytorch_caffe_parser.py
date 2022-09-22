@@ -47,8 +47,8 @@ class PytorchCaffeParser:
         self.pytorch_graph = PytorchGraph(
             self.model, self.input_shape, self.concrete_args
         )
-        self.state_dict = self.pytorch_graph.trace.state_dict()
-        self.modules = dict(self.pytorch_graph.trace.named_modules())
+        self.state_dict = self.pytorch_graph.graph_module.state_dict()
+        self.modules = dict(self.pytorch_graph.graph_module.named_modules())
         self.layers = []
 
     def convert(self):
@@ -209,6 +209,12 @@ class PytorchCaffeParser:
                 elif str(module) == "L2Norm()":
                     layer_data = self.rename_L2Norm(node, module)
                     self.layers.append(layer_data)
+                elif isinstance(module, nn.ConvTranspose2d):
+                    layer_data = self.rename_ConvTranspose(node, module)
+                    self.layers.append(layer_data)
+                elif isinstance(module, nn.Sigmoid):
+                    layer_data = self.rename_sigmoid(node)
+                    self.layers.append(layer_data)
                 else:
                     raise NotImplementedError("module %s is not implemented" % (module))
             elif node.op == "call_function":
@@ -322,6 +328,9 @@ class PytorchCaffeParser:
                 elif str(node.target) == "squeeze":
                     layer_data = self.rename_view(node)
                     self.layers.append(layer_data)
+                elif str(node.target) == "transpose":
+                    layer_data = self.rename_transpose(node)
+                    self.layers.append(layer_data)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
@@ -417,7 +426,7 @@ class PytorchCaffeParser:
         layer = pb2.LayerParameter()
         layer.type = "Input"
         input_shape = pb2.BlobShape()
-        input_shape.dim.extend(source_node.meta["tensor_meta"].shape)
+        input_shape.dim.extend(source_node.meta["tensor_meta"]["shape"])
         layer.input_param.shape.extend([input_shape])
         layer.top.append(source_node.name)
         layer.name = source_node.name
@@ -464,15 +473,12 @@ class PytorchCaffeParser:
 
         layer.convolution_param.group = groups
 
-        bias_name = "{0}.bias".format(source_node.target)
-        weights_name = "{0}.weight".format(source_node.target)
-
-        weight = self.state_dict[weights_name].numpy()
+        weight = module.weight.detach().numpy()
 
         layer.convolution_param.num_output = module.out_channels
 
         if module.bias is not None:
-            bias = self.state_dict[bias_name].numpy()
+            bias = module.bias.detach().numpy()
             layer.convolution_param.bias_term = True
             layer.blobs.extend([as_blob(weight), as_blob(bias)])
         else:
@@ -501,11 +507,8 @@ class PytorchCaffeParser:
         layer_bn.batch_norm_param.use_global_stats = 1
         layer_bn.batch_norm_param.eps = module.eps
 
-        mean_name = "{0}.running_mean".format(source_node.target)
-        var_name = "{0}.running_var".format(source_node.target)
-
-        mean = self.state_dict[mean_name].numpy()
-        variance = self.state_dict[var_name].numpy()
+        mean = module.running_mean.detach().numpy()
+        variance = module.running_var.detach().numpy()
 
         layer_bn.blobs.extend(
             [as_blob(mean), as_blob(variance), as_blob(np.array([1.0]))]
@@ -519,13 +522,10 @@ class PytorchCaffeParser:
         layer_scale = pb2.LayerParameter()
         layer_scale.type = "Scale"
 
-        bias_name = "{0}.bias".format(source_node.target)
-        weights_name = "{0}.weight".format(source_node.target)
+        weight = module.weight.detach().numpy()
 
-        weight = self.state_dict[weights_name].numpy()
-
-        if bias_name in self.state_dict:
-            bias = self.state_dict[bias_name].numpy()
+        if module.bias is not None:
+            bias = module.bias.detach().numpy()
             layer_scale.scale_param.bias_term = True
             layer_scale.blobs.extend([as_blob(weight), as_blob(bias)])
         else:
@@ -579,7 +579,7 @@ class PytorchCaffeParser:
         else:
             layer.pooling_param.kernel_size = module.kernel_size
 
-        layer.pooling_param.round_mode = not module.ceil_mode
+        layer.pooling_param.ceil_mode = module.ceil_mode
 
         self.add_bottom_top(layer, source_node)
 
@@ -657,7 +657,7 @@ class PytorchCaffeParser:
             else:
                 layer.pooling_param.kernel_size = kernel_size
 
-            layer.pooling_param.round_mode = not ceil_mode
+            layer.pooling_param.ceil_mode = ceil_mode
 
             self.add_bottom_top(layer, source_node)
 
@@ -675,13 +675,10 @@ class PytorchCaffeParser:
         layer = pb2.LayerParameter()
         layer.type = "InnerProduct"
 
-        bias_name = "{0}.bias".format(source_node.target)
-        weights_name = "{0}.weight".format(source_node.target)
-
-        weight = self.state_dict[weights_name].numpy()
+        weight = module.weight.detach().numpy()
 
         if module.bias is not None:
-            bias = self.state_dict[bias_name].numpy()
+            bias = module.bias.detach().numpy()
             layer.inner_product_param.bias_term = True
             layer.blobs.extend([as_blob(weight), as_blob(bias)])
         else:
@@ -808,7 +805,7 @@ class PytorchCaffeParser:
         layer = pb2.LayerParameter()
         layer.type = "Reshape"
 
-        for shape in source_node.meta["tensor_meta"].shape:
+        for shape in source_node.meta["tensor_meta"]["shape"]:
             layer.reshape_param.shape.dim.extend([shape])
 
         bottom_name = self.find_name(source_node.args[0])
@@ -974,7 +971,10 @@ class PytorchCaffeParser:
 
             return layer_flatten, layer_scale
 
-        shape = list(source_node.args[0].meta["tensor_meta"].shape)
+        if "tensor_meta" not in list(source_node.args[0].meta.keys()):
+            return
+
+        shape = list(source_node.args[0].meta["tensor_meta"]["shape"])
         if shape[-2:] == [1, 1]:
             return add_flatten_before_mul(
                 source_node.name, source_node.args[1], source_node.args[0]
@@ -1193,7 +1193,7 @@ class PytorchCaffeParser:
             else:
                 layer.pooling_param.kernel_size = kernel_size
 
-            layer.pooling_param.round_mode = not ceil_mode
+            layer.pooling_param.ceil_mode = ceil_mode
 
             bottom_name = self.find_name(source_node.args[0])
             layer.bottom.append(bottom_name)
@@ -1242,7 +1242,7 @@ class PytorchCaffeParser:
         else:
             layer.pooling_param.kernel_size = kernel_size
 
-        layer.pooling_param.round_mode = not ceil_mode
+        layer.pooling_param.ceil_mode = ceil_mode
 
         if return_indices:
             bottom_name = self.find_name(source_node.args[0])
@@ -1300,7 +1300,7 @@ class PytorchCaffeParser:
         layer = pb2.LayerParameter()
         layer.type = "Permute"
 
-        input_dim = len(source_node.args[0].meta["tensor_meta"].shape)
+        input_dim = len(source_node.args[0].meta["tensor_meta"]["shape"])
         axes = list(range(input_dim))
         axes[source_node.args[1]], axes[source_node.args[2]] = (
             axes[source_node.args[2]],
@@ -1326,5 +1326,61 @@ class PytorchCaffeParser:
         layer.bottom.append(bottom_name)
         layer.top.append(source_node.name)
         layer.name = source_node.name
+
+        return layer
+
+    def rename_ConvTranspose(self, source_node, module):
+        layer = pb2.LayerParameter()
+        layer.type = "Deconvolution"
+
+        layer.convolution_param.dilation.extend([module.dilation[0]])
+
+        kernel_size = module.kernel_size
+        stride = module.stride
+        padding = module.padding
+        groups = module.groups
+
+        if isinstance(padding, tuple):
+            if padding[0] == padding[1]:
+                layer.convolution_param.pad.extend([padding[0]])
+            else:
+                layer.convolution_param.pad_h = padding[0]
+                layer.convolution_param.pad_w = padding[1]
+        else:
+            layer.convolution_param.pad.extend([padding])
+
+        if isinstance(stride, tuple):
+            if stride[0] == stride[1]:
+                layer.convolution_param.stride.extend([stride[0]])
+            else:
+                layer.convolution_param.stride_h = stride[0]
+                layer.convolution_param.stride_w = stride[1]
+        else:
+            layer.convolution_param.stride.extend([stride])
+
+        if isinstance(kernel_size, tuple):
+            if kernel_size[0] == kernel_size[1]:
+                layer.convolution_param.kernel_size.extend([kernel_size[0]])
+            else:
+                layer.convolution_param.kernel_h = kernel_size[0]
+                layer.convolution_param.kernel_w = kernel_size[1]
+        else:
+            layer.convolution_param.kernel_size.extend([kernel_size])
+
+        layer.convolution_param.group = groups
+
+        weight = module.weight.detach().numpy()
+
+        layer.convolution_param.num_output = module.out_channels
+
+        if module.bias is not None:
+            bias = module.bias.detach().numpy()
+            layer.convolution_param.bias_term = True
+            layer.blobs.extend([as_blob(weight), as_blob(bias)])
+        else:
+            layer.convolution_param.bias_term = False
+            layer.blobs.extend([as_blob(weight)])
+
+        self.add_bottom_top(layer, source_node)
 
         return layer

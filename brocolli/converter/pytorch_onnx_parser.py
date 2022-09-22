@@ -349,7 +349,7 @@ class PytorchOnnxParser:
                     ]
                     clip_layer.generate_params(params_clip)
                     clip_layer.generate_node()
-                    self.node_post_process(clip_layer)                    
+                    self.node_post_process(clip_layer)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -409,7 +409,7 @@ class PytorchOnnxParser:
                     self.node_post_process(sqrt_layer)
                 elif str(node.target) == "transpose":
                     transpose_layer = TransposeFunc(node)
-                    self.node_post_process(transpose_layer)                    
+                    self.node_post_process(transpose_layer)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))

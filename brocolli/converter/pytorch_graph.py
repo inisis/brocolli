@@ -89,6 +89,7 @@ class PytorchGraph:
 
         self.graph = self.graph_module.graph
         self.nodes = list(self.graph_module.graph.nodes)
+        self.graph.print_tabular()
 
     def placeholder_prune(self, graph_module):
         for node in list(graph_module.graph.nodes):

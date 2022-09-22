@@ -270,16 +270,16 @@ def test_Min(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
     Tester("Min", model, shape, opset_version)
 
 
-def test_Max(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class Max(torch.nn.Module):
-        def __init__(self):
-            super(Max, self).__init__()
+# def test_Max(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
+#     class Max(torch.nn.Module):
+#         def __init__(self):
+#             super(Max, self).__init__()
 
-        def forward(self, x, y):
-            return torch.max(x, y)
+#         def forward(self, x, y):
+#             return torch.max(x, y)
 
-    model = Max()
-    Tester("Max", model, shape, opset_version)
+#     model = Max()
+#     Tester("Max", model, shape, opset_version)
 
 
 def test_Div(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):

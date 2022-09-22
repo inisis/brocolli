@@ -30,7 +30,7 @@ class MaxFunc(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         attr_dict = self.get_mean_attr()
-        self._out_names[0] = self._name + '_0'
+        self._out_names[0] = self._name + "_0"
         node = helper.make_node(
             "ReduceMax", self._in_names, self._out_names, self._name, **attr_dict
         )
