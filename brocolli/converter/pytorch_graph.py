@@ -79,7 +79,7 @@ class PytorchGraph:
             self.graph = self.tracer.trace(model, concrete_args)
             self.graph_module = GraphModule(self.tracer.root, self.graph)
             if concrete_args is not None:
-                self.trace_prune(self.graphmodule)
+                self.trace_prune(self.graph_module)
             self.shape_inference()
         else:
             raise Exception(

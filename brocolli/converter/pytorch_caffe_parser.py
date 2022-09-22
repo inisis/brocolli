@@ -599,7 +599,7 @@ class PytorchCaffeParser:
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
         if isinstance(module, nn.AdaptiveAvgPool2d):
-            dim = source_node.meta["tensor_meta"].shape[2:]
+            dim = source_node.meta["tensor_meta"]['shape'][2:]
             if isinstance(module.output_size, int):
                 output_size = [module.output_size] * len(dim)
             else:
@@ -784,7 +784,7 @@ class PytorchCaffeParser:
 
             return layer_flatten, layer_scale
 
-        shape = list(source_node.args[0].meta["tensor_meta"].shape)
+        shape = list(source_node.args[0].meta["tensor_meta"]['shape'])
         if shape[-2:] == [1, 1]:
             return add_flatten_before_mul(
                 source_node.name, source_node.args[1], source_node.args[0]
@@ -827,7 +827,7 @@ class PytorchCaffeParser:
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):
             tensor_meta = source_node.meta["tensor_meta"][idx]
-            sum_ = sum_ + tensor_meta.shape[layer.slice_param.axis]
+            sum_ = sum_ + tensor_meta['shape'][layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
@@ -1028,7 +1028,7 @@ class PytorchCaffeParser:
         dim = source_node.kwargs["dim"]
         if dim is None:
             stacklevel = 3
-            shape = source_node.args[0].meta["tensor_meta"].shape
+            shape = source_node.args[0].meta["tensor_meta"]['shape']
             dim = F._get_softmax_dim("softmax", len(shape), stacklevel)
 
         layer.softmax_param.axis = dim
@@ -1133,7 +1133,7 @@ class PytorchCaffeParser:
         function_name = get_function_name(source_node.target)
         if function_name == "adaptive_avg_pool2d":
             output_size = source_node.args[1]
-            dim = source_node.args[0].meta["tensor_meta"].shape[2:]
+            dim = source_node.args[0].meta["tensor_meta"]['shape'][2:]
             if isinstance(output_size, int):
                 output_size = [output_size] * len(dim)
             else:
@@ -1266,7 +1266,7 @@ class PytorchCaffeParser:
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):
             tensor_meta = source_node.meta["tensor_meta"][idx]
-            sum_ = sum_ + tensor_meta.shape[layer.slice_param.axis]
+            sum_ = sum_ + tensor_meta['shape'][layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
@@ -1285,7 +1285,7 @@ class PytorchCaffeParser:
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):
             tensor_meta = source_node.meta["tensor_meta"][idx]
-            sum_ = sum_ + tensor_meta.shape[layer.slice_param.axis]
+            sum_ = sum_ + tensor_meta['shape'][layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
