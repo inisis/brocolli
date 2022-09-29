@@ -76,8 +76,22 @@ def get_function_name(node_target):
     return function_name
 
 
+def graph_cleanup_inplace(graph):
+    graph.cleanup()
+
+
+def graph_constant_fold_inplace(graph):
+    for node in graph.nodes:
+        if node.op == "Identity" or node.op == "Dropout":
+            inp_node = node.i()
+            inp_node.outputs = node.outputs
+            node.outputs.clear()
+
+
 def optimize_model(model):
     graph = gs.import_onnx(model)
-    graph.cleanup()
+    graph_constant_fold_inplace(graph)
+    graph_cleanup_inplace(graph)
     model = gs.export_onnx(graph)
+
     return model
