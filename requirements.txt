@@ -4,3 +4,5 @@ loguru
 onnx==1.9.0
 onnxruntime==1.8.0
 tabulate
+nvidia-pyindex
+onnx-graphsurgeon
