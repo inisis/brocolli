@@ -311,6 +311,12 @@ class PytorchCaffeParser:
                 elif function_name == "split":
                     layer_data = self.rename_split(node)
                     self.layers.append(layer_data)
+                elif function_name == "sub":
+                    layer_data = self.rename_sub(node)
+                    self.layers.append(layer_data)
+                elif function_name == "abs":
+                    layer_data = self.rename_abs(node)
+                    self.layers.append(layer_data)
                 elif function_name == "getattr":
                     pass
                 else:
@@ -938,6 +944,24 @@ class PytorchCaffeParser:
     def rename_add(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Eltwise"
+
+        self.add_bottom_top(layer, source_node)
+
+        return layer
+
+    def rename_sub(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "Eltwise"
+        layer.eltwise_param.operation = 1  # sum
+        layer.eltwise_param.coeff.extend([1, -1])
+
+        self.add_bottom_top(layer, source_node)
+
+        return layer
+
+    def rename_abs(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "AbsVal"
 
         self.add_bottom_top(layer, source_node)
 
