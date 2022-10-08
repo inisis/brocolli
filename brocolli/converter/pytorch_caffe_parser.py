@@ -115,8 +115,11 @@ class PytorchCaffeParser:
         elif node.op == "call_function":
             function_name = get_function_name(node.target)
             if function_name == "getitem":
-                node_name = node.args[0].name + "_" + str(node.args[1])
-                return node_name
+                if isinstance(node.args[1], int):
+                    node_name = node.args[0].name + "_" + str(node.args[1])
+                    return node_name
+                else:
+                    return node.name
             else:
                 return node.name
         elif node.op == "call_method":
@@ -269,7 +272,43 @@ class PytorchCaffeParser:
                     else:
                         self.layers.append(layer_data)
                 elif function_name == "getitem":
-                    pass
+                    if isinstance(node.args[1], tuple):
+                        if all(
+                            isinstance(function, slice) for function in node.args[1]
+                        ):
+                            for idx, function in enumerate(node.args[1]):
+                                if (
+                                    function.start is None
+                                    and function.stop is None
+                                    and function.step is None
+                                ):
+                                    continue
+                                else:
+                                    start_ = (
+                                        function.start
+                                        if function.start is not None
+                                        else 0
+                                    )
+                                    end_ = (
+                                        function.stop
+                                        if function.stop is not None
+                                        else 1
+                                    )  # maybe a bug
+                                    axes_ = idx
+                                    step_ = (
+                                        function.step
+                                        if function.step is not None
+                                        else 1
+                                    )
+
+                                    params_slice = [
+                                        np.array([start_]),
+                                        np.array([end_]),
+                                        np.array([axes_]),
+                                        np.array([step_]),
+                                    ]
+                                    layer_data = self.rename_Slice(node, params_slice)
+                                    self.layers.append(layer_data)
                 elif function_name == "floordiv":
                     pass
                 elif function_name == "transpose":
@@ -1485,5 +1524,21 @@ class PytorchCaffeParser:
             layer.blobs.extend([as_blob(weight)])
 
         self.add_bottom_top(layer, source_node)
+
+        return layer
+
+    def rename_Slice(self, source_node, slice_params):
+        layer = pb2.LayerParameter()
+        layer.type = "Slice"
+
+        layer.slice_param.axis = slice_params[2]
+
+        layer.slice_param.slice_point.extend([slice_params[1]])
+
+        bottom_name = self.find_name(source_node.args[0])
+        layer.bottom.append(bottom_name)
+        layer.top.append(source_node.name)
+        layer.top.append(source_node.name + "_index1")
+        layer.name = source_node.name
 
         return layer
