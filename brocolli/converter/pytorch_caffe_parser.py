@@ -1,3 +1,4 @@
+from builtins import isinstance
 import numpy as np
 from loguru import logger
 from brocolli.converter.pytorch_graph import PytorchGraph
@@ -176,6 +177,18 @@ class PytorchCaffeParser:
                     else:
                         layer_data = self.rename_AveragePool(node, module)
                     self.layers.append(layer_data)
+                elif isinstance(module, nn.AdaptiveMaxPool2d):
+                    if isinstance(module.output_size, int):
+                        output_size = [1]
+                        output_size_len = 1
+                    else:
+                        output_size = [int(v) for v in module.output_size]
+                        output_size_len = len(module.output_size)
+                    if output_size == [1] * output_size_len:
+                        layer_data = self.rename_AdaptiveMaxPool2d(node)
+                    else:
+                        layer_data = self.rename_MaxPool(node, module)
+                    self.layers.append(layer_data)
                 elif isinstance(module, nn.Linear):
                     layer_data = self.rename_Linear(node, module)
                     self.layers.append(layer_data)
@@ -251,6 +264,8 @@ class PytorchCaffeParser:
                     if isinstance(layer_data, tuple):
                         for layer in layer_data:
                             self.layers.append(layer)
+                    elif layer_data is None:
+                        pass
                     else:
                         self.layers.append(layer_data)
                 elif function_name == "getitem":
@@ -500,6 +515,17 @@ class PytorchCaffeParser:
 
         return layer
 
+    def rename_AdaptiveMaxPool2d(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "Pooling"
+
+        layer.pooling_param.pool = pb2.PoolingParameter.MAX
+        layer.pooling_param.global_pooling = True
+
+        self.add_bottom_top(layer, source_node)
+
+        return layer
+
     def rename_BatchNormalization(self, source_node, module):
         layer_bn = pb2.LayerParameter()
         layer_bn.type = "BatchNorm"
@@ -599,7 +625,7 @@ class PytorchCaffeParser:
 
         layer.pooling_param.pool = pb2.PoolingParameter.AVE
         if isinstance(module, nn.AdaptiveAvgPool2d):
-            dim = source_node.meta["tensor_meta"]['shape'][2:]
+            dim = source_node.meta["tensor_meta"]["shape"][2:]
             if isinstance(module.output_size, int):
                 output_size = [module.output_size] * len(dim)
             else:
@@ -784,7 +810,7 @@ class PytorchCaffeParser:
 
             return layer_flatten, layer_scale
 
-        shape = list(source_node.args[0].meta["tensor_meta"]['shape'])
+        shape = list(source_node.args[0].meta["tensor_meta"]["shape"])
         if shape[-2:] == [1, 1]:
             return add_flatten_before_mul(
                 source_node.name, source_node.args[1], source_node.args[0]
@@ -827,7 +853,7 @@ class PytorchCaffeParser:
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):
             tensor_meta = source_node.meta["tensor_meta"][idx]
-            sum_ = sum_ + tensor_meta['shape'][layer.slice_param.axis]
+            sum_ = sum_ + tensor_meta["shape"][layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
@@ -941,6 +967,17 @@ class PytorchCaffeParser:
 
         return layer
 
+    def rename_adaptive_max_pool2d(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "Pooling"
+
+        layer.pooling_param.pool = pb2.PoolingParameter.MAX
+        layer.pooling_param.global_pooling = True
+
+        self.add_bottom_top(layer, source_node)
+
+        return layer
+
     def rename_hardsigmoid(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "HardSigmoid"
@@ -953,7 +990,7 @@ class PytorchCaffeParser:
 
     def rename_mul(self, source_node):
         def add_flatten_before_mul(node_name, first_input, second_input):
-            # first input (N,C,H,W); first input (N,C)
+            # first input (N,C,H,W); second input (N,C)
             layer_flatten = pb2.LayerParameter()
             layer_flatten.type = "Flatten"
             layer_flatten.flatten_param.axis = 1
@@ -971,15 +1008,57 @@ class PytorchCaffeParser:
 
             return layer_flatten, layer_scale
 
+        def add_tile_before_mul(node_name, first_input, second_input):
+            # first input (N,C,H,W); second input (N,1,H,W)
+            layer_flatten = pb2.LayerParameter()
+            layer_flatten.type = "Tile"
+            layer_flatten.tile_param.axis = 1
+            layer_flatten.tile_param.tiles = list(
+                first_input.meta["tensor_meta"]["shape"]
+            )[1]
+            layer_flatten.bottom.append(second_input.name)
+            layer_flatten.top.append(node_name + "_tile")
+            layer_flatten.name = node_name + "_tile"
+
+            layer_eltwise = pb2.LayerParameter()
+            layer_eltwise.type = "Eltwise"
+            layer_eltwise.eltwise_param.operation = 0  # prod
+            layer_eltwise.bottom.append(first_input.name)
+            layer_eltwise.bottom.append(node_name + "_tile")
+            layer_eltwise.top.append(node_name)
+            layer_eltwise.name = node_name
+
+            return layer_flatten, layer_eltwise
+
         if "tensor_meta" not in list(source_node.args[0].meta.keys()):
             return
 
-        shape = list(source_node.args[0].meta["tensor_meta"]["shape"])
-        if shape[-2:] == [1, 1]:
+        shape_0 = list(source_node.args[0].meta["tensor_meta"]["shape"])
+        shape_1 = list(source_node.args[1].meta["tensor_meta"]["shape"])
+
+        if shape_0[-2:] == shape_1[-2:]:
+            if shape_0[1] == shape_1[1]:
+                layer = pb2.LayerParameter()
+                layer.type = "Scale"
+                layer.scale_param.axis = 0
+                self.add_bottom_top(layer, source_node)
+
+                return layer
+            elif shape_0[1] == 1:
+                return add_tile_before_mul(
+                    source_node.name, source_node.args[1], source_node.args[0]
+                )
+            elif shape_1[1] == 1:
+                return add_tile_before_mul(
+                    source_node.name, source_node.args[0], source_node.args[1]
+                )
+            else:
+                raise NotImplementedError("unsupported shape for mul")
+        elif shape_0[-2:] == [1, 1]:
             return add_flatten_before_mul(
                 source_node.name, source_node.args[1], source_node.args[0]
             )
-        elif shape[-2:] == [1, 1]:
+        elif shape_1[-2:] == [1, 1]:
             return add_flatten_before_mul(
                 source_node.name, source_node.args[0], source_node.args[1]
             )
@@ -1028,7 +1107,7 @@ class PytorchCaffeParser:
         dim = source_node.kwargs["dim"]
         if dim is None:
             stacklevel = 3
-            shape = source_node.args[0].meta["tensor_meta"]['shape']
+            shape = source_node.args[0].meta["tensor_meta"]["shape"]
             dim = F._get_softmax_dim("softmax", len(shape), stacklevel)
 
         layer.softmax_param.axis = dim
@@ -1133,7 +1212,7 @@ class PytorchCaffeParser:
         function_name = get_function_name(source_node.target)
         if function_name == "adaptive_avg_pool2d":
             output_size = source_node.args[1]
-            dim = source_node.args[0].meta["tensor_meta"]['shape'][2:]
+            dim = source_node.args[0].meta["tensor_meta"]["shape"][2:]
             if isinstance(output_size, int):
                 output_size = [output_size] * len(dim)
             else:
@@ -1266,7 +1345,7 @@ class PytorchCaffeParser:
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):
             tensor_meta = source_node.meta["tensor_meta"][idx]
-            sum_ = sum_ + tensor_meta['shape'][layer.slice_param.axis]
+            sum_ = sum_ + tensor_meta["shape"][layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
@@ -1285,7 +1364,7 @@ class PytorchCaffeParser:
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):
             tensor_meta = source_node.meta["tensor_meta"][idx]
-            sum_ = sum_ + tensor_meta['shape'][layer.slice_param.axis]
+            sum_ = sum_ + tensor_meta["shape"][layer.slice_param.axis]
             layer.slice_param.slice_point.extend([sum_])
 
         bottom_name = self.find_name(source_node.args[0])
