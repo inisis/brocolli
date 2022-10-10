@@ -1057,14 +1057,14 @@ class PytorchCaffeParser:
             layer_flatten = pb2.LayerParameter()
             layer_flatten.type = "Flatten"
             layer_flatten.flatten_param.axis = 1
-            layer_flatten.bottom.append(second_input.name)
+            layer_flatten.bottom.append(self.find_name(second_input))
             layer_flatten.top.append(node_name + "_flatten")
             layer_flatten.name = node_name + "_flatten"
 
             layer_scale = pb2.LayerParameter()
             layer_scale.type = "Scale"
             layer_scale.scale_param.axis = 0
-            layer_scale.bottom.append(first_input.name)
+            layer_scale.bottom.append(self.find_name(first_input))
             layer_scale.bottom.append(node_name + "_flatten")
             layer_scale.top.append(node_name)
             layer_scale.name = node_name
@@ -1079,14 +1079,14 @@ class PytorchCaffeParser:
             layer_flatten.tile_param.tiles = list(
                 first_input.meta["tensor_meta"]["shape"]
             )[1]
-            layer_flatten.bottom.append(second_input.name)
+            layer_flatten.bottom.append(self.find_name(second_input))
             layer_flatten.top.append(node_name + "_tile")
             layer_flatten.name = node_name + "_tile"
 
             layer_eltwise = pb2.LayerParameter()
             layer_eltwise.type = "Eltwise"
             layer_eltwise.eltwise_param.operation = 0  # prod
-            layer_eltwise.bottom.append(first_input.name)
+            layer_eltwise.bottom.append(self.find_name(first_input))
             layer_eltwise.bottom.append(node_name + "_tile")
             layer_eltwise.top.append(node_name)
             layer_eltwise.name = node_name
