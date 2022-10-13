@@ -52,3 +52,15 @@ def _quantize_bias(float_bias, scale):
     ).int_repr()
 
     return qbias
+
+
+def _gen_lut(function, act_scale, output_scale, start, end):
+    weight = []
+    for idx in range(start, end):
+        input = idx * act_scale
+        output = function(input) / output_scale
+        output = output.to(torch.int64)
+        weight.append(output)
+    weight = torch.stack(weight)
+
+    return weight

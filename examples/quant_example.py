@@ -84,7 +84,6 @@ def calibrate_func(model):
             pred = model(images)
             pred_label = torch.argmax(pred, dim=1, keepdims=True)
             test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
-            break
         tok = time.time()
 
     logger.info(f"float time: {tok - tick  : .4f} sec")
@@ -106,7 +105,6 @@ def evaluate_func(model):
             pred = model(images)
             pred_label = torch.argmax(pred, dim=1, keepdims=True)
             test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
-            break
         tok = time.time()
 
     logger.info(f"int8 time: {tok - tick  : .4f} sec")
