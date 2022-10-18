@@ -7,67 +7,83 @@ import warnings
 from brocolli.testing.common_utils import CaffeBaseTester as Tester
 
 
-def test_Add(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class Add(torch.nn.Module):
-        def __init__(self):
-            super(Add, self).__init__()
+class TestArithmeticClass:
+    def test_Add(
+        self,
+        request,
+        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+    ):
+        class Add(torch.nn.Module):
+            def __init__(self):
+                super(Add, self).__init__()
 
-        def forward(self, x, y):
-            return x + y
+            def forward(self, x, y):
+                return x + y
 
-    model = Add()
-    Tester("Add", model, shape, opset_version)
+        model = Add()
+        Tester(request.node.name, model, shape)
 
+    def test_TorchAdd(
+        self,
+        request,
+        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+    ):
+        class TorchAdd(torch.nn.Module):
+            def __init__(self):
+                super(TorchAdd, self).__init__()
 
-def test_TorchAdd(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class TorchAdd(torch.nn.Module):
-        def __init__(self):
-            super(TorchAdd, self).__init__()
+            def forward(self, x, y):
+                return torch.add(x, y)
 
-        def forward(self, x, y):
-            return torch.add(x, y)
+        model = TorchAdd()
+        Tester(request.node.name, model, shape)
 
-    model = TorchAdd()
-    Tester("TorchAdd", model, shape, opset_version)
+    def test_Mean_keepdim(
+        self,
+        request,
+        shape=[1, 3, 32, 32],
+    ):
+        class Mean(torch.nn.Module):
+            def __init__(self, dim, keepdim):
+                super(Mean, self).__init__()
+                self.dim = dim
+                self.keepdim = keepdim
 
+            def forward(self, x):
+                return x.mean(self.dim, self.keepdim)
 
-class Mean(torch.nn.Module):
-    def __init__(self, dim, keepdim):
-        super(Mean, self).__init__()
-        self.dim = dim
-        self.keepdim = keepdim
+        model = Mean((2, 3), True)
+        Tester(request.node.name, model, shape)
 
-    def forward(self, x):
-        return x.mean(self.dim, self.keepdim)
+    def test_Mul(
+        self,
+        request,
+        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+    ):
+        class Mul(torch.nn.Module):
+            def __init__(self):
+                super(Mul, self).__init__()
 
+            def forward(self, x, y):
+                return x * y
 
-def test_Mean_keepdim(shape=[1, 3, 32, 32], opset_version=13):
-    model = Mean((2, 3), True)
-    Tester("Mean_keepdim", model, shape, opset_version)
+        model = Mul()
+        Tester(request.node.name, model, shape)
 
+    def test_TorchMul(
+        self,
+        request,
+        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+    ):
+        class TorchMul(torch.nn.Module):
+            def __init__(self):
+                super(TorchMul, self).__init__()
 
-def test_Mul(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class Mul(torch.nn.Module):
-        def __init__(self):
-            super(Mul, self).__init__()
+            def forward(self, x, y):
+                return torch.mul(x, y)
 
-        def forward(self, x, y):
-            return x * y
-
-    model = Mul()
-    Tester("Mul", model, shape, opset_version)
-
-
-def test_TorchMul(shape=([1, 3, 1, 1], [1, 3, 1, 1]), opset_version=13):
-    class TorchMul(torch.nn.Module):
-        def __init__(self):
-            super(TorchMul, self).__init__()
-
-        def forward(self, x, y):
-            return torch.mul(x, y)
-
-    model = TorchMul()
-    Tester("TorchMul", model, shape, opset_version)
+        model = TorchMul()
+        Tester(request.node.name, model, shape)
 
 
 if __name__ == "__main__":

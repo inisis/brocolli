@@ -5,7 +5,9 @@ import warnings
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
-def test_RNN_basic(shape=[5, 3, 10], opset_version=13):
+def test_RNN_basic(
+    shape=[5, 3, 10],
+):
     class RNN(nn.Module):
         def __init__(self, input_size, hidden_size, num_layers):
             super(RNN, self).__init__()
@@ -17,10 +19,12 @@ def test_RNN_basic(shape=[5, 3, 10], opset_version=13):
             return self.rnn(x)[0]
 
     model = RNN(10, 20, 2)
-    Tester("RNN_basic", model, shape, opset_version)
+    Tester("RNN_basic", model, shape)
 
 
-def test_RNN_2inputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
+def test_RNN_2inputs(
+    shape=([5, 3, 10], [2, 3, 20]),
+):
     class RNN(nn.Module):
         def __init__(self, input_size, hidden_size, num_layers):
             super(RNN, self).__init__()
@@ -32,10 +36,12 @@ def test_RNN_2inputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
             return self.rnn(x, y)[0]
 
     model = RNN(10, 20, 2)
-    Tester("RNN_2inputs", model, shape, opset_version)
+    Tester("RNN_2inputs", model, shape)
 
 
-def test_RNN_2inputs_2outputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
+def test_RNN_2inputs_2outputs(
+    shape=([5, 3, 10], [2, 3, 20]),
+):
     class RNN(nn.Module):
         def __init__(self, input_size, hidden_size, num_layers):
             super(RNN, self).__init__()
@@ -47,11 +53,11 @@ def test_RNN_2inputs_2outputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
             return self.rnn(x, y)
 
     model = RNN(10, 20, 2)
-    Tester("RNN_2inputs_2outputs", model, shape, opset_version)
+    Tester("RNN_2inputs_2outputs", model, shape)
 
 
 def test_RNN_2inputs_2outputs_batch_first(
-    shape=([5, 3, 10], [1, 5, 20]), opset_version=13
+    shape=([5, 3, 10], [1, 5, 20]),
 ):
     class RNN(nn.Module):
         def __init__(self, input_size, hidden_size, num_layers):
@@ -67,10 +73,12 @@ def test_RNN_2inputs_2outputs_batch_first(
             return self.rnn(x, y)
 
     model = RNN(10, 20, 1)
-    Tester("RNN_2inputs_2outputs_batch_first", model, shape, opset_version)
+    Tester("RNN_2inputs_2outputs_batch_first", model, shape)
 
 
-def test_LSTM_basic(shape=[5, 3, 10], opset_version=13):
+def test_LSTM_basic(
+    shape=[5, 3, 10],
+):
     class LSTM(nn.Module):
         def __init__(self):
             super(LSTM, self).__init__()
@@ -80,10 +88,12 @@ def test_LSTM_basic(shape=[5, 3, 10], opset_version=13):
             return self.lstm(x)[0]
 
     model = LSTM()
-    Tester("LSTM_basic", model, shape, opset_version)
+    Tester("LSTM_basic", model, shape)
 
 
-def test_LSTM_bidirectional(shape=[5, 3, 10], opset_version=13):
+def test_LSTM_bidirectional(
+    shape=[5, 3, 10],
+):
     class LSTM(nn.Module):
         def __init__(self):
             super(LSTM, self).__init__()
@@ -93,10 +103,12 @@ def test_LSTM_bidirectional(shape=[5, 3, 10], opset_version=13):
             return self.lstm(x)[0]
 
     model = LSTM()
-    Tester("LSTM_bidirectional", model, shape, opset_version)
+    Tester("LSTM_bidirectional", model, shape)
 
 
-def test_LSTM_bias(shape=[5, 3, 10], opset_version=13):
+def test_LSTM_bias(
+    shape=[5, 3, 10],
+):
     class LSTM(nn.Module):
         def __init__(self):
             super(LSTM, self).__init__()
@@ -106,10 +118,12 @@ def test_LSTM_bias(shape=[5, 3, 10], opset_version=13):
             return self.lstm(x)[0]
 
     model = LSTM()
-    Tester("LSTM_bias", model, shape, opset_version)
+    Tester("LSTM_bias", model, shape)
 
 
-def test_LSTM_multilayer(shape=[5, 3, 10], opset_version=13):
+def test_LSTM_multilayer(
+    shape=[5, 3, 10],
+):
     class LSTM(nn.Module):
         def __init__(self):
             super(LSTM, self).__init__()
@@ -119,10 +133,12 @@ def test_LSTM_multilayer(shape=[5, 3, 10], opset_version=13):
             return self.lstm(x)[0]
 
     model = LSTM()
-    Tester("LSTM_multilayer", model, shape, opset_version)
+    Tester("LSTM_multilayer", model, shape)
 
 
-def test_LSTM_2inputs(shape=([5, 3, 10], ([2, 3, 20], [2, 3, 20])), opset_version=13):
+def test_LSTM_2inputs(
+    shape=([5, 3, 10], ([2, 3, 20], [2, 3, 20])),
+):
     class LSTM(nn.Module):
         def __init__(self):
             super(LSTM, self).__init__()
@@ -132,11 +148,11 @@ def test_LSTM_2inputs(shape=([5, 3, 10], ([2, 3, 20], [2, 3, 20])), opset_versio
             return self.lstm(x, y)[0]
 
     model = LSTM()
-    Tester("LSTM_2inputs", model, shape, opset_version)
+    Tester("LSTM_2inputs", model, shape)
 
 
 def test_LSTM_2inputs_2outputs(
-    shape=([5, 3, 10], ([2, 3, 20], [2, 3, 20])), opset_version=13
+    shape=([5, 3, 10], ([2, 3, 20], [2, 3, 20])),
 ):
     class LSTM(nn.Module):
         def __init__(self):
@@ -147,11 +163,11 @@ def test_LSTM_2inputs_2outputs(
             return self.lstm(x, y)
 
     model = LSTM()
-    Tester("LSTM_2inputs_2outputs", model, shape, opset_version)
+    Tester("LSTM_2inputs_2outputs", model, shape)
 
 
 def test_LSTM_2inputs_2outputs_batch_first(
-    shape=([5, 3, 10], ([1, 5, 20], [1, 5, 20])), opset_version=13
+    shape=([5, 3, 10], ([1, 5, 20], [1, 5, 20])),
 ):
     class LSTM(nn.Module):
         def __init__(self):
@@ -162,10 +178,12 @@ def test_LSTM_2inputs_2outputs_batch_first(
             return self.lstm(x, y)
 
     model = LSTM()
-    Tester("LSTM_2inputs_2outputs_batch_first", model, shape, opset_version)
+    Tester("LSTM_2inputs_2outputs_batch_first", model, shape)
 
 
-def test_GRU_basic(shape=[5, 3, 10], opset_version=13):
+def test_GRU_basic(
+    shape=[5, 3, 10],
+):
     class GRU(nn.Module):
         def __init__(self):
             super(GRU, self).__init__()
@@ -175,10 +193,12 @@ def test_GRU_basic(shape=[5, 3, 10], opset_version=13):
             return self.gru(x)[0]
 
     model = GRU()
-    Tester("GRU_basic", model, shape, opset_version)
+    Tester("GRU_basic", model, shape)
 
 
-def test_GRU_2inputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
+def test_GRU_2inputs(
+    shape=([5, 3, 10], [2, 3, 20]),
+):
     class GRU(nn.Module):
         def __init__(self):
             super(GRU, self).__init__()
@@ -188,10 +208,12 @@ def test_GRU_2inputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
             return self.gru(x, y)[0]
 
     model = GRU()
-    Tester("GRU_2inputs", model, shape, opset_version)
+    Tester("GRU_2inputs", model, shape)
 
 
-def test_GRU_2inputs_2outputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
+def test_GRU_2inputs_2outputs(
+    shape=([5, 3, 10], [2, 3, 20]),
+):
     class GRU(nn.Module):
         def __init__(self):
             super(GRU, self).__init__()
@@ -201,11 +223,11 @@ def test_GRU_2inputs_2outputs(shape=([5, 3, 10], [2, 3, 20]), opset_version=13):
             return self.gru(x, y)
 
     model = GRU()
-    Tester("GRU_2inputs_2outputs", model, shape, opset_version)
+    Tester("GRU_2inputs_2outputs", model, shape)
 
 
 def test_GRU_2inputs_2outputs_batch_first(
-    shape=([5, 3, 10], [2, 5, 20]), opset_version=13
+    shape=([5, 3, 10], [2, 5, 20]),
 ):
     class GRU(nn.Module):
         def __init__(self):
@@ -216,7 +238,7 @@ def test_GRU_2inputs_2outputs_batch_first(
             return self.gru(x, y)
 
     model = GRU()
-    Tester("GRU_2inputs_2outputs_batch_first", model, shape, opset_version)
+    Tester("GRU_2inputs_2outputs_batch_first", model, shape)
 
 
 if __name__ == "__main__":

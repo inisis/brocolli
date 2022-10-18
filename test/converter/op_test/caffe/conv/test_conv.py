@@ -3,73 +3,38 @@ import sys
 import torch
 import pytest
 import warnings
+import itertools
 
 from brocolli.testing.common_utils import CaffeBaseTester as Tester
 
 
-def test_Conv2d_basic(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0)
-    Tester("Conv2d_basic", model, shape, opset_version)
-
-
-def test_Conv2d_kernel_3x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=(3, 3), stride=1, padding=0)
-    Tester("Conv2d_kernel_3x3", model, shape, opset_version)
-
-
-def test_Conv2d_kernel_1x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=(1, 3), stride=1, padding=0)
-    Tester("Conv2d_kernel_1x3", model, shape, opset_version)
-
-
-def test_Conv2d_kernel_3x1(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=(3, 1), stride=1, padding=0)
-    Tester("Conv2d_kernel_3x1", model, shape, opset_version)
-
-
-def test_Conv2d_stride_3x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(3, 3), padding=0)
-    Tester("Conv2d_stride_3x3", model, shape, opset_version)
-
-
-def test_Conv2d_stride_3x1(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(3, 1), padding=0)
-    Tester("Conv2d_stride_3x1", model, shape, opset_version)
-
-
-def test_Conv2d_stride_1x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(1, 3), padding=0)
-    Tester("Conv2d_stride_1x3", model, shape, opset_version)
-
-
-def test_Conv2d_padding_3x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(3, 3))
-    Tester("Conv2d_padding_3x3", model, shape, opset_version)
-
-
-def test_Conv2d_padding_3x1(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(3, 1))
-    Tester("Conv2d_padding_3x1", model, shape, opset_version)
-
-
-def test_Conv2d_padding_1x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(1, 3))
-    Tester("Conv2d_padding_1x3", model, shape, opset_version)
-
-
-def test_Conv2d_dilation_3x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(3, 3))
-    Tester("Conv2d_dilation_3x3", model, shape, opset_version)
-
-
-def test_Conv2d_dilation_3x1(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(3, 1))
-    Tester("Conv2d_dilation_3x1", model, shape, opset_version)
-
-
-def test_Conv2d_dilation_1x3(shape=[1, 3, 32, 32], opset_version=13):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(1, 3))
-    Tester("Conv2d_dilation_1x3", model, shape, opset_version)
+class TestConvClass:
+    @pytest.mark.parametrize(
+        "kernel_h, kernel_w", list(itertools.product((1, 3), (1, 3)))
+    )
+    @pytest.mark.parametrize(
+        "stride_h, stride_w", list(itertools.product((1, 3), (1, 3)))
+    )
+    @pytest.mark.parametrize("dilation_h, dilation_w", ((1, 1), (3, 3)))
+    def test_Conv2d(
+        self,
+        request,
+        kernel_h,
+        kernel_w,
+        stride_h,
+        stride_w,
+        dilation_h,
+        dilation_w,
+        shape=[1, 3, 32, 32],
+    ):
+        model = torch.nn.Conv2d(
+            in_channels=3,
+            out_channels=5,
+            kernel_size=(kernel_h, kernel_w),
+            stride=(stride_h, stride_w),
+            dilation=(dilation_h, dilation_w),
+        )
+        Tester(request.node.name, model, shape)
 
 
 if __name__ == "__main__":

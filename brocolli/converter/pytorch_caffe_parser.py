@@ -391,6 +391,9 @@ class PytorchCaffeParser:
                 elif str(node.target) == "transpose":
                     layer_data = self.rename_transpose(node)
                     self.layers.append(layer_data)
+                elif str(node.target) == "split":
+                    layer_data = self.rename_split(node)
+                    self.layers.append(layer_data)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
@@ -1422,7 +1425,11 @@ class PytorchCaffeParser:
     def rename_split(self, source_node):
         layer = pb2.LayerParameter()
         layer.type = "Slice"
-        layer.slice_param.axis = source_node.kwargs["dim"]
+
+        if "dim" in source_node.kwargs:
+            layer.slice_param.axis = source_node.kwargs["dim"]
+        else:
+            layer.slice_param.axis = source_node.args[2]
 
         sum_ = 0
         for idx in range(len(source_node.meta["tensor_meta"]) - 1):

@@ -16,9 +16,11 @@ class L2Norm(nn.Module):
         return F.normalize(x, p=2, dim=1)
 
 
-def test_L2Norm(shape=(1, 3, 32, 32), opset_version=13):
+def test_L2Norm(
+    shape=(1, 3, 32, 32),
+):
     model = L2Norm()
-    Tester("L2Norm", model, shape, opset_version)
+    Tester("L2Norm", model, shape)
 
 
 if __name__ == "__main__":

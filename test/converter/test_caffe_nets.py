@@ -134,9 +134,7 @@ def test_yolov5(shape=(1, 3, 640, 640), fuse=FUSE):
     identity.__dict__.update(detect.__dict__)
     setattr(model.model, name, identity)
 
-    runner = PytorchCaffeParser(
-        model, shape, fuse, concrete_args=concrete_args
-    )
+    runner = PytorchCaffeParser(model, shape, fuse, concrete_args=concrete_args)
     runner.convert()
     runner.save("tmp/yolov5")
     runner.check_result()

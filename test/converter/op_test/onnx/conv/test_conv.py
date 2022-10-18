@@ -6,72 +6,100 @@ import warnings
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
-def test_Conv2d_basic(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_basic(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0)
-    Tester("Conv2d_basic", model, shape, opset_version)
+    Tester("Conv2d_basic", model, shape)
 
 
-def test_Conv2d_kernel_3x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_kernel_3x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=(3, 3), stride=1, padding=0)
-    Tester("Conv2d_kernel_3x3", model, shape, opset_version)
+    Tester("Conv2d_kernel_3x3", model, shape)
 
 
-def test_Conv2d_kernel_1x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_kernel_1x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=(1, 3), stride=1, padding=0)
-    Tester("Conv2d_kernel_1x3", model, shape, opset_version)
+    Tester("Conv2d_kernel_1x3", model, shape)
 
 
-def test_Conv2d_kernel_3x1(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_kernel_3x1(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=(3, 1), stride=1, padding=0)
-    Tester("Conv2d_kernel_3x1", model, shape, opset_version)
+    Tester("Conv2d_kernel_3x1", model, shape)
 
 
-def test_Conv2d_stride_3x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_stride_3x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(3, 3), padding=0)
-    Tester("Conv2d_stride_3x3", model, shape, opset_version)
+    Tester("Conv2d_stride_3x3", model, shape)
 
 
-def test_Conv2d_stride_3x1(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_stride_3x1(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(3, 1), padding=0)
-    Tester("Conv2d_stride_3x1", model, shape, opset_version)
+    Tester("Conv2d_stride_3x1", model, shape)
 
 
-def test_Conv2d_stride_1x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_stride_1x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(1, 3), padding=0)
-    Tester("Conv2d_stride_1x3", model, shape, opset_version)
+    Tester("Conv2d_stride_1x3", model, shape)
 
 
-def test_Conv2d_padding_3x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_padding_3x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(3, 3))
-    Tester("Conv2d_padding_3x3", model, shape, opset_version)
+    Tester("Conv2d_padding_3x3", model, shape)
 
 
-def test_Conv2d_padding_3x1(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_padding_3x1(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(3, 1))
-    Tester("Conv2d_padding_3x1", model, shape, opset_version)
+    Tester("Conv2d_padding_3x1", model, shape)
 
 
-def test_Conv2d_padding_1x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_padding_1x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(1, 3))
-    Tester("Conv2d_padding_1x3", model, shape, opset_version)
+    Tester("Conv2d_padding_1x3", model, shape)
 
 
-def test_Conv2d_dilation_3x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_dilation_3x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(3, 3))
-    Tester("Conv2d_dilation_3x3", model, shape, opset_version)
+    Tester("Conv2d_dilation_3x3", model, shape)
 
 
-def test_Conv2d_dilation_3x1(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_dilation_3x1(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(3, 1))
-    Tester("Conv2d_dilation_3x1", model, shape, opset_version)
+    Tester("Conv2d_dilation_3x1", model, shape)
 
 
-def test_Conv2d_dilation_1x3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Conv2d_dilation_1x3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(1, 3))
-    Tester("Conv2d_dilation_1x3", model, shape, opset_version)
+    Tester("Conv2d_dilation_1x3", model, shape)
 
 
-def test_Conv1d_module(shape=[1, 3, 32], opset_version=13):
+def test_Conv1d_module(
+    shape=[1, 3, 32],
+):
     class Conv1d(torch.nn.Module):
         def __init__(
             self,
@@ -100,7 +128,7 @@ def test_Conv1d_module(shape=[1, 3, 32], opset_version=13):
             return self.conv(x)
 
     model = Conv1d()
-    Tester("Conv1d_module", model, shape, opset_version)
+    Tester("Conv1d_module", model, shape)
 
 
 class Conv1d(nn.Module):
@@ -131,7 +159,9 @@ class Conv1d(nn.Module):
         return self.conv(x)
 
 
-def test_Conv1d_basic(shape=[18, 5, 39], opset_version=13):
+def test_Conv1d_basic(
+    shape=[18, 5, 39],
+):
     model = Conv1d(
         in_channels=5,
         out_channels=25,
@@ -142,7 +172,7 @@ def test_Conv1d_basic(shape=[18, 5, 39], opset_version=13):
         groups=1,
         bias=False,
     )
-    Tester("Conv1d_basic", model, shape, opset_version)
+    Tester("Conv1d_basic", model, shape)
 
 
 class ConvTran1d(nn.Module):
@@ -174,7 +204,9 @@ class ConvTran1d(nn.Module):
         return self.conv(x)
 
 
-def test_ConvTranspose1d_basic(shape=[18, 5, 39], opset_version=13):
+def test_ConvTranspose1d_basic(
+    shape=[18, 5, 39],
+):
     model = ConvTran1d(
         in_channels=5,
         out_channels=25,
@@ -185,7 +217,7 @@ def test_ConvTranspose1d_basic(shape=[18, 5, 39], opset_version=13):
         groups=1,
         bias=False,
     )
-    Tester("ConvTranspose1d_basic", model, shape, opset_version)
+    Tester("ConvTranspose1d_basic", model, shape)
 
 
 class ConvTran2d(nn.Module):
@@ -217,7 +249,9 @@ class ConvTran2d(nn.Module):
         return self.conv(x)
 
 
-def test_ConvTranspose2d_basic(shape=[18, 5, 24, 24], opset_version=13):
+def test_ConvTranspose2d_basic(
+    shape=[18, 5, 24, 24],
+):
     model = ConvTran2d(
         in_channels=5,
         out_channels=25,
@@ -228,7 +262,7 @@ def test_ConvTranspose2d_basic(shape=[18, 5, 24, 24], opset_version=13):
         groups=1,
         bias=False,
     )
-    Tester("ConvTranspose2d_basic", model, shape, opset_version)
+    Tester("ConvTranspose2d_basic", model, shape)
 
 
 if __name__ == "__main__":

@@ -7,29 +7,39 @@ import warnings
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
-def test_ReLU(shape=[1, 3, 32, 32], opset_version=13):
+def test_ReLU(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.ReLU()
-    Tester("ReLU", model, shape, opset_version)
+    Tester("ReLU", model, shape)
 
 
-def test_PReLU(shape=[1, 3, 32, 32], opset_version=13):
+def test_PReLU(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.PReLU(num_parameters=3)
-    Tester("PReLU", model, shape, opset_version)
+    Tester("PReLU", model, shape)
 
 
-def test_LeakyReLU(shape=[1, 3, 32, 32], opset_version=13):
+def test_LeakyReLU(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.LeakyReLU()
-    Tester("LeakyReLU", model, shape, opset_version)
+    Tester("LeakyReLU", model, shape)
 
 
-def test_ReLU6(shape=[1, 3, 32, 32], opset_version=13):
+def test_ReLU6(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.ReLU6()
-    Tester("ReLU6", model, shape, opset_version)
+    Tester("ReLU6", model, shape)
 
 
-def test_Sigmoid(shape=[1, 3, 32, 32], opset_version=13):
+def test_Sigmoid(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Sigmoid()
-    Tester("Sigmoid", model, shape, opset_version)
+    Tester("Sigmoid", model, shape)
 
 
 class Sigmoid(torch.nn.Module):
@@ -41,24 +51,32 @@ class Sigmoid(torch.nn.Module):
         return self.sigmoid(x)
 
 
-def test_Sigmoid_module(shape=[1, 3, 32, 32], opset_version=13):
+def test_Sigmoid_module(
+    shape=[1, 3, 32, 32],
+):
     model = Sigmoid()
-    Tester("Sigmoid_module", model, shape, opset_version)
+    Tester("Sigmoid_module", model, shape)
 
 
-def test_Softmax_basic(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softmax_basic(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Softmax()
-    Tester("Softmax_basic", model, shape, opset_version)
+    Tester("Softmax_basic", model, shape)
 
 
-def test_Softmax_dim_2(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softmax_dim_2(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Softmax(dim=2)
-    Tester("Softmax_dim_2", model, shape, opset_version)
+    Tester("Softmax_dim_2", model, shape)
 
 
-def test_Softmax_dim_3(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softmax_dim_3(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Softmax(dim=2)
-    Tester("Softmax_dim_3", model, shape, opset_version)
+    Tester("Softmax_dim_3", model, shape)
 
 
 class Softmax(torch.nn.Module):
@@ -70,22 +88,30 @@ class Softmax(torch.nn.Module):
         return self.softmax(x)
 
 
-def test_Softmax_module(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softmax_module(
+    shape=[1, 3, 32, 32],
+):
     model = Softmax()
-    Tester("Softmax_module", model, shape, opset_version)
+    Tester("Softmax_module", model, shape)
 
 
-def test_Hardsigmoid(shape=[1, 3, 32, 32], opset_version=13):
+def test_Hardsigmoid(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Hardsigmoid()
-    Tester("Hardsigmoid", model, shape, opset_version)
+    Tester("Hardsigmoid", model, shape)
 
 
-def test_Hardswish(shape=[1, 3, 32, 32], opset_version=13):
+def test_Hardswish(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Hardswish()
-    Tester("Hardswish", model, shape, opset_version)
+    Tester("Hardswish", model, shape)
 
 
-def test_CReLU(shape=[1, 3, 32, 32], opset_version=13):
+def test_CReLU(
+    shape=[1, 3, 32, 32],
+):
     class CReLU(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -94,7 +120,7 @@ def test_CReLU(shape=[1, 3, 32, 32], opset_version=13):
             return torch.cat((F.relu(x), F.relu(-x)), 1)
 
     model = CReLU()
-    Tester("CReLU", model, shape, opset_version)
+    Tester("CReLU", model, shape)
 
 
 class LeakyReLU(torch.nn.Module):
@@ -106,24 +132,32 @@ class LeakyReLU(torch.nn.Module):
         return self.lrelu(x)
 
 
-def test_LeakyReLU(shape=[1, 3, 32, 32], opset_version=13):
+def test_LeakyReLU(
+    shape=[1, 3, 32, 32],
+):
     model = LeakyReLU()
-    Tester("LeakyReLU", model, shape, opset_version)
+    Tester("LeakyReLU", model, shape)
 
 
-def test_LeakyReLU_1(shape=[1, 3, 32, 32], opset_version=13):
+def test_LeakyReLU_1(
+    shape=[1, 3, 32, 32],
+):
     model = LeakyReLU(0.1)
-    Tester("LeakyReLU_1", model, shape, opset_version)
+    Tester("LeakyReLU_1", model, shape)
 
 
-def test_Softplus(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softplus(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Softplus()
-    Tester("Softplus", model, shape, opset_version)
+    Tester("Softplus", model, shape)
 
 
-def test_SELU(shape=[1, 3, 32, 32], opset_version=13):
+def test_SELU(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.SELU()
-    Tester("SELU", model, shape, opset_version)
+    Tester("SELU", model, shape)
 
 
 class SELU(torch.nn.Module):
@@ -135,14 +169,18 @@ class SELU(torch.nn.Module):
         return self.selu(x)
 
 
-def test_SELU_module(shape=[1, 3, 32, 32], opset_version=13):
+def test_SELU_module(
+    shape=[1, 3, 32, 32],
+):
     model = SELU()
-    Tester("SELU_module", model, shape, opset_version)
+    Tester("SELU_module", model, shape)
 
 
-def test_ELU(shape=[1, 3, 32, 32], opset_version=13):
+def test_ELU(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.ELU()
-    Tester("ELU", model, shape, opset_version)
+    Tester("ELU", model, shape)
 
 
 class ELU(torch.nn.Module):
@@ -154,14 +192,18 @@ class ELU(torch.nn.Module):
         return self.elu(x)
 
 
-def test_ELU_module(shape=[1, 3, 32, 32], opset_version=13):
+def test_ELU_module(
+    shape=[1, 3, 32, 32],
+):
     model = ELU()
-    Tester("ELU_module", model, shape, opset_version)
+    Tester("ELU_module", model, shape)
 
 
-def test_Softplus(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softplus(
+    shape=[1, 3, 32, 32],
+):
     model = torch.nn.Softplus()
-    Tester("Softplus", model, shape, opset_version)
+    Tester("Softplus", model, shape)
 
 
 class Softplus(torch.nn.Module):
@@ -173,9 +215,11 @@ class Softplus(torch.nn.Module):
         return self.softplus(x)
 
 
-def test_Softplus_module(shape=[1, 3, 32, 32], opset_version=13):
+def test_Softplus_module(
+    shape=[1, 3, 32, 32],
+):
     model = Softplus()
-    Tester("Softplus_module", model, shape, opset_version)
+    Tester("Softplus_module", model, shape)
 
 
 if __name__ == "__main__":
