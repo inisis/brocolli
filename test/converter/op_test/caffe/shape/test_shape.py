@@ -7,15 +7,6 @@ import warnings
 from brocolli.testing.common_utils import CaffeBaseTester as Tester
 
 
-class View(torch.nn.Module):
-    def __init__(self, *dims):
-        super(View, self).__init__()
-        self.dims = dims
-
-    def forward(self, x):
-        return x.view(*self.dims)
-
-
 class TestShapeClass:
     @pytest.mark.parametrize("chunks", (1, 2))
     def test_TorchChunk_1x1(self, request, chunks, shape=[1, 3, 3, 3]):
@@ -91,17 +82,17 @@ class TestShapeClass:
         model = TensorSplit(1, 1)
         Tester(request.node.name, model, shape)
 
-    def test_View_basic(self, request, shape=([1, 3, 3, 3])):
+    @pytest.mark.parametrize(("dims"), [(1, -1), (1, 1, -1), (1, 3, 3, -1)])
+    def test_View(self, request, dims, shape=([1, 3, 3, 3])):
+        class View(torch.nn.Module):
+            def __init__(self, *dims):
+                super(View, self).__init__()
+                self.dims = dims
 
-        model = View(1, -1)
-        Tester(request.node.name, model, shape)
+            def forward(self, x):
+                return x.view(*self.dims)
 
-    def test_View_3d(self, request, shape=([1, 3, 3, 3])):
-        model = View(1, 1, -1)
-        Tester(request.node.name, model, shape)
-
-    def test_View_4d(self, request, shape=([1, 3, 3, 3])):
-        model = View(1, 3, 3, -1)
+        model = View(dims)
         Tester(request.node.name, model, shape)
 
 
