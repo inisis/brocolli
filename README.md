@@ -25,7 +25,7 @@ pip install brocolli
     from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
 
     net = models.alexnet(pretrained=False)
-    pytorch_parser = PytorchCaffeParser(net, [(1, 3, 224, 223)])
+    pytorch_parser = PytorchCaffeParser(net, (1, 3, 224, 224))
     pytorch_parser.convert()
     pytorch_parser.save('alexnet')
     ```
@@ -37,11 +37,11 @@ pip install brocolli
     from brocolli.converter.pytorch_onnx_parser import PytorchOnnxParser
 
     net = models.alexnet(pretrained=False)
-    pytorch_parser = PytorchCaffeParser(net, [(1, 3, 224, 223)])
+    pytorch_parser = PytorchCaffeParser(net, (1, 3, 224, 224))
     pytorch_parser.convert()
     pytorch_parser.save('alexnet.onnx')
     ```
-    run this script until you see "accuracy test passed" on screen, then you can get alexnet.onnx under under current folder.
+    run this script until you see "accuracy test passed" on screen, then you can get alexnet.onnx under current folder.
 
 # Notice 
 * ✔️ : support 
