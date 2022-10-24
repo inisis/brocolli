@@ -17,7 +17,8 @@ pip install brocolli
     pip install brocolli-caffe
     
     PYVER=$(python -c "import sys; print('python{}.{}'.format(*sys.version_info))")
-    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/$PYVER/site-packages/caffe:$CONDA_PREFIX/lib    
+    export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/$PYVER/site-packages/caffe:$CONDA_PREFIX/lib
+    
     ```
 
     ```
