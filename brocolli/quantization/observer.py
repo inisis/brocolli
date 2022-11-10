@@ -7,6 +7,19 @@ import torch.nn as nn
 
 ABC: Any = ABCMeta(str("ABC"), (object,), {})
 
+AVIAIABLE_OBSERVERS = []
+
+
+def register_observer(cls):
+
+    AVIAIABLE_OBSERVERS.append(cls)
+
+    return cls
+
+
+def get_available_observers():
+    return AVIAIABLE_OBSERVERS
+
 
 def _with_args(cls_or_self, **kwargs):
     r"""Wrapper that allows creation of class factories.
@@ -193,6 +206,7 @@ class _ObserverBase(ObserverBase):
         return scale
 
 
+@register_observer
 class MinMaxObserver(_ObserverBase):
     min_val: torch.Tensor
     max_val: torch.Tensor
@@ -249,6 +263,7 @@ class MinMaxObserver(_ObserverBase):
         return "min_val={}, max_val={}".format(self.min_val, self.max_val)
 
 
+@register_observer
 class PerChannelMinMaxObserver(_ObserverBase):
     min_vals: torch.Tensor
     max_vals: torch.Tensor

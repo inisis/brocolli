@@ -15,13 +15,10 @@ class Output(nn.Module, BaseOperator):
 
     @classmethod
     def from_float(cls, mod):
-        # assert hasattr(mod, "qconfig"), \
-        #     "Output float module must have qconfig defined."
-        # activation_post_process = mod.activation_post_process
-        # scale = activation_post_process.calculate_qparams()
+        scale = mod.calculate_qparams()
 
         qoutput = cls()
-        qoutput.scale = float(mod.output_scale)
+        qoutput.scale = float(scale)
 
         return qoutput
 

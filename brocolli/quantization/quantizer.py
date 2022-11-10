@@ -18,10 +18,9 @@ from .pattern import get_default_fusion_patterns
 from .utils import (
     replace_node_module,
     check_result,
-    activation_pre_hook,
-    activation_post_hook,
 )
 from .graph_modules import BrocolliGraphModule
+from .observer import get_available_observers
 
 from brocolli.quantization.quantization_layers import *
 
@@ -171,42 +170,41 @@ class PytorchQuantizer:
         modules = dict(graph_module.named_modules())
         for node in list(graph_module.graph.nodes):
             if node.op == "placeholder":
-                pass
+                next_node = node.next
+                qconfig = get_qconfig(8)
+                observer_module = qconfig.activation()
+                with graph_module.graph.inserting_after(node):
+                    graph_module.add_module(node.name + "_observer", observer_module)
+                    new_node = graph_module.graph.call_module(
+                        node.name + "_observer", (node,), type_expr="observer"
+                    )
+
+                next_node.replace_input_with(node, new_node)
             elif node.op == "call_module":
                 module = modules[node.target]
-                if isinstance(module, (nn.Conv2d, nn.Conv1d)):
-                    module.qconfig = get_qconfig(8)
-                    module.qbit = 8
-                    module.add_module(
-                        "activation_pre_process", module.qconfig.activation()
+                next_node = node.next
+                qconfig = get_qconfig(8)
+                observer_module = qconfig.activation()
+                module.qconfig = qconfig
+                module.qbit = 8
+                with graph_module.graph.inserting_after(node):
+                    graph_module.add_module(node.name + "_observer", observer_module)
+                    new_node = graph_module.graph.call_module(
+                        node.name + "_observer", (node,), type_expr="observer"
                     )
-                    module.register_forward_pre_hook(activation_pre_hook)
-                    module.add_module(
-                        "activation_post_process", module.qconfig.output()
+
+                next_node.replace_input_with(node, new_node)
+            elif node.op == "call_function":
+                next_node = node.next
+                qconfig = get_qconfig(8)
+                observer_module = qconfig.activation()
+                with graph_module.graph.inserting_after(node):
+                    graph_module.add_module(node.name + "_observer", observer_module)
+                    new_node = graph_module.graph.call_module(
+                        node.name + "_observer", (node,), type_expr="observer"
                     )
-                    module.register_forward_hook(activation_post_hook)
-                elif isinstance(module, nn.ReLU):
-                    module.qconfig = get_qconfig(8, output_dtype=torch.quint8)
-                    module.qbit = 8
-                    module.add_module(
-                        "activation_pre_process", module.qconfig.activation()
-                    )
-                    module.register_forward_pre_hook(activation_pre_hook)
-                    module.add_module(
-                        "activation_post_process", module.qconfig.output()
-                    )
-                    module.register_forward_hook(activation_post_hook)
-                elif isinstance(module, nn.Linear):
-                    module.qconfig = get_qconfig(8)
-                    module.qbit = 8
-                    module.add_module(
-                        "activation_pre_process", module.qconfig.activation()
-                    )
-                    module.register_forward_pre_hook(activation_pre_hook)
-                    module.add_module(
-                        "activation_post_process", module.qconfig.output()
-                    )
-                    module.register_forward_hook(activation_post_hook)
+
+                next_node.replace_input_with(node, new_node)
             elif node.op == "output":
                 pass
 
@@ -230,8 +228,16 @@ class PytorchQuantizer:
                     new_node = graph_module.graph.call_module("input", (node,))
 
                 next_node.replace_input_with(node, new_node)
-            elif node.op == "call_module":
+            elif node.op == "call_module" and node.type != "observer":
                 module = modules[node.target]
+
+                assert len(node.all_input_nodes) == 1
+                for input_node in node.all_input_nodes:
+                    if input_node.type == "observer":
+                        module.activation_pre_process = modules[input_node.target]
+
+                module.activation_post_process = modules[node.name + "_observer"]
+
                 if isinstance(module, (nn.Conv2d, nn.Conv1d)):
                     quantized = Conv2d.from_float(module)
                 elif isinstance(module, nn.ReLU):
@@ -240,6 +246,8 @@ class PytorchQuantizer:
                     quantized = MaxPool2d.from_float(module)
                 elif isinstance(module, nn.Linear):
                     quantized = Linear.from_float(module)
+                elif isinstance(module, tuple(get_available_observers())):
+                    continue
 
                 with graph_module.graph.inserting_after(node):
                     replace_node_module(node, modules, quantized)
@@ -247,6 +255,7 @@ class PytorchQuantizer:
             elif node.op == "output":
                 prev_node = node.args[0]
                 module = dict(graph_module.named_modules())[prev_node.target]
+
                 output = Output.from_float(module)
                 with graph_module.graph.inserting_after(prev_node):
                     graph_module.add_module("output", output)
