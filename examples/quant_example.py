@@ -14,6 +14,7 @@ import torch.nn.functional as F
 from brocolli.quantization.quantizer import PytorchQuantizer  # noqa
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from torch.utils.data.dataset import Subset
 from torchvision.models.utils import load_state_dict_from_url
 
 
@@ -77,13 +78,16 @@ def calibrate_func(model):
         [transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))]
     )
     dataset_train = MNISTCHINA("data", download=True, train=True, transform=transform)
-    train_loader = DataLoader(dataset_train, batch_size=8, num_workers=8)
+    dataset_train = Subset(dataset_train, indices=[_ for _ in range(0, 1280)])
+    train_loader = DataLoader(dataset_train, batch_size=8, shuffle=False, num_workers=8)
+
     with torch.no_grad():
         tick = time.time()
         for (images, targets) in train_loader:
             pred = model(images)
             pred_label = torch.argmax(pred, dim=1, keepdims=True)
             test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
+
         tok = time.time()
 
     logger.info(f"float time: {tok - tick  : .4f} sec")
@@ -98,7 +102,9 @@ def evaluate_func(model):
         [transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))]
     )
     dataset_test = MNISTCHINA("data", download=True, train=False, transform=transform)
+    dataset_test = Subset(dataset_test, indices=[_ for _ in range(0, 1280)])
     test_loader = DataLoader(dataset_test, batch_size=8, shuffle=False, num_workers=8)
+
     with torch.no_grad():
         tick = time.time()
         for (images, targets) in test_loader:
@@ -113,7 +119,7 @@ def evaluate_func(model):
     logger.info("evaluate acc: {}".format(test_acc))
 
 
-pytorch_quantizer = PytorchQuantizer(model, (8, 1, 28, 28))
+pytorch_quantizer = PytorchQuantizer(model, (1, 1, 28, 28))
 pytorch_quantizer.fuse()
 pytorch_quantizer.prepare()
 pytorch_quantizer.calibrate(calibrate_func)
