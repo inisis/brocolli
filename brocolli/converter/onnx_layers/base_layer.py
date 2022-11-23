@@ -12,6 +12,7 @@ class BaseLayer(object):
         self._in_tensor_value_info = []
         self._init_tensor = []
         self._out_tensor_value_info = []
+        self._value_info = []
         self._node = []
         self._name = self._source_node.name
         self._input_shape = []
@@ -118,6 +119,12 @@ class BaseLayer(object):
                 raise Exception("custom out_names must be list")
 
             self._out_names.extend(out_names)
+
+        if len(self._output_shape) == len(self._out_names):
+            param_tensor_value_info = helper.make_tensor_value_info(
+                self._out_names[0], tp.FLOAT, self._output_shape[0]
+            )
+            self._value_info.append(param_tensor_value_info)
 
     def node_post_process(self, onnx_layer):
         if onnx_layer._node:

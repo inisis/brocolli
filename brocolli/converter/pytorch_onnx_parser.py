@@ -56,6 +56,7 @@ class PytorchOnnxParser:
         self.nodes = []
         self.out_tensor_value_info = []
         self.init_tensor = []
+        self.value_info = []
 
     def convert(self):
         self.gen_ir()
@@ -350,6 +351,9 @@ class PytorchOnnxParser:
                     clip_layer.generate_params(params_clip)
                     clip_layer.generate_node()
                     self.node_post_process(clip_layer)
+                elif function_name == "reshape":
+                    reshape_layer = ReshapeFunc(node)
+                    self.node_post_process(reshape_layer)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -430,6 +434,7 @@ class PytorchOnnxParser:
             self.in_tensor_value_info,
             self.out_tensor_value_info,
             self.init_tensor,
+            value_info=self.value_info,
         )
         self.model_def = helper.make_model(graph_def, producer_name="pytorch")
         self.freeze()
@@ -504,6 +509,7 @@ class PytorchOnnxParser:
         self.in_tensor_value_info.extend(onnx_layer._in_tensor_value_info)
         self.out_tensor_value_info.extend(onnx_layer._out_tensor_value_info)
         self.init_tensor.extend(onnx_layer._init_tensor)
+        self.value_info.extend(onnx_layer._value_info)
 
     def freeze(self):
         logger.info("removing not constant initializers from model")
