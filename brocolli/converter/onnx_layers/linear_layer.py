@@ -4,6 +4,8 @@ import numpy as np
 from brocolli.converter.onnx_layers.base_layer import BaseLayer
 from brocolli.converter.onnx_layers.gemm_layer import GemmLayer
 from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
+from brocolli.converter.onnx_layers.matmul_func import MatmulFunc
+from brocolli.converter.onnx_layers.add_func import AddFunc
 
 
 class LinearLayer(BaseLayer):
@@ -17,7 +19,9 @@ class LinearLayer(BaseLayer):
         if len(self._output_shape[0]) == 2:
             gemm_layer = GemmLayer(self._source_node, self._module)
             self.node_post_process(gemm_layer)
-        else:
+        elif len(self._output_shape[0]) >= 2 and self._output_shape[0][2:] == [1] * (
+            len(self._output_shape[0]) - 2
+        ):
             reshape_layer = ReshapeFunc(self._source_node, self._module, auto_gen=False)
             reshape_layer.add_bottom_top(
                 out_names=[self._source_node.name + "_reshape"]
@@ -32,3 +36,30 @@ class LinearLayer(BaseLayer):
             gemm_layer.add_bottom_top(in_names=[self._source_node.name + "_reshape"])
             gemm_layer.generate_node(self._source_node.name)
             self.node_post_process(gemm_layer)
+        else:
+            if self._module.bias is not None:
+                matmul_layer = MatmulFunc(
+                    self._source_node, self._module, auto_gen=False
+                )
+                matmul_layer.add_bottom_top(
+                    out_names=[self._source_node.name + "_Matmul"]
+                )
+                matmul_layer.generate_params(
+                    self._module.weight.transpose(1, 0).detach().numpy()
+                )
+                matmul_layer.generate_node(self._source_node.name + "_mul")
+                self.node_post_process(matmul_layer)
+
+                add_layer = AddFunc(self._source_node, self._module, auto_gen=False)
+                add_layer.add_bottom_top(in_names=[self._source_node.name + "_Matmul"])
+                add_layer.generate_params(self._module.bias.detach().numpy())
+                add_layer.generate_node(self._source_node.name)
+                self.node_post_process(add_layer)
+            else:
+                matmul_layer = MatmulFunc(
+                    self._source_node, self._module, auto_gen=False
+                )
+                matmul_layer.add_bottom_top()
+                matmul_layer.generate_params(self._module.weight.detach().numpy())
+                matmul_layer.generate_node(self._source_node.name)
+                self.node_post_process(matmul_layer)

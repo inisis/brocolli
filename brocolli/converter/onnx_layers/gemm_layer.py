@@ -33,4 +33,5 @@ class GemmLayer(BaseLayer):
             "Gemm", self._in_names, self._out_names, self._name, **attr_dict
         )
         logger.info("gemm_layer: " + self._name + " created")
+
         self._node.append(node)
