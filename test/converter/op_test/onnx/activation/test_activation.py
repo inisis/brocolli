@@ -225,5 +225,5 @@ def test_Softplus_module(
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     pytest.main(
-        ["-p", "no:warnings", "-v", "test/op_test/caffe/activation/test_activation.py"]
+        ["-p", "no:warnings", "-v", "test/op_test/onnx/activation/test_activation.py"]
     )

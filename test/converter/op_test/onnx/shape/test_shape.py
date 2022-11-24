@@ -12,6 +12,7 @@ class TorchChunk(torch.nn.Module):
         self.kwargs = kwargs
 
     def forward(self, x):
+        print(torch.chunk(x, *self.args, **self.kwargs))
         return torch.chunk(x, *self.args, **self.kwargs)
 
 
@@ -382,4 +383,4 @@ def test_Slice_module(shape=([1, 3, 32, 32])):
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
-    pytest.main(["-p", "no:warnings", "-v", "test/op_test/caffe/shape/test_shape.py"])
+    pytest.main(["-p", "no:warnings", "-v", "test/op_test/onnx/shape/test_shape.py"])

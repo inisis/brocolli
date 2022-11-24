@@ -21,4 +21,4 @@ def test_Linear_nobias(
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
-    pytest.main(["-p", "no:warnings", "-v", "test/op_test/caffe/linear/test_linear.py"])
+    pytest.main(["-p", "no:warnings", "-v", "test/op_test/onnx/linear/test_linear.py"])

@@ -355,5 +355,5 @@ def test_Matmul(
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     pytest.main(
-        ["-p", "no:warnings", "-v", "test/op_test/caffe/arithmetic/test_arithmetic.py"]
+        ["-p", "no:warnings", "-v", "test/op_test/onnx/arithmetic/test_arithmetic.py"]
     )

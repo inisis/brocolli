@@ -267,4 +267,4 @@ def test_ConvTranspose2d_basic(
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
-    pytest.main(["-p", "no:warnings", "-v", "test/op_test/caffe/conv/test_conv.py"])
+    pytest.main(["-p", "no:warnings", "-v", "test/op_test/onnx/conv/test_conv.py"])

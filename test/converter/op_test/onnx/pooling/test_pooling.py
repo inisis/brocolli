@@ -207,5 +207,5 @@ def test_Upsample_1(
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     pytest.main(
-        ["-p", "no:warnings", "-v", "test/op_test/caffe/pooling/test_pooling.py"]
+        ["-p", "no:warnings", "-v", "test/op_test/onnx/pooling/test_pooling.py"]
     )
