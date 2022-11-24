@@ -18,21 +18,34 @@ class ChunkFunc(BaseLayer):
         else:
             axis = self._source_node.args[2]
 
-        sum_ = 0
-        for idx in range(len(self._output_shape)):
-            slice_shape = self._output_shape[idx][axis]
+        if len(self._output_shape) == 1:
+            slice_shape = self._output_shape[0][axis]
             slice_layer = SliceFunc(self._source_node, auto_gen=False)
-            slice_layer.add_bottom_top(
-                out_names=[self._source_node.name + "_" + str(idx)]
-            )
+            slice_layer.add_bottom_top(out_names=[self._source_node.name])
             params_slice = [
-                np.array([sum_]),
-                np.array([sum_ + slice_shape]),
+                np.array([0]),
+                np.array([slice_shape]),
                 np.array([axis]),
                 np.array([1]),
             ]
-            slice_layer.generate_node(
-                self._source_node.name + "_" + str(idx), params_slice
-            )
+            slice_layer.generate_node(self._source_node.name, params_slice)
             self.node_post_process(slice_layer)
-            sum_ += slice_shape
+        else:
+            sum_ = 0
+            for idx in range(len(self._output_shape)):
+                slice_shape = self._output_shape[idx][axis]
+                slice_layer = SliceFunc(self._source_node, auto_gen=False)
+                slice_layer.add_bottom_top(
+                    out_names=[self._source_node.name + "_" + str(idx)]
+                )
+                params_slice = [
+                    np.array([sum_]),
+                    np.array([sum_ + slice_shape]),
+                    np.array([axis]),
+                    np.array([1]),
+                ]
+                slice_layer.generate_node(
+                    self._source_node.name + "_" + str(idx), params_slice
+                )
+                self.node_post_process(slice_layer)
+                sum_ += slice_shape

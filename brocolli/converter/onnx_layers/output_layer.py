@@ -10,14 +10,14 @@ class OutputLayer(BaseLayer):
     def __init__(self, source_node, module=None, auto_gen=True):
         super(OutputLayer, self).__init__(source_node, module, auto_gen)
         if self._auto_gen:
-            output_name = self.recursive_find_name(self._source_node.args[0])
+            output_name = self.recursive_find_name(self._source_node.all_input_nodes[0])
             self.generate_output(output_name)
 
     def add_bottom_top(self, in_names=None, out_names=None):
         pass
 
     def generate_output(self, name):
-        if self._output_type is torch.Tensor:
+        if self._output_type is torch.Tensor or len(self._output_shape) == 1:
             output_tvi = helper.make_tensor_value_info(
                 name, tp.FLOAT, self._output_shape[0]
             )
@@ -30,7 +30,7 @@ class OutputLayer(BaseLayer):
                 )
                 logger.info(
                     "output_layer: "
-                    + self._source_node.args[0].name
+                    + self._source_node.all_input_nodes[0].name
                     + "_"
                     + str(idx)
                     + " created"
