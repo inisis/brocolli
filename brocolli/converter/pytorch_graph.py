@@ -108,4 +108,7 @@ class PytorchGraph:
     def shape_inference(self):
         dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         shape_runner = BrocolliShapeRunner(self.graph_module, self.dynamic_batch)
-        shape_runner.run(*dummy_input)
+        if self.concrete_args is not None:
+            shape_runner.run(*dummy_input + list(self.concrete_args.values()))
+        else:
+            shape_runner.run(*dummy_input)

@@ -323,7 +323,7 @@ class PytorchOnnxParser:
                 elif function_name == "div":
                     div_layer = DivFunc(node)
                     self.node_post_process(div_layer)
-                elif function_name == "matmul":
+                elif function_name == "matmul" or function_name == "bmm":
                     matmul_layer = MatmulFunc(node)
                     self.node_post_process(matmul_layer)
                 elif function_name == "softplus":
@@ -467,7 +467,12 @@ class PytorchOnnxParser:
     def pyotrch_inference(self):
         self.dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         with torch.no_grad():
-            self.pytorch_output = self.model(*self.dummy_input)
+            if self.concrete_args is not None:
+                self.pytorch_output = self.model(
+                    *self.dummy_input, **self.concrete_args
+                )
+            else:
+                self.pytorch_output = self.model(*self.dummy_input)
 
         if isinstance(self.pytorch_output, torch.Tensor):
             self.pytorch_output = [self.pytorch_output]
