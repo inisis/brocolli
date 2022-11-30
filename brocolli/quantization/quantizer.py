@@ -265,7 +265,7 @@ class PytorchQuantizer:
 
                 node.replace_input_with(prev_node, new_node)
 
-        for node in list(graph_module.graph.nodes): # remove observer
+        for node in list(graph_module.graph.nodes):  # remove observer
             if node.op == "call_module" and node.type == "observer":
                 assert len(node.all_input_nodes) == 1
                 input_node = node.all_input_nodes[0]
@@ -275,7 +275,6 @@ class PytorchQuantizer:
         self.quanted_model = torch.fx.GraphModule(graph_module, graph_module.graph)
         self.print_tabular(self.quanted_model)
         logger.info("quantization finish")
-
 
     def evaluate(self, evaluate_func):
         evaluate_func(self.quanted_model)

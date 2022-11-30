@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch.fx.graph_module import GraphModule
 from onnx import save, helper, checker
+from tabulate import tabulate
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -20,9 +21,10 @@ from .utils import (
     map_reduce,
     gen_numpy_data,
     optimize_model,
-    replace_node_module
+    replace_node_module,
 )
 from .pytorch_layer.transformer import Transformer
+
 
 class PytorchOnnxParser:
     def __init__(
@@ -56,8 +58,22 @@ class PytorchOnnxParser:
         self.init_tensor = []
         self.value_info = []
 
+    def print_tabular(self, graph_module):
+        nodes = list(graph_module.graph.nodes)
+        node_specs = [[n.op, n.name, n.target, n.args, n.kwargs] for n in nodes]
+        logger.debug(
+            tabulate(
+                node_specs,
+                headers=["\nopcode", "\nname", "\ntarget", "\nargs", "\nkwargs"],
+            )
+        )
+
+    def convert(self):
+        self.replace()
+        self.gen_onnx_graph()
+
     def replace(self):
-        graph_module = copy.deepcopy(self.observed_model)
+        graph_module = copy.deepcopy(self.pytorch_graph.graph_module)
         modules = dict(graph_module.named_modules())
         for node in list(graph_module.graph.nodes):
             if node.op == "call_module":
@@ -70,16 +86,17 @@ class PytorchOnnxParser:
                     replace_node_module(node, modules, converter_module)
 
         self.replaced_model = torch.fx.GraphModule(graph_module, graph_module.graph)
-        self.print_tabular(self.quanted_model)
-        logger.info("convertion finish")
+        self.print_tabular(self.replaced_model)
+        logger.info("replacement finish")
 
-    def convert(self):
-        for node in self.pytorch_graph.nodes:
+    def gen_onnx_graph(self):
+        modules = dict(self.replaced_model.named_modules())
+        for node in self.replaced_model.graph.nodes:
             if node.op == "placeholder":
                 input_layer = InputLayer(node)
                 self.node_post_process(input_layer)
             elif node.op == "call_module":
-                module = self.modules[node.target]
+                module = modules[node.target]
                 if isinstance(module, (nn.Conv2d, nn.Conv1d)):
                     conv_layer = ConvLayer(node, module)
                     self.node_post_process(conv_layer)
@@ -170,7 +187,9 @@ class PytorchOnnxParser:
                     layer = LayerNormLayer(node, module)
                     self.node_post_process(layer)
                 else:
-                    raise NotImplementedError("module %s is not implemented" % (type(module)))
+                    raise NotImplementedError(
+                        "module %s is not implemented" % (type(module))
+                    )
             elif node.op == "call_function":
                 function_name = get_function_name(node.target)
                 if function_name == "relu":

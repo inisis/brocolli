@@ -9,7 +9,7 @@ from brocolli.testing.common_utils import OnnxBaseTester as Tester
 def test_Conv2d_basic(
     shape=[1, 3, 32, 32],
 ):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0)
+    model = torch.nn.Conv2d(3, 5, kernel_size=3, stride=1, padding=0)
     Tester("Conv2d_basic", model, shape)
 
 
