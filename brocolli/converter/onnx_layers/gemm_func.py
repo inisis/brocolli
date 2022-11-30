@@ -20,6 +20,11 @@ class GemmFunc(BaseLayer):
             self._name = name
 
         attr_dict = self.get_gemm_attr()
+
+        if self._source_node.kwargs["bias"] is not None:
+            in_names = [self.recursive_find_name(self._source_node.kwargs["bias"])]
+            self._in_names.extend(in_names)
+
         logger.debug(attr_dict)
         node = helper.make_node(
             "Gemm", self._in_names, self._out_names, self._name, **attr_dict

@@ -1,12 +1,17 @@
+import copy
 import numpy as np
+from loguru import logger
+import torch
+import torch.nn as nn
+from torch.fx.graph_module import GraphModule
+from onnx import save, helper, checker
 
+torch.manual_seed(0)
 np.random.seed(0)
 
-from loguru import logger
-
-from brocolli.converter.onnx_layers import *
-from brocolli.converter.pytorch_graph import PytorchGraph
-from brocolli.converter.utils import (
+from .onnx_layers import *
+from .pytorch_graph import PytorchGraph
+from .utils import (
     fuse_all_conv_bn,
     get_function_name,
     map_replace,
@@ -15,16 +20,9 @@ from brocolli.converter.utils import (
     map_reduce,
     gen_numpy_data,
     optimize_model,
+    replace_node_module
 )
-
-import torch
-
-torch.manual_seed(0)
-import torch.nn as nn
-from torch.fx.graph_module import GraphModule
-
-from onnx import save, helper, checker
-
+from .pytorch_layer.transformer import Transformer
 
 class PytorchOnnxParser:
     def __init__(
@@ -58,10 +56,24 @@ class PytorchOnnxParser:
         self.init_tensor = []
         self.value_info = []
 
-    def convert(self):
-        self.gen_ir()
+    def replace(self):
+        graph_module = copy.deepcopy(self.observed_model)
+        modules = dict(graph_module.named_modules())
+        for node in list(graph_module.graph.nodes):
+            if node.op == "call_module":
+                module = modules[node.target]
 
-    def gen_ir(self):
+                if isinstance(module, nn.Transformer):
+                    converter_module = Transformer.from_torch(module)
+
+                with graph_module.graph.inserting_after(node):
+                    replace_node_module(node, modules, converter_module)
+
+        self.replaced_model = torch.fx.GraphModule(graph_module, graph_module.graph)
+        self.print_tabular(self.quanted_model)
+        logger.info("convertion finish")
+
+    def convert(self):
         for node in self.pytorch_graph.nodes:
             if node.op == "placeholder":
                 input_layer = InputLayer(node)
@@ -154,8 +166,11 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.Softplus):
                     layer = SoftplusLayer(node, module)
                     self.node_post_process(layer)
+                elif isinstance(module, nn.LayerNorm):
+                    layer = LayerNormLayer(node, module)
+                    self.node_post_process(layer)
                 else:
-                    raise NotImplementedError("module %s is not implemented" % (module))
+                    raise NotImplementedError("module %s is not implemented" % (type(module)))
             elif node.op == "call_function":
                 function_name = get_function_name(node.target)
                 if function_name == "relu":
@@ -191,11 +206,7 @@ class PytorchOnnxParser:
                     transpose_layer = TransposeFunc(node)
                     self.node_post_process(transpose_layer)
                 elif function_name == "prelu":
-                    prelu_layer = PReluFunc(node, auto_gen=False)
-                    prelu_layer.add_bottom_top()
-                    params_prelu = self.model.weight.detach().numpy()
-                    prelu_layer.generate_params(params_prelu)
-                    prelu_layer.generate_node()
+                    prelu_layer = PReluFunc(node, self.model)
                     self.node_post_process(prelu_layer)
                 elif function_name == "hardtanh":
                     clip_layer = ClipFunc(node, auto_gen=False)
@@ -220,32 +231,10 @@ class PytorchOnnxParser:
                     hardswish_layer = HardswishFunc(node)
                     self.node_post_process(hardswish_layer)
                 elif function_name == "conv2d":
-                    conv_layer = ConvFunc(node, auto_gen=False)
-                    conv_layer.add_bottom_top()
-                    weight_node = node.args[1]
-                    bias_node = node.args[2]
-                    weight = getattr(self.model, weight_node.target).detach().numpy()
-                    if bias_node is not None:
-                        bias = getattr(self.model, bias_node.target).detach().numpy()
-                        params_conv = [weight, bias]
-                    else:
-                        params_conv = [weight]
-                    conv_layer.generate_params(params_conv)
-                    conv_layer.generate_node()
+                    conv_layer = ConvFunc(node, self.model)
                     self.node_post_process(conv_layer)
                 elif function_name == "linear":
-                    gemm_layer = GemmFunc(node, auto_gen=False)
-                    gemm_layer.add_bottom_top()
-                    weight_node = node.args[1]
-                    bias_node = node.kwargs["bias"]
-                    weight = getattr(self.model, weight_node.target).detach().numpy()
-                    if bias_node is not None:
-                        bias = getattr(self.model, bias_node.target).detach().numpy()
-                        params_linear = [weight, bias]
-                    else:
-                        params_linear = [weight]
-                    gemm_layer.generate_params(params_linear)
-                    gemm_layer.generate_node()
+                    gemm_layer = GemmFunc(node, self.model)
                     self.node_post_process(gemm_layer)
                 elif function_name == "avg_pool2d" or function_name == "avg_pool1d":
                     avgpool_layer = AvgPoolFunc(node)
@@ -320,7 +309,7 @@ class PytorchOnnxParser:
                 elif function_name == "sub":
                     sub_layer = SubFunc(node)
                     self.node_post_process(sub_layer)
-                elif function_name == "div":
+                elif function_name == "div" or function_name == "truediv":
                     div_layer = DivFunc(node)
                     self.node_post_process(div_layer)
                 elif function_name == "matmul" or function_name == "bmm":
@@ -422,7 +411,8 @@ class PytorchOnnxParser:
                 output_layer = OutputLayer(node)
                 self.node_post_process(output_layer)
             elif node.op == "get_attr":
-                pass
+                getattr_layer = GetAttrFunc(node, self.model)
+                self.node_post_process(getattr_layer)
             else:
                 raise NotImplementedError("op type %s is not implemented" % (node.op))
 
@@ -521,8 +511,11 @@ class PytorchOnnxParser:
         inputs = self.model_def.graph.input
         name_to_input = {}
         for input in inputs:
+            if input.name in name_to_input.keys():
+                logger.warning("Duplicate input name: {}".format(input.name))
             name_to_input[input.name] = input
 
         for initializer in self.model_def.graph.initializer:
             if initializer.name in name_to_input:
                 inputs.remove(name_to_input[initializer.name])
+                name_to_input.pop(initializer.name)

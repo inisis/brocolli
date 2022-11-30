@@ -31,6 +31,7 @@ from .leakyrelu_layer import LeakyReluLayer
 from .avgpool_layer import AvgPoolLayer
 from .softplus_layer import SoftplusLayer
 from .linear_layer import LinearLayer
+from .layernorm_layer import LayerNormLayer
 
 from .add_func import AddFunc
 from .flatten_func import FlattenFunc
@@ -82,3 +83,4 @@ from .upsample_func import UpsampleFunc
 from .avgpool_func import AvgPoolFunc
 from .normalize_func import NormalizeFunc
 from .getitem_func import GetItemFunc
+from .getattr_func import GetAttrFunc

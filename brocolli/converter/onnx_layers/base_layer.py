@@ -86,6 +86,8 @@ class BaseLayer(object):
                 return self.recursive_find_name(node_)
             else:
                 return node.name
+        elif node.op == "get_attr":
+            return node.name
 
     def add_bottom_top(self, in_names=None, out_names=None):
         if in_names is None:

@@ -24,7 +24,6 @@ class ConvFunc(BaseLayer):
             attr_dict = {
                 "dilations": [1],  # list of ints defaults is 1
                 "group": 1,  # int default is 1
-                "kernel_shape": 1,  # list of ints If not present, should be inferred from input W.
                 "pads": [0, 0],  # list of ints defaults to 0
                 "strides": [1],  # list of ints  defaults is 1
             }
@@ -33,7 +32,6 @@ class ConvFunc(BaseLayer):
             attr_dict = {
                 "dilations": [1, 1],  # list of ints defaults is 1
                 "group": 1,  # int default is 1
-                "kernel_shape": 1,  # list of ints If not present, should be inferred from input W.
                 "pads": [0, 0, 0, 0],  # list of ints defaults to 0
                 "strides": [1, 1],  # list of ints  defaults is 1
             }
@@ -47,11 +45,6 @@ class ConvFunc(BaseLayer):
             attr_dict["dilations"] = dilation
         else:
             attr_dict["dilations"] = [dilation]
-
-        if isinstance(self.kernel_size, tuple):
-            attr_dict["kernel_shape"] = self.kernel_size
-        else:
-            attr_dict["kernel_shape"] = [self.kernel_size]
 
         if isinstance(stride, tuple):
             attr_dict["strides"] = stride
@@ -78,9 +71,3 @@ class ConvFunc(BaseLayer):
         )
         logger.info("conv_layer: " + self._name + " created")
         self._node.append(node)
-
-    def generate_params(self, params):
-        self.create_params(self._name + "_weight", params[0], tp.FLOAT)
-        self.kernel_size = (params[0].shape[2], params[0].shape[3])
-        if (len(params)) == 2:
-            self.create_params(self._name + "_bias", params[1], tp.FLOAT)
