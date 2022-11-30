@@ -144,7 +144,7 @@ def test_transformer_decoder_basic(
             self,
             num_layers=6,
             d_model=512,
-            nhead=8,            
+            nhead=8,
         ):
             super(TransformerDecoderModel, self).__init__()
             self.transformer = nn.TransformerDecoder(
@@ -170,7 +170,6 @@ def test_transformer_decoder_basic(
 def test_transformer_basic(
     shape=(32, 10, 512),
 ):
-
     class TransformerModel(nn.Module):
         def __init__(
             self,

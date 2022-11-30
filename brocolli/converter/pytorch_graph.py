@@ -7,7 +7,14 @@ from torch.fx.graph_module import GraphModule
 from torch.fx.node import map_aggregate
 
 from .utils import get_function_name, map_replace, gen_torch_tensor
-from .pytorch_layer.transformer import Transformer, TransformerEncoder, TransformerDecoder, TransformerEncoderLayer, TransformerDecoderLayer
+from .pytorch_layer.transformer import (
+    Transformer,
+    TransformerEncoder,
+    TransformerDecoder,
+    TransformerEncoderLayer,
+    TransformerDecoderLayer,
+)
+
 
 class BrocolliTracer(Tracer):
     def __init__(self, *args, customed_leaf_module=None, **kwargs):
@@ -75,7 +82,7 @@ class PytorchGraph:
             self.graph_module = self.model
             self.shape_inference()
         elif isinstance(self.model, nn.Module):
-            self.replace(self.model)           
+            self.replace(self.model)
             self.tracer = BrocolliTracer()
             self.graph = self.tracer.trace(self.model, concrete_args)
             self.graph_module = GraphModule(self.tracer.root, self.graph)

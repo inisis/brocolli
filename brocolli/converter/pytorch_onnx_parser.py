@@ -69,7 +69,6 @@ class PytorchOnnxParser:
     def convert(self):
         self.gen_onnx_graph()
 
-
     def gen_onnx_graph(self):
         for node in self.pytorch_graph.nodes:
             if node.op == "placeholder":

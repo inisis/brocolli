@@ -309,7 +309,7 @@ class Transformer(nn.Module):
         state_dict = transform_weight(mod)
         transformer.load_state_dict(state_dict)
         logger.info("replace torch transformer")
-        
+
         return transformer
 
     def forward(
