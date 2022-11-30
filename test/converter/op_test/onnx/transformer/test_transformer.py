@@ -36,81 +36,173 @@ def test_layernorm_basic(
 def test_transformer_encoder_layer_basic(
     shape=(32, 10, 512),
 ):
-    from brocolli.converter.pytorch_layer.transformer import TransformerEncoderLayer
+    class TransformerEncoderLayerModel(nn.Module):
+        def __init__(
+            self,
+            d_model=512,
+            nhead=8,
+            dim_feedforward=2048,
+            dropout=0.1,
+            activation="relu",
+        ):
+            super(TransformerEncoderLayerModel, self).__init__()
+            self.transformer = nn.TransformerEncoderLayer(
+                d_model=d_model,
+                nhead=nhead,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                activation=activation,
+            )
+            self.linear = nn.Linear(d_model, 1)
 
-    model = TransformerEncoderLayer(d_model=512, nhead=8, batch_first=False)
+        def forward(self, src):
+            output = self.transformer(src)
+            output = self.linear(output)
+
+            return output
+
+    model = TransformerEncoderLayerModel(d_model=512, nhead=8)
     shape = (32, 10, 512)
-    concrete_args = {"src_mask": None, "src_key_padding_mask": None}
-    Tester("transformer_encoder_layer_basic", model, shape, concrete_args=concrete_args)
+    Tester("transformer_encoder_layer_basic", model, shape)
 
 
 def test_transformer_decoder_layer_basic(
     shape=(32, 10, 512),
 ):
-    from brocolli.converter.pytorch_layer.transformer import TransformerDecoderLayer
+    class TransformerDecoderLayerModel(nn.Module):
+        def __init__(
+            self,
+            d_model=512,
+            nhead=8,
+            dim_feedforward=2048,
+            dropout=0.1,
+            activation="relu",
+        ):
+            super(TransformerDecoderLayerModel, self).__init__()
+            self.transformer = nn.TransformerDecoderLayer(
+                d_model=d_model,
+                nhead=nhead,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                activation=activation,
+            )
+            self.linear = nn.Linear(d_model, 1)
 
-    model = TransformerDecoderLayer(d_model=512, nhead=8)
+        def forward(self, tgt, memory):
+            output = self.transformer(tgt, memory)
+            output = self.linear(output)
+
+            return output
+
+    model = TransformerDecoderLayerModel(d_model=512, nhead=8)
     shape = ((10, 32, 512), (20, 32, 512))
-    concrete_args = {
-        "tgt_mask": None,
-        "memory_mask": None,
-        "tgt_key_padding_mask": None,
-        "memory_key_padding_mask": None,
-    }
-    Tester("transformer_decoder_layer_basic", model, shape, concrete_args=concrete_args)
+    Tester("transformer_decoder_layer_basic", model, shape)
 
 
 def test_transformer_encoder_basic(
     shape=(32, 10, 512),
 ):
-    from brocolli.converter.pytorch_layer.transformer import (
-        TransformerEncoderLayer,
-        TransformerEncoder,
-    )
+    class TransformerEncoderModel(nn.Module):
+        def __init__(
+            self,
+            num_layers=6,
+            d_model=512,
+            nhead=8,
+            dim_feedforward=2048,
+            dropout=0.1,
+            activation="relu",
+        ):
+            super(TransformerEncoderModel, self).__init__()
+            self.transformer = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(
+                    d_model=d_model,
+                    nhead=nhead,
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    activation=activation,
+                ),
+                num_layers=num_layers,
+            )
+            self.linear = nn.Linear(d_model, 1)
 
-    encoder_layer = TransformerEncoderLayer(d_model=512, nhead=8)
-    model = TransformerEncoder(encoder_layer, num_layers=2)
+        def forward(self, src):
+            output = self.transformer(src)
+            output = self.linear(output)
+
+            return output
+
+    model = TransformerEncoderModel(num_layers=2)
     shape = (10, 32, 512)
-    concrete_args = {"mask": None, "src_key_padding_mask": None}
-    Tester("transformer_encoder_basic", model, shape, concrete_args=concrete_args)
+    Tester("transformer_encoder_basic", model, shape)
 
 
 def test_transformer_decoder_basic(
     shape=(32, 10, 512),
 ):
-    from brocolli.converter.pytorch_layer.transformer import (
-        TransformerDecoderLayer,
-        TransformerDecoder,
-    )
+    class TransformerDecoderModel(nn.Module):
+        def __init__(
+            self,
+            num_layers=6,
+            d_model=512,
+            nhead=8,            
+        ):
+            super(TransformerDecoderModel, self).__init__()
+            self.transformer = nn.TransformerDecoder(
+                nn.TransformerDecoderLayer(
+                    d_model=d_model,
+                    nhead=nhead,
+                ),
+                num_layers=num_layers,
+            )
+            self.linear = nn.Linear(d_model, 1)
 
-    decoder_layer = TransformerDecoderLayer(d_model=512, nhead=8)
-    model = TransformerDecoder(decoder_layer, num_layers=2)
+        def forward(self, tgt, memory):
+            output = self.transformer(tgt, memory)
+            output = self.linear(output)
+
+            return output
+
+    model = TransformerDecoderModel(num_layers=2)
     shape = ((10, 32, 512), (20, 32, 512))
-    concrete_args = {
-        "tgt_mask": None,
-        "memory_mask": None,
-        "tgt_key_padding_mask": None,
-        "memory_key_padding_mask": None,
-    }
-    Tester("transformer_decoder_basic", model, shape, concrete_args=concrete_args)
+    Tester("transformer_decoder_basic", model, shape)
 
 
 def test_transformer_basic(
     shape=(32, 10, 512),
 ):
-    from brocolli.converter.pytorch_layer.transformer import Transformer
 
-    model = Transformer(nhead=16, num_encoder_layers=2, num_decoder_layers=2)
+    class TransformerModel(nn.Module):
+        def __init__(
+            self,
+            d_model=512,
+            nhead=8,
+            num_encoder_layers=6,
+            num_decoder_layers=6,
+            dim_feedforward=2048,
+            dropout=0.1,
+            activation="relu",
+        ):
+            super(TransformerModel, self).__init__()
+            self.transformer = nn.Transformer(
+                d_model=d_model,
+                nhead=nhead,
+                num_encoder_layers=num_encoder_layers,
+                num_decoder_layers=num_decoder_layers,
+                dim_feedforward=dim_feedforward,
+                dropout=dropout,
+                activation=activation,
+            )
+            self.linear = nn.Linear(d_model, 1)
+
+        def forward(self, src, tgt):
+            output = self.transformer(src, tgt)
+            output = self.linear(output)
+
+            return output
+
+    model = TransformerModel(nhead=16, num_encoder_layers=2, num_decoder_layers=2)
     shape = (10, 32, 512), (20, 32, 512)
-    concrete_args = {
-        "src_mask": None,
-        "tgt_mask": None,
-        "memory_mask": None,
-        "src_key_padding_mask": None,
-        "tgt_key_padding_mask": None,
-        "memory_key_padding_mask": None,
-    }
-    Tester("transformer_basic", model, shape, concrete_args=concrete_args)
+    Tester("transformer_basic", model, shape)
 
 
 if __name__ == "__main__":

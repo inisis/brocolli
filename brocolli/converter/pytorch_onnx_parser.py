@@ -21,9 +21,7 @@ from .utils import (
     map_reduce,
     gen_numpy_data,
     optimize_model,
-    replace_node_module,
 )
-from .pytorch_layer.transformer import Transformer
 
 
 class PytorchOnnxParser:
@@ -69,34 +67,16 @@ class PytorchOnnxParser:
         )
 
     def convert(self):
-        self.replace()
         self.gen_onnx_graph()
 
-    def replace(self):
-        graph_module = copy.deepcopy(self.pytorch_graph.graph_module)
-        modules = dict(graph_module.named_modules())
-        for node in list(graph_module.graph.nodes):
-            if node.op == "call_module":
-                module = modules[node.target]
-
-                if isinstance(module, nn.Transformer):
-                    converter_module = Transformer.from_torch(module)
-
-                with graph_module.graph.inserting_after(node):
-                    replace_node_module(node, modules, converter_module)
-
-        self.replaced_model = torch.fx.GraphModule(graph_module, graph_module.graph)
-        self.print_tabular(self.replaced_model)
-        logger.info("replacement finish")
 
     def gen_onnx_graph(self):
-        modules = dict(self.replaced_model.named_modules())
-        for node in self.replaced_model.graph.nodes:
+        for node in self.pytorch_graph.nodes:
             if node.op == "placeholder":
                 input_layer = InputLayer(node)
                 self.node_post_process(input_layer)
             elif node.op == "call_module":
-                module = modules[node.target]
+                module = self.modules[node.target]
                 if isinstance(module, (nn.Conv2d, nn.Conv1d)):
                     conv_layer = ConvLayer(node, module)
                     self.node_post_process(conv_layer)

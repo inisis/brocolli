@@ -7,7 +7,7 @@ from torch.fx.graph_module import GraphModule
 from torch.fx.node import map_aggregate
 
 from .utils import get_function_name, map_replace, gen_torch_tensor
-
+from .pytorch_layer.transformer import Transformer, TransformerEncoder, TransformerDecoder, TransformerEncoderLayer, TransformerDecoderLayer
 
 class BrocolliTracer(Tracer):
     def __init__(self, *args, customed_leaf_module=None, **kwargs):
@@ -75,8 +75,9 @@ class PytorchGraph:
             self.graph_module = self.model
             self.shape_inference()
         elif isinstance(self.model, nn.Module):
+            self.replace(self.model)           
             self.tracer = BrocolliTracer()
-            self.graph = self.tracer.trace(model, concrete_args)
+            self.graph = self.tracer.trace(self.model, concrete_args)
             self.graph_module = GraphModule(self.tracer.root, self.graph)
             if concrete_args is not None:
                 self.trace_prune(self.graph_module)
@@ -90,6 +91,26 @@ class PytorchGraph:
         self.graph = self.graph_module.graph
         self.nodes = list(self.graph_module.graph.nodes)
         self.graph.print_tabular()
+
+    def replace(self, model):
+        for name, module in model.named_children():
+            if isinstance(module, nn.Transformer):
+                converter_module = Transformer.from_torch(module)
+                setattr(model, name, converter_module)
+            elif isinstance(module, nn.TransformerEncoder):
+                converter_module = TransformerEncoder.from_torch(module)
+                setattr(model, name, converter_module)
+            elif isinstance(module, nn.TransformerDecoder):
+                converter_module = TransformerDecoder.from_torch(module)
+                setattr(model, name, converter_module)
+            elif isinstance(module, nn.TransformerEncoderLayer):
+                converter_module = TransformerEncoderLayer.from_torch(module)
+                setattr(model, name, converter_module)
+            elif isinstance(module, nn.TransformerDecoderLayer):
+                converter_module = TransformerDecoderLayer.from_torch(module)
+                setattr(model, name, converter_module)
+            elif list(module.named_children()):
+                self.replace(module)
 
     def placeholder_prune(self, graph_module):
         for node in list(graph_module.graph.nodes):
