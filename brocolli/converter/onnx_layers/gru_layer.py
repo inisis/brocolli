@@ -3,13 +3,13 @@ import numpy as np
 from onnx import helper
 from onnx import TensorProto as tp
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
-from brocolli.converter.onnx_layers.slice_func import SliceFunc
-from brocolli.converter.onnx_layers.concat_func import ConcatFunc
-from brocolli.converter.onnx_layers.squeeze_func import SqueezeFunc
-from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
-from brocolli.converter.onnx_layers.permute_func import PermuteFunc
-from brocolli.converter.onnx_layers.transpose_func import TransposeFunc
+from .base_layer import BaseLayer
+from .slice_func import SliceFunc
+from .concat_func import ConcatFunc
+from .squeeze_func import SqueezeFunc
+from .reshape_func import ReshapeFunc
+from .permute_func import PermuteFunc
+from .transpose_func import TransposeFunc
 
 
 class GRULayer(BaseLayer):

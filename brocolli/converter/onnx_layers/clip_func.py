@@ -4,7 +4,7 @@ from onnx import TensorProto as tp
 
 import numpy as np
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from .base_layer import BaseLayer
 
 
 class ClipFunc(BaseLayer):

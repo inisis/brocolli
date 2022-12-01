@@ -1,11 +1,11 @@
 from loguru import logger
 import numpy as np
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
-from brocolli.converter.onnx_layers.gemm_layer import GemmLayer
-from brocolli.converter.onnx_layers.reshape_func import ReshapeFunc
-from brocolli.converter.onnx_layers.matmul_func import MatmulFunc
-from brocolli.converter.onnx_layers.add_func import AddFunc
+from .base_layer import BaseLayer
+from .gemm_layer import GemmLayer
+from .reshape_func import ReshapeFunc
+from .matmul_func import MatmulFunc
+from .add_layer import AddLayer
 
 
 class LinearLayer(BaseLayer):
@@ -50,16 +50,19 @@ class LinearLayer(BaseLayer):
                 matmul_layer.generate_node(self._source_node.name + "_mul")
                 self.node_post_process(matmul_layer)
 
-                add_layer = AddFunc(self._source_node, self._module, auto_gen=False)
+                add_layer = AddLayer(self._source_node, self._module, auto_gen=False)
                 add_layer.add_bottom_top(in_names=[self._source_node.name + "_Matmul"])
-                add_layer.generate_params(self._module.bias.detach().numpy())
-                add_layer.generate_node(self._source_node.name)
+                add_layer.generate_node(
+                    self._source_node.name, params=self._module.bias.detach().numpy()
+                )
                 self.node_post_process(add_layer)
             else:
                 matmul_layer = MatmulFunc(
                     self._source_node, self._module, auto_gen=False
                 )
                 matmul_layer.add_bottom_top()
-                matmul_layer.generate_params(self._module.weight.detach().numpy())
+                matmul_layer.generate_params(
+                    self._module.weight.transpose(1, 0).detach().numpy()
+                )
                 matmul_layer.generate_node(self._source_node.name)
                 self.node_post_process(matmul_layer)

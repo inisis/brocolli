@@ -4,7 +4,7 @@ from loguru import logger
 from onnx import helper
 from onnx import TensorProto as tp
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from .base_layer import BaseLayer
 
 
 class Template(BaseLayer):

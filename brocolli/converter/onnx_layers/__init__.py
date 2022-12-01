@@ -32,8 +32,10 @@ from .avgpool_layer import AvgPoolLayer
 from .softplus_layer import SoftplusLayer
 from .linear_layer import LinearLayer
 from .layernorm_layer import LayerNormLayer
+from .embedding_layer import EmbeddingLayer
+from .add_layer import AddLayer
+from .cast_layer import CastLayer
 
-from .add_func import AddFunc
 from .flatten_func import FlattenFunc
 from .reshape_func import ReshapeFunc
 from .concat_func import ConcatFunc

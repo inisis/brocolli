@@ -1,8 +1,8 @@
 from loguru import logger
 import numpy as np
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
-from brocolli.converter.onnx_layers.slice_func import SliceFunc
+from .base_layer import BaseLayer
+from .slice_func import SliceFunc
 
 
 class ChunkFunc(BaseLayer):

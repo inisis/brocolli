@@ -165,6 +165,9 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.LayerNorm):
                     layer = LayerNormLayer(node, module)
                     self.node_post_process(layer)
+                elif isinstance(module, nn.Embedding):
+                    layer = EmbeddingLayer(node, module)
+                    self.node_post_process(layer)
                 else:
                     raise NotImplementedError(
                         "module %s is not implemented" % (type(module))
@@ -175,7 +178,7 @@ class PytorchOnnxParser:
                     relu_layer = ReluFunc(node)
                     self.node_post_process(relu_layer)
                 elif function_name == "add":
-                    add_layer = AddFunc(node)
+                    add_layer = AddLayer(node)
                     self.node_post_process(add_layer)
                 elif function_name == "flatten":
                     flatten_layer = FlattenFunc(node)
@@ -340,6 +343,9 @@ class PytorchOnnxParser:
                     self.node_post_process(clip_layer)
                 elif function_name == "reshape":
                     reshape_layer = ReshapeFunc(node)
+                    self.node_post_process(reshape_layer)
+                elif function_name == "dropout":
+                    reshape_layer = DropoutLayer(node)
                     self.node_post_process(reshape_layer)
                 else:
                     raise NotImplementedError(

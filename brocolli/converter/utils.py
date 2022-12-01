@@ -3,10 +3,15 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 import onnx_graphsurgeon as gs
+from onnx import TensorProto as tp
 
 
 def get_shape(obj):
     return obj["shape"]
+
+
+def get_dtype(obj):
+    return obj["dtype"]
 
 
 def map_reduce(args, fn):
@@ -30,7 +35,7 @@ def get_torch_size(obj):
 
 
 def gen_torch_tensor(obj):
-    return torch.rand(obj)
+    return torch.rand(obj).to(torch.int32)
 
 
 def gen_numpy_data(obj):
@@ -112,3 +117,49 @@ def replace_node_module(node, modules, new_module):
     assert isinstance(node.target, str)
     parent_name, name = _parent_name(node.target)
     setattr(modules[parent_name], name, new_module)
+
+
+scalar_type_to_pytorch_type = [
+    torch.uint8,  # 0
+    torch.int8,  # 1
+    torch.short,  # 2
+    torch.int,  # 3
+    torch.int64,  # 4
+    torch.half,  # 5
+    torch.float,  # 6
+    torch.double,  # 7
+    torch.complex32,  # 8
+    torch.complex64,  # 9
+    torch.complex128,  # 10
+    torch.bool,  # 11
+]
+
+cast_pytorch_to_onnx = {
+    "Byte": tp.UINT8,
+    "Char": tp.INT8,
+    "Double": tp.DOUBLE,
+    "Float": tp.FLOAT,
+    "Half": tp.FLOAT16,
+    "Int": tp.INT32,
+    "Long": tp.INT64,
+    "Short": tp.INT16,
+    "Bool": tp.BOOL,
+    "ComplexFloat": tp.COMPLEX64,
+    "ComplexDouble": tp.COMPLEX128,
+    "Undefined": tp.UNDEFINED,
+}
+
+scalar_type_to_onnx = [
+    cast_pytorch_to_onnx["Byte"],
+    cast_pytorch_to_onnx["Char"],
+    cast_pytorch_to_onnx["Short"],
+    cast_pytorch_to_onnx["Int"],
+    cast_pytorch_to_onnx["Long"],
+    cast_pytorch_to_onnx["Half"],
+    cast_pytorch_to_onnx["Float"],
+    cast_pytorch_to_onnx["Double"],
+    cast_pytorch_to_onnx["Undefined"],
+    cast_pytorch_to_onnx["ComplexFloat"],
+    cast_pytorch_to_onnx["ComplexDouble"],
+    cast_pytorch_to_onnx["Bool"],
+]

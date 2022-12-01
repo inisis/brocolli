@@ -2,9 +2,9 @@ from loguru import logger
 import numpy as np
 import torch.nn as nn
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
-from brocolli.converter.onnx_layers.pad_layer import PadLayer
-from brocolli.converter.onnx_layers.pooling_layer import PoolingLayer
+from .base_layer import BaseLayer
+from .pad_layer import PadLayer
+from .pooling_layer import PoolingLayer
 
 
 class AvgPoolLayer(BaseLayer):

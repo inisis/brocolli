@@ -5,7 +5,7 @@ from onnx import TensorProto as tp
 import numbers
 import numpy as np
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from .base_layer import BaseLayer
 
 
 class MulFunc(BaseLayer):

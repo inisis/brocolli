@@ -7,7 +7,7 @@ from onnx import TensorProto as tp
 
 import torch.nn as nn
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from .base_layer import BaseLayer
 
 
 class ConvFunc(BaseLayer):

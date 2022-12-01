@@ -3,7 +3,7 @@ from onnx import helper
 import torch.nn as nn
 
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from .base_layer import BaseLayer
 
 
 class SoftmaxFunc(BaseLayer):

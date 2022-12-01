@@ -2,9 +2,9 @@ import re
 from loguru import logger
 import numpy as np
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
-from brocolli.converter.onnx_layers.pad_func import PadFunc
-from brocolli.converter.onnx_layers.pooling_func import PoolingFunc
+from .base_layer import BaseLayer
+from .pad_func import PadFunc
+from .pooling_func import PoolingFunc
 
 
 class AvgPoolFunc(BaseLayer):

@@ -14,6 +14,7 @@ from .pytorch_layer.transformer import (
     TransformerEncoderLayer,
     TransformerDecoderLayer,
 )
+from .pytorch_layer.layernorm import LayerNorm
 
 
 class BrocolliTracer(Tracer):
@@ -102,20 +103,23 @@ class PytorchGraph:
     def replace(self, model):
         for name, module in model.named_children():
             if isinstance(module, nn.Transformer):
-                converter_module = Transformer.from_torch(module)
-                setattr(model, name, converter_module)
+                converted_module = Transformer.from_torch(module)
+                setattr(model, name, converted_module)
             elif isinstance(module, nn.TransformerEncoder):
-                converter_module = TransformerEncoder.from_torch(module)
-                setattr(model, name, converter_module)
+                converted_module = TransformerEncoder.from_torch(module)
+                setattr(model, name, converted_module)
             elif isinstance(module, nn.TransformerDecoder):
-                converter_module = TransformerDecoder.from_torch(module)
-                setattr(model, name, converter_module)
+                converted_module = TransformerDecoder.from_torch(module)
+                setattr(model, name, converted_module)
             elif isinstance(module, nn.TransformerEncoderLayer):
-                converter_module = TransformerEncoderLayer.from_torch(module)
-                setattr(model, name, converter_module)
+                converted_module = TransformerEncoderLayer.from_torch(module)
+                setattr(model, name, converted_module)
             elif isinstance(module, nn.TransformerDecoderLayer):
-                converter_module = TransformerDecoderLayer.from_torch(module)
-                setattr(model, name, converter_module)
+                converted_module = TransformerDecoderLayer.from_torch(module)
+                setattr(model, name, converted_module)
+            elif isinstance(module, nn.LayerNorm):
+                converted_module = LayerNorm.from_torch(module)
+                setattr(model, name, converted_module)
             elif list(module.named_children()):
                 self.replace(module)
 

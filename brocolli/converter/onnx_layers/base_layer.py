@@ -1,7 +1,14 @@
 from onnx import helper
 from onnx import TensorProto as tp
 from torch.fx.node import Node
-from brocolli.converter.utils import get_function_name, get_shape, map_reduce
+from brocolli.converter.utils import (
+    get_function_name,
+    get_shape,
+    map_reduce,
+    get_dtype,
+    scalar_type_to_pytorch_type,
+    scalar_type_to_onnx,
+)
 
 
 class BaseLayer(object):
@@ -16,18 +23,26 @@ class BaseLayer(object):
         self._node = []
         self._name = self._source_node.name
         self._input_shape = []
+        self._input_dtype = []
         if len(self._source_node.all_input_nodes) != 0:
             for node in self._source_node.all_input_nodes:
                 if "tensor_meta" in list(node.meta.keys()):
                     self._input_shape.extend(
                         map_reduce(node.meta["tensor_meta"], get_shape)
                     )
+                    self._input_dtype.extend(
+                        map_reduce(node.meta["tensor_meta"], get_dtype)
+                    )
 
         self._output_type = self._source_node.meta["type"]
         self._output_shape = []
+        self._output_dtype = []
         if "tensor_meta" in list(self._source_node.meta.keys()):
             self._output_shape.extend(
                 map_reduce(self._source_node.meta["tensor_meta"], get_shape)
+            )
+            self._output_dtype.extend(
+                map_reduce(self._source_node.meta["tensor_meta"], get_dtype)
             )
 
         self._in_names = []
@@ -123,8 +138,10 @@ class BaseLayer(object):
             self._out_names.extend(out_names)
 
         if len(self._output_shape) == len(self._out_names):
+            torch_type = scalar_type_to_pytorch_type.index(self._output_dtype[0])
+            onnx_type = scalar_type_to_onnx[torch_type]
             param_tensor_value_info = helper.make_tensor_value_info(
-                self._out_names[0], tp.FLOAT, self._output_shape[0]
+                self._out_names[0], onnx_type, self._output_shape[0]
             )
             self._value_info.append(param_tensor_value_info)
 

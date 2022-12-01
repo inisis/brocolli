@@ -1,7 +1,7 @@
 from loguru import logger
 from onnx import helper
 
-from brocolli.converter.onnx_layers.base_layer import BaseLayer
+from .base_layer import BaseLayer
 
 
 class LayerNormLayer(BaseLayer):
@@ -13,5 +13,6 @@ class LayerNormLayer(BaseLayer):
         node = helper.make_node(
             "LayerNorm", self._in_names, self._out_names, self._name
         )
+
         logger.info("layernorm_layer: " + self._name + " created")
         self._node.append(node)
