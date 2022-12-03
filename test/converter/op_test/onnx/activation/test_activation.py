@@ -36,7 +36,7 @@ class TestActivationClass:
         Tester(request.node.name, model, x)
 
     @pytest.mark.parametrize("dim", (None, -1, 1))
-    def test_Softmax_basic(self, request, dim, shape=[1, 3, 32, 32]):
+    def test_Softmax(self, request, dim, shape=[1, 3, 32, 32]):
         x = torch.rand(shape)
         model = torch.nn.Softmax(dim)
         Tester(request.node.name, model, x)

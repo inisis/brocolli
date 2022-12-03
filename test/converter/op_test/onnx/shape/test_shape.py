@@ -16,9 +16,7 @@ class TestShapeClass:
                 self.kwargs = kwargs
 
             def forward(self, x):
-                out1 = torch.chunk(x, *self.args, **self.kwargs)
-                out2 = x.chunk(*self.args, **self.kwargs)
-                return out1, out2
+                return torch.chunk(x, *self.args, **self.kwargs)
 
         model = TorchChunk(chunks, dim)
         x = torch.rand(shape)
@@ -45,11 +43,9 @@ class TestShapeClass:
         z = torch.rand(shape[0])
         Tester(request.node.name, model, (x, y, z))
 
-    @pytest.mark.parametrize("order", ((0, 2, 3, 1), (0, 3, 1, 2)))
     def test_Permute(
         self,
         request,
-        order,
         shape=(1, 3, 32, 32),
     ):
         class Permute(torch.nn.Module):
@@ -60,13 +56,13 @@ class TestShapeClass:
             def forward(self, x):
                 return x.permute(*self.args).contiguous()
 
-        model = Permute(order)
+        model = Permute(0, 2, 3, 1)
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
     @pytest.mark.parametrize("section", (1, 2))
     @pytest.mark.parametrize("dim", (1, 2))
-    def test_TorchSplit_1x1(self, request, section, dim, shape=(1, 3, 3, 3)):
+    def test_TorchSplit(self, request, section, dim, shape=(1, 3, 3, 3)):
         class TorchSplit(torch.nn.Module):
             def __init__(self, *args, **kwargs):
                 super(TorchSplit, self).__init__()
@@ -74,9 +70,7 @@ class TestShapeClass:
                 self.kwargs = kwargs
 
             def forward(self, x):
-                return torch.split(x, *self.args, **self.kwargs) + x.split(
-                    *self.args, **self.kwargs
-                )
+                return torch.split(x, *self.args, **self.kwargs)
 
         model = TorchSplit(section, dim)
         x = torch.rand(shape)
