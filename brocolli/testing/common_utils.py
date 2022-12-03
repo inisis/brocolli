@@ -18,5 +18,5 @@ class OnnxBaseTester(object):
 
         runner = PytorchOnnxParser(model, inputs, fuse, concrete_args, dynamic_batch)
         runner.convert()
-        runner.save("tmp/" + name)
+        runner.save("tmp/" + name + ".onnx")
         runner.check_result()

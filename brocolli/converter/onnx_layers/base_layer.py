@@ -1,7 +1,7 @@
 from onnx import helper
 from onnx import TensorProto as tp
 from torch.fx.node import Node
-from brocolli.converter.utils import (
+from ..utils import (
     get_function_name,
     get_shape,
     map_reduce,
