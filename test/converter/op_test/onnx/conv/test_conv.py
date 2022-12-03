@@ -2,269 +2,198 @@ import torch
 import torch.nn as nn
 import pytest
 import warnings
+import itertools
 
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
-def test_Conv2d_basic(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=3, stride=1, padding=0)
-    Tester("Conv2d_basic", model, shape)
-
-
-def test_Conv2d_kernel_3x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=(3, 3), stride=1, padding=0)
-    Tester("Conv2d_kernel_3x3", model, shape)
-
-
-def test_Conv2d_kernel_1x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=(1, 3), stride=1, padding=0)
-    Tester("Conv2d_kernel_1x3", model, shape)
-
-
-def test_Conv2d_kernel_3x1(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=(3, 1), stride=1, padding=0)
-    Tester("Conv2d_kernel_3x1", model, shape)
-
-
-def test_Conv2d_stride_3x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(3, 3), padding=0)
-    Tester("Conv2d_stride_3x3", model, shape)
-
-
-def test_Conv2d_stride_3x1(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(3, 1), padding=0)
-    Tester("Conv2d_stride_3x1", model, shape)
-
-
-def test_Conv2d_stride_1x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=(1, 3), padding=0)
-    Tester("Conv2d_stride_1x3", model, shape)
-
-
-def test_Conv2d_padding_3x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(3, 3))
-    Tester("Conv2d_padding_3x3", model, shape)
-
-
-def test_Conv2d_padding_3x1(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(3, 1))
-    Tester("Conv2d_padding_3x1", model, shape)
-
-
-def test_Conv2d_padding_1x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=(1, 3))
-    Tester("Conv2d_padding_1x3", model, shape)
-
-
-def test_Conv2d_dilation_3x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(3, 3))
-    Tester("Conv2d_dilation_3x3", model, shape)
-
-
-def test_Conv2d_dilation_3x1(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(3, 1))
-    Tester("Conv2d_dilation_3x1", model, shape)
-
-
-def test_Conv2d_dilation_1x3(
-    shape=[1, 3, 32, 32],
-):
-    model = torch.nn.Conv2d(3, 5, kernel_size=1, stride=1, padding=0, dilation=(1, 3))
-    Tester("Conv2d_dilation_1x3", model, shape)
-
-
-def test_Conv1d_module(
-    shape=[1, 3, 32],
-):
-    class Conv1d(torch.nn.Module):
-        def __init__(
-            self,
+class TestConvClass:
+    @pytest.mark.parametrize(
+        "kernel_h, kernel_w", list(itertools.product((1, 3), (1, 3)))
+    )
+    @pytest.mark.parametrize(
+        "stride_h, stride_w", list(itertools.product((1, 3), (1, 3)))
+    )
+    @pytest.mark.parametrize("dilation_h, dilation_w", ((1, 1), (3, 3)))
+    def test_Conv2d(
+        self,
+        request,
+        kernel_h,
+        kernel_w,
+        stride_h,
+        stride_w,
+        dilation_h,
+        dilation_w,
+        shape=[1, 3, 32, 32],
+    ):
+        model = torch.nn.Conv2d(
             in_channels=3,
-            out_channels=3,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-            dilation=1,
-            groups=1,
-            bias=True,
-        ):
-            super(Conv1d, self).__init__()
-            self.conv = nn.Conv1d(
-                in_channels,
-                out_channels,
+            out_channels=5,
+            kernel_size=(kernel_h, kernel_w),
+            stride=(stride_h, stride_w),
+            dilation=(dilation_h, dilation_w),
+        )
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
+    @pytest.mark.parametrize("kernel_size", (1, 3))
+    @pytest.mark.parametrize("stride", (1, 3))
+    @pytest.mark.parametrize("dilation", (1, 3))
+    def test_Conv1d(
+        self,
+        request,
+        kernel_size,
+        stride,
+        dilation,
+        shape=[1, 3, 32],
+    ):
+        class Conv1d(torch.nn.Module):
+            def __init__(
+                self,
+                in_channels=3,
+                out_channels=3,
                 kernel_size=kernel_size,
                 stride=stride,
-                padding=padding,
+                padding=1,
                 dilation=dilation,
-                groups=groups,
-                bias=bias,
-            )
+                groups=1,
+                bias=True,
+            ):
+                super(Conv1d, self).__init__()
+                self.conv = nn.Conv1d(
+                    in_channels,
+                    out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    dilation=dilation,
+                    groups=groups,
+                    bias=bias,
+                )
 
-        def forward(self, x):
-            return self.conv(x)
+            def forward(self, x):
+                return self.conv(x)
 
-    model = Conv1d()
-    Tester("Conv1d_module", model, shape)
+        x = torch.rand(shape)
+        model = Conv1d()
+        Tester(request.node.name, model, x)
 
-
-class Conv1d(nn.Module):
-    def __init__(
+    @pytest.mark.parametrize("kernel_size", (1, 3))
+    @pytest.mark.parametrize("stride", (1, 3))
+    @pytest.mark.parametrize("dilation", (1, 3))
+    def test_ConvTranspose1d_basic(
         self,
-        in_channels=3,
-        out_channels=3,
-        kernel_size=(3, 3),
-        stride=(1, 1),
-        padding=(1, 1),
-        dilation=(1, 1),
-        groups=1,
-        bias=True,
+        request,
+        kernel_size,
+        stride,
+        dilation,
+        shape=[18, 5, 39],
     ):
-        super(Conv1d, self).__init__()
-        self.conv = nn.Conv1d(
-            in_channels,
-            out_channels,
+        class ConvTran1d(nn.Module):
+            def __init__(
+                self,
+                in_channels=16,
+                out_channels=32,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                dilation=1,
+                groups=1,
+                bias=True,
+            ):
+                super(ConvTran1d, self).__init__()
+                self.conv = nn.ConvTranspose1d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    groups=groups,
+                    bias=bias,
+                    dilation=dilation,
+                    padding_mode="zeros",
+                )
+
+            def forward(self, x):
+                return self.conv(x)
+
+        model = ConvTran1d(
+            in_channels=5,
+            out_channels=25,
             kernel_size=kernel_size,
             stride=stride,
-            padding=padding,
+            padding=2,
             dilation=dilation,
-            groups=groups,
-            bias=bias,
+            groups=1,
+            bias=False,
         )
 
-    def forward(self, x):
-        return self.conv(x)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
-
-def test_Conv1d_basic(
-    shape=[18, 5, 39],
-):
-    model = Conv1d(
-        in_channels=5,
-        out_channels=25,
-        kernel_size=4,
-        stride=2,
-        padding=2,
-        dilation=1,
-        groups=1,
-        bias=False,
+    @pytest.mark.parametrize(
+        "kernel_h, kernel_w", list(itertools.product((1, 3), (1, 3)))
     )
-    Tester("Conv1d_basic", model, shape)
-
-
-class ConvTran1d(nn.Module):
-    def __init__(
+    @pytest.mark.parametrize(
+        "stride_h, stride_w", list(itertools.product((1, 3), (1, 3)))
+    )
+    @pytest.mark.parametrize("dilation_h, dilation_w", ((1, 1), (3, 3)))
+    def test_ConvTranspose2d_basic(
         self,
-        in_channels=16,
-        out_channels=32,
-        kernel_size=(3, 3),
-        stride=(1, 1),
-        padding=(1, 1),
-        dilation=(1, 1),
-        groups=1,
-        bias=True,
+        request,
+        kernel_h,
+        kernel_w,
+        stride_h,
+        stride_w,
+        dilation_h,
+        dilation_w,
+        shape=[18, 5, 24, 24],
     ):
-        super(ConvTran1d, self).__init__()
-        self.conv = nn.ConvTranspose1d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            groups=groups,
-            bias=bias,
-            dilation=dilation,
-            padding_mode="zeros",
+        class ConvTran2d(nn.Module):
+            def __init__(
+                self,
+                in_channels=16,
+                out_channels=32,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=(1, 1),
+                dilation=(1, 1),
+                groups=1,
+                bias=True,
+            ):
+                super(ConvTran2d, self).__init__()
+                self.conv = nn.ConvTranspose2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    padding=padding,
+                    groups=groups,
+                    bias=bias,
+                    dilation=dilation,
+                    padding_mode="zeros",
+                )
+
+            def forward(self, x):
+                return self.conv(x)
+
+        model = ConvTran2d(
+            in_channels=5,
+            out_channels=25,
+            kernel_size=(kernel_h, kernel_w),
+            stride=(stride_h, stride_w),
+            padding=2,
+            dilation=(dilation_h, dilation_w),
+            groups=1,
+            bias=False,
         )
 
-    def forward(self, x):
-        return self.conv(x)
-
-
-def test_ConvTranspose1d_basic(
-    shape=[18, 5, 39],
-):
-    model = ConvTran1d(
-        in_channels=5,
-        out_channels=25,
-        kernel_size=4,
-        stride=2,
-        padding=2,
-        dilation=1,
-        groups=1,
-        bias=False,
-    )
-    Tester("ConvTranspose1d_basic", model, shape)
-
-
-class ConvTran2d(nn.Module):
-    def __init__(
-        self,
-        in_channels=16,
-        out_channels=32,
-        kernel_size=(3, 3),
-        stride=(1, 1),
-        padding=(1, 1),
-        dilation=(1, 1),
-        groups=1,
-        bias=True,
-    ):
-        super(ConvTran2d, self).__init__()
-        self.conv = nn.ConvTranspose2d(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            groups=groups,
-            bias=bias,
-            dilation=dilation,
-            padding_mode="zeros",
-        )
-
-    def forward(self, x):
-        return self.conv(x)
-
-
-def test_ConvTranspose2d_basic(
-    shape=[18, 5, 24, 24],
-):
-    model = ConvTran2d(
-        in_channels=5,
-        out_channels=25,
-        kernel_size=4,
-        stride=2,
-        padding=2,
-        dilation=1,
-        groups=1,
-        bias=False,
-    )
-    Tester("ConvTranspose2d_basic", model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
-    pytest.main(["-p", "no:warnings", "-v", "test/op_test/onnx/conv/test_conv.py"])
+    pytest.main(
+        ["-p", "no:warnings", "-v", "test/converter/op_test/onnx/conv/test_conv.py"]
+    )
