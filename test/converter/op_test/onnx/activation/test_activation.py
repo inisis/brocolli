@@ -13,33 +13,33 @@ class TestActivationClass:
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.ReLU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_PReLU(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.PReLU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Sigmoid(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.Sigmoid()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     @pytest.mark.parametrize("dim", (None, -1, 1))
     def test_Softmax_basic(self, request, dim, shape=[1, 3, 32, 32]):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.Softmax(dim)
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Softmax_module(self, request, shape=[1, 3, 32, 32]):
         class Softmax(torch.nn.Module):
@@ -50,27 +50,27 @@ class TestActivationClass:
             def forward(self, x):
                 return self.softmax(x)
 
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = Softmax()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Hardsigmoid(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.Hardsigmoid()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Hardswish(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.Hardswish()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_CReLU(
         self,
@@ -84,9 +84,9 @@ class TestActivationClass:
             def forward(self, x):
                 return torch.cat((F.relu(x), F.relu(-x)), 1)
 
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = CReLU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     @pytest.mark.parametrize("negative_slope", (0.01, 0.1))
     def test_LeakyReLU(self, request, negative_slope, shape=[1, 3, 32, 32]):
@@ -100,28 +100,28 @@ class TestActivationClass:
 
                 return out
 
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = LeakyReLU(negative_slope)
 
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Softplus(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.Softplus()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_SELU(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.SELU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_SELU_module(
         self,
@@ -136,18 +136,18 @@ class TestActivationClass:
             def forward(self, x):
                 return self.selu(x)
 
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = SELU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_ELU(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.ELU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_ELU_module(
         self,
@@ -162,18 +162,18 @@ class TestActivationClass:
             def forward(self, x):
                 return self.elu(x)
 
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = ELU()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Softplus(
         self,
         request,
         shape=[1, 3, 32, 32],
     ):
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = torch.nn.Softplus()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
     def test_Softplus_module(
         self,
@@ -188,9 +188,9 @@ class TestActivationClass:
             def forward(self, x):
                 return self.softplus(x)
 
-        input = torch.rand(shape)
+        x = torch.rand(shape)
         model = Softplus()
-        Tester(request.node.name, model, input)
+        Tester(request.node.name, model, x)
 
 
 if __name__ == "__main__":
