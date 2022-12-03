@@ -15,9 +15,6 @@ from .pytorch_graph import PytorchGraph
 from .utils import (
     fuse_all_conv_bn,
     get_function_name,
-    map_replace,
-    get_torch_size,
-    gen_torch_tensor,
     map_reduce,
     gen_numpy_data,
     optimize_model,
@@ -26,14 +23,14 @@ from .utils import (
 
 class PytorchOnnxParser:
     def __init__(
-        self, model, input_shape, fuse=False, concrete_args=None, dynamic_batch=False
+        self, model, inputs, fuse=False, concrete_args=None, dynamic_batch=False
     ):
         super(PytorchOnnxParser, self).__init__()
-        self.fuse = fuse
         self.model = model.eval()
-        self.input_shape = map_replace(input_shape, get_torch_size)
-        if isinstance(self.input_shape, torch.Size):
-            self.input_shape = [self.input_shape]
+        self.inputs = inputs
+        if isinstance(self.inputs, torch.Tensor):
+            self.inputs = [self.inputs]
+        self.fuse = fuse
         self.concrete_args = concrete_args
         self.dynamic_batch = dynamic_batch
 
@@ -46,7 +43,7 @@ class PytorchOnnxParser:
             raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
 
         self.pytorch_graph = PytorchGraph(
-            self.model, self.input_shape, self.concrete_args, self.dynamic_batch
+            self.model, self.inputs, self.concrete_args, self.dynamic_batch
         )
         self.state_dict = self.pytorch_graph.graph_module.state_dict()
         self.modules = dict(self.pytorch_graph.graph_module.named_modules())
@@ -459,14 +456,11 @@ class PytorchOnnxParser:
         logger.info("accuracy test passed")
 
     def pyotrch_inference(self):
-        self.dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         with torch.no_grad():
             if self.concrete_args is not None:
-                self.pytorch_output = self.model(
-                    *self.dummy_input, **self.concrete_args
-                )
+                self.pytorch_output = self.model(*self.inputs, **self.concrete_args)
             else:
-                self.pytorch_output = self.model(*self.dummy_input)
+                self.pytorch_output = self.model(*self.inputs)
 
         if isinstance(self.pytorch_output, torch.Tensor):
             self.pytorch_output = [self.pytorch_output]
@@ -487,16 +481,15 @@ class PytorchOnnxParser:
             rt.GraphOptimizationLevel.ORT_DISABLE_ALL
         )
         sess = rt.InferenceSession(self.dest_path, sess_options)
-        onnx_rt_dict = self.get_onnx_input(sess, self.dummy_input)
+        onnx_rt_dict = self.get_onnx_input(sess, self.inputs)
 
         onnx_outname = [output.name for output in sess.get_outputs()]
         self.onnx_output = sess.run(onnx_outname, onnx_rt_dict)
 
     def export_onnx(self, name, opset_version=13):
-        self.dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         torch.onnx.export(
             self.model,
-            tuple(self.dummy_input),
+            tuple(self.inputs),
             name,
             opset_version=opset_version,
             enable_onnx_checker=False,

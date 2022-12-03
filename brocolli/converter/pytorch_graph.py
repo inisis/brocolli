@@ -72,10 +72,10 @@ class BrocolliShapeRunner(Interpreter):
 
 
 class PytorchGraph:
-    def __init__(self, model, input_shape, concrete_args=None, dynamic_batch=False):
+    def __init__(self, model, inputs, concrete_args=None, dynamic_batch=False):
         super(PytorchGraph, self).__init__()
         self.model = model
-        self.input_shape = input_shape
+        self.inputs = inputs
         self.concrete_args = concrete_args
         self.dynamic_batch = dynamic_batch
 
@@ -138,9 +138,8 @@ class PytorchGraph:
         self.placeholder_prune(graph_module)
 
     def shape_inference(self):
-        dummy_input = map_replace(self.input_shape, gen_torch_tensor)
         shape_runner = BrocolliShapeRunner(self.graph_module, self.dynamic_batch)
         if self.concrete_args is not None:
-            shape_runner.run(*dummy_input + list(self.concrete_args.values()))
+            shape_runner.run(*self.inputs + list(self.concrete_args.values()))
         else:
-            shape_runner.run(*dummy_input)
+            shape_runner.run(*self.inputs)

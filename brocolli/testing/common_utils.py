@@ -11,12 +11,12 @@ class CaffeBaseTester(object):
 
 class OnnxBaseTester(object):
     def __init__(
-        self, name, model, shape, fuse=False, concrete_args=None, dynamic_batch=False
+        self, name, model, inputs, fuse=False, concrete_args=None, dynamic_batch=False
     ):
         super(OnnxBaseTester, self).__init__()
         from brocolli.converter.pytorch_onnx_parser import PytorchOnnxParser
 
-        runner = PytorchOnnxParser(model, shape, fuse, concrete_args, dynamic_batch)
+        runner = PytorchOnnxParser(model, inputs, fuse, concrete_args, dynamic_batch)
         runner.convert()
         runner.save("tmp/" + name)
         runner.check_result()
