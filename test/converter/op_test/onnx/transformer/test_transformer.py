@@ -6,202 +6,199 @@ import warnings
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
-def test_mha_basic(
-    shape=[1, 3],
-):
-    from brocolli.converter.pytorch_layer.mha import MultiheadAttention
+class TestTransformerClass:
+    def test_mha(self, request):
+        from brocolli.converter.pytorch_layer.mha import MultiheadAttention
 
-    batch_size, seq_len, feature_dim, head_num = 7, 12, 16, 4
-    model = MultiheadAttention(feature_dim, head_num)
-    shape = (
-        (batch_size, seq_len, feature_dim),
-        (batch_size, seq_len, feature_dim),
-        (batch_size, seq_len, feature_dim),
-    )
-    concrete_args = {"key_padding_mask": None, "need_weights": False, "attn_mask": None}
-    Tester("mha_basic", model, shape, concrete_args=concrete_args)
+        batch_size, seq_len, feature_dim, head_num = 7, 12, 16, 4
+        model = MultiheadAttention(feature_dim, head_num)
+        shape = (
+            (batch_size, seq_len, feature_dim),
+            (batch_size, seq_len, feature_dim),
+            (batch_size, seq_len, feature_dim),
+        )
+        concrete_args = {
+            "key_padding_mask": None,
+            "need_weights": False,
+            "attn_mask": None,
+        }
+        q = torch.rand(shape[0])
+        k = torch.rand(shape[1])
+        v = torch.rand(shape[2])
+        Tester(request.node.name, model, (q, k, v), concrete_args=concrete_args)
 
+    def test_layernorm(self, request):
+        from brocolli.converter.pytorch_layer.layernorm import LayerNorm
 
-def test_layernorm_basic(
-    shape=[1, 3],
-):
-    from brocolli.converter.pytorch_layer.layernorm import LayerNorm
+        batch, sentence_length, embedding_dim = 20, 5, 10
+        model = LayerNorm(embedding_dim)
+        shape = (batch, sentence_length, embedding_dim)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
-    batch, sentence_length, embedding_dim = 20, 5, 10
-    model = LayerNorm(embedding_dim)
-    shape = (batch, sentence_length, embedding_dim)
-    Tester("layernorm_basic", model, shape)
-
-
-def test_transformer_encoder_layer_basic(
-    shape=(32, 10, 512),
-):
-    class TransformerEncoderLayerModel(nn.Module):
-        def __init__(
-            self,
-            d_model=512,
-            nhead=8,
-            dim_feedforward=2048,
-            dropout=0.1,
-            activation="relu",
-        ):
-            super(TransformerEncoderLayerModel, self).__init__()
-            self.transformer = nn.TransformerEncoderLayer(
-                d_model=d_model,
-                nhead=nhead,
-                dim_feedforward=dim_feedforward,
-                dropout=dropout,
-                activation=activation,
-            )
-            self.linear = nn.Linear(d_model, 1)
-
-        def forward(self, src):
-            output = self.transformer(src)
-            output = self.linear(output)
-
-            return output
-
-    model = TransformerEncoderLayerModel(d_model=512, nhead=8)
-    shape = (32, 10, 512)
-    Tester("transformer_encoder_layer_basic", model, shape)
-
-
-def test_transformer_decoder_layer_basic(
-    shape=(32, 10, 512),
-):
-    class TransformerDecoderLayerModel(nn.Module):
-        def __init__(
-            self,
-            d_model=512,
-            nhead=8,
-            dim_feedforward=2048,
-            dropout=0.1,
-            activation="relu",
-        ):
-            super(TransformerDecoderLayerModel, self).__init__()
-            self.transformer = nn.TransformerDecoderLayer(
-                d_model=d_model,
-                nhead=nhead,
-                dim_feedforward=dim_feedforward,
-                dropout=dropout,
-                activation=activation,
-            )
-            self.linear = nn.Linear(d_model, 1)
-
-        def forward(self, tgt, memory):
-            output = self.transformer(tgt, memory)
-            output = self.linear(output)
-
-            return output
-
-    model = TransformerDecoderLayerModel(d_model=512, nhead=8)
-    shape = ((10, 32, 512), (20, 32, 512))
-    Tester("transformer_decoder_layer_basic", model, shape)
-
-
-def test_transformer_encoder_basic(
-    shape=(32, 10, 512),
-):
-    class TransformerEncoderModel(nn.Module):
-        def __init__(
-            self,
-            num_layers=6,
-            d_model=512,
-            nhead=8,
-            dim_feedforward=2048,
-            dropout=0.1,
-            activation="relu",
-        ):
-            super(TransformerEncoderModel, self).__init__()
-            self.transformer = nn.TransformerEncoder(
-                nn.TransformerEncoderLayer(
+    def test_transformer_encoder_layer(self, request):
+        class TransformerEncoderLayerModel(nn.Module):
+            def __init__(
+                self,
+                d_model=512,
+                nhead=8,
+                dim_feedforward=2048,
+                dropout=0.1,
+                activation="relu",
+            ):
+                super(TransformerEncoderLayerModel, self).__init__()
+                self.transformer = nn.TransformerEncoderLayer(
                     d_model=d_model,
                     nhead=nhead,
                     dim_feedforward=dim_feedforward,
                     dropout=dropout,
                     activation=activation,
-                ),
-                num_layers=num_layers,
-            )
-            self.linear = nn.Linear(d_model, 1)
+                )
+                self.linear = nn.Linear(d_model, 1)
 
-        def forward(self, src):
-            output = self.transformer(src)
-            output = self.linear(output)
+            def forward(self, src):
+                output = self.transformer(src)
+                output = self.linear(output)
 
-            return output
+                return output
 
-    model = TransformerEncoderModel(num_layers=2)
-    shape = (10, 32, 512)
-    Tester("transformer_encoder_basic", model, shape)
+        model = TransformerEncoderLayerModel(d_model=512, nhead=8)
+        shape = (32, 10, 512)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
-
-def test_transformer_decoder_basic(
-    shape=(32, 10, 512),
-):
-    class TransformerDecoderModel(nn.Module):
-        def __init__(
-            self,
-            num_layers=6,
-            d_model=512,
-            nhead=8,
-        ):
-            super(TransformerDecoderModel, self).__init__()
-            self.transformer = nn.TransformerDecoder(
-                nn.TransformerDecoderLayer(
+    def test_transformer_decoder_layer(self, request):
+        class TransformerDecoderLayerModel(nn.Module):
+            def __init__(
+                self,
+                d_model=512,
+                nhead=8,
+                dim_feedforward=2048,
+                dropout=0.1,
+                activation="relu",
+            ):
+                super(TransformerDecoderLayerModel, self).__init__()
+                self.transformer = nn.TransformerDecoderLayer(
                     d_model=d_model,
                     nhead=nhead,
-                ),
-                num_layers=num_layers,
-            )
-            self.linear = nn.Linear(d_model, 1)
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    activation=activation,
+                )
+                self.linear = nn.Linear(d_model, 1)
 
-        def forward(self, tgt, memory):
-            output = self.transformer(tgt, memory)
-            output = self.linear(output)
+            def forward(self, tgt, memory):
+                output = self.transformer(tgt, memory)
+                output = self.linear(output)
 
-            return output
+                return output
 
-    model = TransformerDecoderModel(num_layers=2)
-    shape = ((10, 32, 512), (20, 32, 512))
-    Tester("transformer_decoder_basic", model, shape)
+        model = TransformerDecoderLayerModel(d_model=512, nhead=8)
+        shape = ((10, 32, 512), (20, 32, 512))
+        tgt = torch.rand(shape[0])
+        memory = torch.rand(shape[1])
+        Tester(request.node.name, model, (tgt, memory))
 
+    def test_transformer_encoder(self, request):
+        class TransformerEncoderModel(nn.Module):
+            def __init__(
+                self,
+                num_layers=6,
+                d_model=512,
+                nhead=8,
+                dim_feedforward=2048,
+                dropout=0.1,
+                activation="relu",
+            ):
+                super(TransformerEncoderModel, self).__init__()
+                self.transformer = nn.TransformerEncoder(
+                    nn.TransformerEncoderLayer(
+                        d_model=d_model,
+                        nhead=nhead,
+                        dim_feedforward=dim_feedforward,
+                        dropout=dropout,
+                        activation=activation,
+                    ),
+                    num_layers=num_layers,
+                )
+                self.linear = nn.Linear(d_model, 1)
 
-def test_transformer_basic(
-    shape=(32, 10, 512),
-):
-    class TransformerModel(nn.Module):
-        def __init__(
-            self,
-            d_model=512,
-            nhead=8,
-            num_encoder_layers=6,
-            num_decoder_layers=6,
-            dim_feedforward=2048,
-            dropout=0.1,
-            activation="relu",
-        ):
-            super(TransformerModel, self).__init__()
-            self.transformer = nn.Transformer(
-                d_model=d_model,
-                nhead=nhead,
-                num_encoder_layers=num_encoder_layers,
-                num_decoder_layers=num_decoder_layers,
-                dim_feedforward=dim_feedforward,
-                dropout=dropout,
-                activation=activation,
-            )
-            self.linear = nn.Linear(d_model, 1)
+            def forward(self, src):
+                output = self.transformer(src)
+                output = self.linear(output)
 
-        def forward(self, src, tgt):
-            output = self.transformer(src, tgt)
-            output = self.linear(output)
+                return output
 
-            return output
+        model = TransformerEncoderModel(num_layers=2)
+        shape = (10, 32, 512)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
-    model = TransformerModel(nhead=16, num_encoder_layers=2, num_decoder_layers=2)
-    shape = (10, 32, 512), (20, 32, 512)
-    Tester("transformer_basic", model, shape)
+    def test_transformer_decoder(self, request):
+        class TransformerDecoderModel(nn.Module):
+            def __init__(
+                self,
+                num_layers=6,
+                d_model=512,
+                nhead=8,
+            ):
+                super(TransformerDecoderModel, self).__init__()
+                self.transformer = nn.TransformerDecoder(
+                    nn.TransformerDecoderLayer(
+                        d_model=d_model,
+                        nhead=nhead,
+                    ),
+                    num_layers=num_layers,
+                )
+                self.linear = nn.Linear(d_model, 1)
+
+            def forward(self, tgt, memory):
+                output = self.transformer(tgt, memory)
+                output = self.linear(output)
+
+                return output
+
+        model = TransformerDecoderModel(num_layers=2)
+        shape = ((10, 32, 512), (20, 32, 512))
+        tgt = torch.rand(shape[0])
+        memory = torch.rand(shape[1])
+        Tester(request.node.name, model, (tgt, memory))
+
+    def test_transformer(self, request):
+        class TransformerModel(nn.Module):
+            def __init__(
+                self,
+                d_model=512,
+                nhead=8,
+                num_encoder_layers=6,
+                num_decoder_layers=6,
+                dim_feedforward=2048,
+                dropout=0.1,
+                activation="relu",
+            ):
+                super(TransformerModel, self).__init__()
+                self.transformer = nn.Transformer(
+                    d_model=d_model,
+                    nhead=nhead,
+                    num_encoder_layers=num_encoder_layers,
+                    num_decoder_layers=num_decoder_layers,
+                    dim_feedforward=dim_feedforward,
+                    dropout=dropout,
+                    activation=activation,
+                )
+                self.linear = nn.Linear(d_model, 1)
+
+            def forward(self, src, tgt):
+                output = self.transformer(src, tgt)
+                output = self.linear(output)
+
+                return output
+
+        model = TransformerModel(nhead=16, num_encoder_layers=2, num_decoder_layers=2)
+        shape = (10, 32, 512), (20, 32, 512)
+        src = torch.rand(shape[0])
+        tgt = torch.rand(shape[1])
+        Tester(request.node.name, model, (src, tgt))
 
 
 if __name__ == "__main__":

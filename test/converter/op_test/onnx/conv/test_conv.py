@@ -24,7 +24,7 @@ class TestConvClass:
         stride_w,
         dilation_h,
         dilation_w,
-        shape=[1, 3, 32, 32],
+        shape=(1, 3, 32, 32),
     ):
         model = torch.nn.Conv2d(
             in_channels=3,
@@ -45,7 +45,7 @@ class TestConvClass:
         kernel_size,
         stride,
         dilation,
-        shape=[1, 3, 32],
+        shape=(1, 3, 32),
     ):
         class Conv1d(torch.nn.Module):
             def __init__(
@@ -87,7 +87,7 @@ class TestConvClass:
         kernel_size,
         stride,
         dilation,
-        shape=[18, 5, 39],
+        shape=(18, 5, 39),
     ):
         class ConvTran1d(nn.Module):
             def __init__(
@@ -147,7 +147,7 @@ class TestConvClass:
         stride_w,
         dilation_h,
         dilation_w,
-        shape=[18, 5, 24, 24],
+        shape=(18, 5, 24, 24),
     ):
         class ConvTran2d(nn.Module):
             def __init__(

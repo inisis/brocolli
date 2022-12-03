@@ -9,7 +9,7 @@ class TestArithmeticClass:
     def test_Add(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class Add(torch.nn.Module):
             def __init__(self):
@@ -27,7 +27,7 @@ class TestArithmeticClass:
     def test_TorchAdd(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class TorchAdd(torch.nn.Module):
             def __init__(self):
@@ -46,7 +46,7 @@ class TestArithmeticClass:
         self,
         request,
         keepdim,
-        shape=[1, 3, 32, 32],
+        shape=(1, 3, 32, 32),
     ):
         class Mean(torch.nn.Module):
             def __init__(self, dim, keepdim):
@@ -64,7 +64,7 @@ class TestArithmeticClass:
     def test_Mul(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class Mul(torch.nn.Module):
             def __init__(self):
@@ -81,7 +81,7 @@ class TestArithmeticClass:
     def test_TorchMul(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class TorchMul(torch.nn.Module):
             def __init__(self):
@@ -98,7 +98,7 @@ class TestArithmeticClass:
     def test_Abs(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class Abs(torch.nn.Module):
             def __init__(self):
@@ -114,7 +114,7 @@ class TestArithmeticClass:
     def test_Cos(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class Cos(torch.nn.Module):
             def __init__(self):
@@ -130,7 +130,7 @@ class TestArithmeticClass:
     def test_Sin(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class Sin(torch.nn.Module):
             def __init__(self):
@@ -146,7 +146,7 @@ class TestArithmeticClass:
     def test_Pow(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class Pow(torch.nn.Module):
             def __init__(self, exp=2):
@@ -163,7 +163,7 @@ class TestArithmeticClass:
     def test_Log(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class Log(torch.nn.Module):
             def __init__(self):
@@ -179,7 +179,7 @@ class TestArithmeticClass:
     def test_Sqrt(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class Sqrt(torch.nn.Module):
             def __init__(self):
@@ -195,7 +195,7 @@ class TestArithmeticClass:
     def test_ReduceSum(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class ReduceSum(torch.nn.Module):
             def __init__(self, dim, keep_dim=False):
@@ -213,7 +213,7 @@ class TestArithmeticClass:
     def test_ReduceMean(
         self,
         request,
-        shape=[1, 3, 1, 1],
+        shape=(1, 3, 1, 1),
     ):
         class ReduceMean(torch.nn.Module):
             def __init__(self, dim, keep_dim=False):
@@ -231,7 +231,7 @@ class TestArithmeticClass:
     def test_Sub(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class Sub(torch.nn.Module):
             def __init__(self):
@@ -248,7 +248,7 @@ class TestArithmeticClass:
     def test_Min(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class Min(torch.nn.Module):
             def __init__(self):
@@ -265,7 +265,7 @@ class TestArithmeticClass:
     def test_Div(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class Div(torch.nn.Module):
             def __init__(self):
@@ -282,7 +282,7 @@ class TestArithmeticClass:
     def test_Matmul(
         self,
         request,
-        shape=([1, 3, 1, 1], [1, 3, 1, 1]),
+        shape=((1, 3, 1, 1), (1, 3, 1, 1)),
     ):
         class Matmul(torch.nn.Module):
             def __init__(self):

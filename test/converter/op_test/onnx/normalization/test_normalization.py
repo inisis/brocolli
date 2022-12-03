@@ -1,4 +1,4 @@
-import torch.nn as nn
+import torch
 import torch.nn.functional as F
 import pytest
 import warnings
@@ -6,21 +6,24 @@ import warnings
 from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 
-class L2Norm(nn.Module):
-    def __init__(
+class TestNormalizationClass:
+    def test_L2Norm(
         self,
+        request,
+        shape=(1, 3, 32, 32),
     ):
-        super(L2Norm, self).__init__()
+        class L2Norm(torch.nn.Module):
+            def __init__(
+                self,
+            ):
+                super(L2Norm, self).__init__()
 
-    def forward(self, x):
-        return F.normalize(x, p=2, dim=1)
+            def forward(self, x):
+                return F.normalize(x, p=2, dim=1)
 
-
-def test_L2Norm(
-    shape=(1, 3, 32, 32),
-):
-    model = L2Norm()
-    Tester("L2Norm", model, shape)
+        model = L2Norm()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
 
 if __name__ == "__main__":
