@@ -404,6 +404,9 @@ class PytorchOnnxParser:
                 elif str(node.target) == "transpose":
                     transpose_layer = TransposeFunc(node)
                     self.node_post_process(transpose_layer)
+                elif str(node.target) == "split":
+                    split_layer = SplitFunc(node)
+                    self.node_post_process(split_layer)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
