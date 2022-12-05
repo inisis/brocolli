@@ -14,10 +14,7 @@ class SumFunc(BaseLayer):
     def get_sum_attr(self):
         attr_dict = {"keepdims": 1}
 
-        if "keepdims" in self._source_node.kwargs:
-            attr_dict["keepdims"] = self._source_node.kwargs["keepdims"]
-        else:
-            attr_dict["keepdims"] = self.list_try_get(self._source_node.args, 2, False)
+        attr_dict["keepdims"] = self.get_value_by_key_or_index("keepdims", 2, False)
 
         return attr_dict
 

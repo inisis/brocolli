@@ -12,10 +12,7 @@ class SplitFunc(BaseLayer):
 
     def get_split_attr(self):
         attr_dict = {"axis": 0}
-        if "dim" in self._source_node.kwargs:
-            dim = self._source_node.kwargs["dim"]
-        else:
-            dim = self.list_try_get(self._source_node.args, 2, 0)
+        dim = self.get_value_by_key_or_index("dim", 2, 0)
 
         attr_dict["axis"] = dim
 

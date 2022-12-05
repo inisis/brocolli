@@ -11,15 +11,9 @@ class MaxFunc(BaseLayer):
     def get_mean_attr(self):
         attr_dict = {"keepdims": 1}
 
-        if "keepdim" in self._source_node.kwargs:
-            attr_dict["keepdims"] = self._source_node.kwargs["keepdim"]
-        else:
-            attr_dict["keepdims"] = self.list_try_get(self._source_node.args, 2, False)
+        attr_dict["keepdims"] = self.get_value_by_key_or_index("keepdim", 2, False)
 
-        if "dim" in self._source_node.kwargs:
-            dim = self._source_node.kwargs["dim"]
-        else:
-            dim = self.list_try_get(self._source_node.args, 1, [1])
+        dim = self.get_value_by_key_or_index("dim", 1, [1])
 
         if isinstance(dim, int):
             dim = [dim]

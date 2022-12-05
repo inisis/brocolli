@@ -52,20 +52,9 @@ class PoolingFunc(BaseLayer):
 
         kernel_size = self._source_node.args[1]
 
-        if "stride" in self._source_node.kwargs:
-            stride = self._source_node.kwargs["stride"]
-        else:
-            stride = self.list_try_get(self._source_node.args, 2, kernel_size)
-
-        if "padding" in self._source_node.kwargs:
-            padding = self._source_node.kwargs["padding"]
-        else:
-            padding = self.list_try_get(self._source_node.args, 3, 0)
-
-        if "ceil_mode" in self._source_node.kwargs:
-            ceil_mode = self._source_node.kwargs["ceil_mode"]
-        else:
-            ceil_mode = self.list_try_get(self._source_node.args, 4, False)
+        stride = self.get_value_by_key_or_index("stride", 2, kernel_size)
+        padding = self.get_value_by_key_or_index("padding", 3, 0)
+        ceil_mode = self.get_value_by_key_or_index("ceil_mode", 4, False)
 
         if isinstance(kernel_size, tuple):
             if len(kernel_size) == 1:

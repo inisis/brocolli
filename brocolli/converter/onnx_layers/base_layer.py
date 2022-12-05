@@ -72,10 +72,12 @@ class BaseLayer(object):
     def generate_node(self, name=None, params=None, attr_dict=None):
         pass
 
-    def list_try_get(self, list, idx, default=None):
-        try:
-            return list[idx]
-        except IndexError:
+    def get_value_by_key_or_index(self, key, index, default=None):
+        if key in self._source_node.kwargs:
+            return self._source_node.kwargs[key]
+        elif index < len(self._source_node.args):
+            return self._source_node.args[index]
+        else:
             return default
 
     def recursive_find_name(self, node):

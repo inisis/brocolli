@@ -18,7 +18,7 @@ class AvgPoolFunc(BaseLayer):
         pad_layer = PadFunc(self._source_node, auto_gen=False)
         pad_layer.add_bottom_top(out_names=[self._source_node.name + "_pad"])
 
-        padding = self.list_try_get(self._source_node.args, 3, 0)
+        padding = self.get_value_by_key_or_index("padding", 3, 0)
         if isinstance(padding, tuple):
             if len(padding) == 1:
                 pad_h = pad_w = padding[0]
