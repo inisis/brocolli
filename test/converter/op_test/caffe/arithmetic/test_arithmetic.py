@@ -21,7 +21,9 @@ class TestArithmeticClass:
                 return x + y
 
         model = Add()
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape[0])
+        y = torch.rand(shape[1])
+        Tester(request.node.name, model, (x, y))
 
     def test_TorchAdd(
         self,
@@ -36,7 +38,9 @@ class TestArithmeticClass:
                 return torch.add(x, y)
 
         model = TorchAdd()
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape[0])
+        y = torch.rand(shape[1])
+        Tester(request.node.name, model, (x, y))
 
     def test_Mean_keepdim(
         self,
@@ -53,7 +57,8 @@ class TestArithmeticClass:
                 return x.mean(self.dim, self.keepdim)
 
         model = Mean((2, 3), True)
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
     def test_Mul(
         self,
@@ -68,7 +73,9 @@ class TestArithmeticClass:
                 return x * y
 
         model = Mul()
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape[0])
+        y = torch.rand(shape[1])
+        Tester(request.node.name, model, (x, y))
 
     def test_TorchMul(
         self,
@@ -83,11 +90,18 @@ class TestArithmeticClass:
                 return torch.mul(x, y)
 
         model = TorchMul()
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape[0])
+        y = torch.rand(shape[1])
+        Tester(request.node.name, model, (x, y))
 
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     pytest.main(
-        ["-p", "no:warnings", "-v", "test/op_test/caffe/arithmetic/test_arithmetic.py"]
+        [
+            "-p",
+            "no:warnings",
+            "-v",
+            "test/converter/op_test/caffe/arithmetic/test_arithmetic.py",
+        ]
     )

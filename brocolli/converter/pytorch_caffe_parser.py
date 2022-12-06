@@ -23,15 +23,13 @@ def as_blob(array):
 
 
 class PytorchCaffeParser:
-    def __init__(self, model, input_shape, fuse=False, concrete_args=None):
+    def __init__(self, model, inputs, fuse=False, concrete_args=None):
         super(PytorchCaffeParser, self).__init__()
-        self.fuse = fuse
         self.model = model.eval()
-        self.input_shape = input_shape
-        if isinstance(input_shape, (tuple, list)) and all(
-            isinstance(element, int) for element in input_shape
-        ):
-            self.input_shape = [input_shape]
+        self.inputs = inputs
+        if isinstance(self.inputs, torch.Tensor):
+            self.inputs = [self.inputs]
+        self.fuse = fuse
         self.concrete_args = concrete_args
 
         if isinstance(self.model, GraphModule):
@@ -45,9 +43,7 @@ class PytorchCaffeParser:
                             or a torch.fx.GraphModule"
             )
 
-        self.pytorch_graph = PytorchGraph(
-            self.model, self.input_shape, self.concrete_args
-        )
+        self.pytorch_graph = PytorchGraph(self.model, self.inputs, self.concrete_args)
         self.state_dict = self.pytorch_graph.graph_module.state_dict()
         self.modules = dict(self.pytorch_graph.graph_module.named_modules())
         self.layers = []
@@ -419,23 +415,8 @@ class PytorchCaffeParser:
 
         return text_net, binary_weights
 
-    def gen_pytorch_input_tensor(self, shapes):
-        input_tensor = []
-        for shape in shapes:
-            if isinstance(shape, (tuple, list)):
-                if all(isinstance(element, int) for element in shape):
-                    input_tensor.append(torch.rand(shape).to(torch.float32))
-                else:
-                    input_tensor.append(self.gen_pytorch_input_tensor(shape))
-            else:
-                input_tensor.append(torch.rand(shape).to(torch.float32))
-
-        return input_tensor
-
     def pyotrch_inference(self, generate_onnx=False):
-        self.dummy_input = self.gen_pytorch_input_tensor(self.input_shape)
-
-        self.pytorch_output = self.model(*self.dummy_input)
+        self.pytorch_output = self.model(*self.inputs)
 
         if isinstance(self.pytorch_output, torch.Tensor):
             self.pytorch_output = [self.pytorch_output]
@@ -446,12 +427,12 @@ class PytorchCaffeParser:
 
         self.net = caffe.Net(prototxt, caffe.TEST, weights=caffemodel)
 
-        if isinstance(self.input_shape, (tuple, list)):
-            for idx, _ in enumerate(self.input_shape):
-                img = self.dummy_input[idx].numpy()
+        if isinstance(self.inputs, (tuple, list)):
+            for idx, _ in enumerate(self.inputs):
+                img = self.inputs[idx].numpy()
                 self.net.blobs[self.net.inputs[idx]].data[...] = img
         else:
-            img = self.dummy_input[0].numpy()
+            img = self.inputs[0].numpy()
             self.net.blobs[self.net.inputs[0]].data[...] = img
 
         self.caffe_output = self.net.forward()

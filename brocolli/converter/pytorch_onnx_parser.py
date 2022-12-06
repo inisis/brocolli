@@ -494,11 +494,7 @@ class PytorchOnnxParser:
 
     def export_onnx(self, name, opset_version=13):
         torch.onnx.export(
-            self.model,
-            tuple(self.inputs),
-            name,
-            opset_version=opset_version,
-            enable_onnx_checker=False,
+            self.model, tuple(self.inputs), name, opset_version=opset_version
         )
 
     def node_post_process(self, onnx_layer):

@@ -14,9 +14,17 @@ class TestLinearClass:
         shape=[1, 3],
     ):
         model = torch.nn.Linear(3, 5, bias=True)
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
-    pytest.main(["-p", "no:warnings", "-v", "test/op_test/caffe/linear/test_linear.py"])
+    pytest.main(
+        [
+            "-p",
+            "no:warnings",
+            "-v",
+            "test/converter/op_test/caffe/linear/test_linear.py",
+        ]
+    )

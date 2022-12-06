@@ -14,7 +14,8 @@ class TestPoolingClass:
         shape=[1, 3, 32, 32],
     ):
         model = torch.nn.AdaptiveAvgPool2d((1, 1))
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
     def test_AdaptiveAvgPool2d_1x2(
         self,
@@ -22,7 +23,8 @@ class TestPoolingClass:
         shape=[1, 3, 32, 32],
     ):
         model = torch.nn.AdaptiveAvgPool2d((1, 2))
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
     def test_AdaptiveAvgPool2d_2x1(
         self,
@@ -30,7 +32,8 @@ class TestPoolingClass:
         shape=[1, 3, 32, 32],
     ):
         model = torch.nn.AdaptiveAvgPool2d((2, 1))
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
     def test_AvgPool2d_without_ceil_mode(
         self,
@@ -38,7 +41,8 @@ class TestPoolingClass:
         shape=[1, 1, 32, 32],
     ):
         model = torch.nn.AvgPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=False)
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
     def test_AvgPool2d_with_ceil_mode(
         self,
@@ -46,7 +50,8 @@ class TestPoolingClass:
         shape=[1, 1, 32, 32],
     ):
         model = torch.nn.AvgPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True)
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
     def test_MaxPool2d_with_return_indices(
         self,
@@ -54,11 +59,17 @@ class TestPoolingClass:
         shape=[1, 1, 32, 32],
     ):
         model = torch.nn.MaxPool2d(2, 2, return_indices=True)
-        Tester(request.node.name, model, shape)
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     pytest.main(
-        ["-p", "no:warnings", "-v", "test/op_test/caffe/pooling/test_pooling.py"]
+        [
+            "-p",
+            "no:warnings",
+            "-v",
+            "test/converter/op_test/caffe/pooling/test_pooling.py",
+        ]
     )
