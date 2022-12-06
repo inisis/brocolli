@@ -14,6 +14,8 @@ class PermuteFunc(BaseLayer):
         for arg in self._source_node.args:
             if isinstance(arg, int):
                 order.append(arg)
+            elif isinstance(arg, (list, tuple)):
+                order.extend(arg)
 
         attr_dict["perm"] = order
 

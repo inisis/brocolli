@@ -10,22 +10,26 @@ class TestTransformerClass:
     def test_mha(self, request):
         from brocolli.converter.pytorch_layer.mha import MultiheadAttention
 
+        class MultiheadAttentionModel(nn.Module):
+            def __init__(self):
+                super(MultiheadAttentionModel, self).__init__()
+                self.mha = MultiheadAttention(16, 4)
+
+            def forward(self, q, k, v):
+                return self.mha(q, k, v)
+
         batch_size, seq_len, feature_dim, head_num = 7, 12, 16, 4
-        model = MultiheadAttention(feature_dim, head_num)
+        model = MultiheadAttentionModel()
         shape = (
             (batch_size, seq_len, feature_dim),
             (batch_size, seq_len, feature_dim),
             (batch_size, seq_len, feature_dim),
         )
-        concrete_args = {
-            "key_padding_mask": None,
-            "need_weights": False,
-            "attn_mask": None,
-        }
+
         q = torch.rand(shape[0])
         k = torch.rand(shape[1])
         v = torch.rand(shape[2])
-        Tester(request.node.name, model, (q, k, v), concrete_args=concrete_args)
+        Tester(request.node.name, model, (q, k, v))
 
     def test_layernorm(self, request):
         from brocolli.converter.pytorch_layer.layernorm import LayerNorm

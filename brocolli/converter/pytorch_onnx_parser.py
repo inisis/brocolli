@@ -165,6 +165,9 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.Embedding):
                     layer = EmbeddingLayer(node, module)
                     self.node_post_process(layer)
+                elif isinstance(module, nn.Tanh):
+                    layer = TanhLayer(node, module)
+                    self.node_post_process(layer)
                 else:
                     raise NotImplementedError(
                         "module %s is not implemented" % (type(module))
