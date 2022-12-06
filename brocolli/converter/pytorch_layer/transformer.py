@@ -7,8 +7,13 @@ from .layernorm import LayerNorm
 from .utils import transform_weight
 
 
-def _get_activation_fn(activation):
-    return activation
+def _get_activation_fn(activation: str):
+    if activation == "relu":
+        return F.relu
+    elif activation == "gelu":
+        return F.gelu
+
+    raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
 
 
 def _get_clones(module, N):
@@ -35,7 +40,11 @@ class TransformerEncoderLayer(nn.Module):
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
 
-        self.activation = _get_activation_fn(activation)
+        if isinstance(activation, str):
+            self.activation = _get_activation_fn(activation)
+        else:
+            self.activation = activation
+
         self.norm_first = norm_first
 
     @classmethod
@@ -111,7 +120,10 @@ class TransformerDecoderLayer(nn.Module):
         self.norm2 = LayerNorm(d_model, eps=layer_norm_eps)
         self.norm3 = LayerNorm(d_model, eps=layer_norm_eps)
 
-        self.activation = _get_activation_fn(activation)
+        if isinstance(activation, str):
+            self.activation = _get_activation_fn(activation)
+        else:
+            self.activation = activation
 
     @classmethod
     def from_torch(cls, mod):
