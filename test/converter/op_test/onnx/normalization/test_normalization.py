@@ -25,6 +25,25 @@ class TestNormalizationClass:
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
+    def test_Layernorm(
+        self,
+        request,
+        shape=(20, 5, 10),
+    ):
+        class LayerNorm(torch.nn.Module):
+            def __init__(
+                self,
+            ):
+                super(LayerNorm, self).__init__()
+                self.layer_norm = torch.nn.LayerNorm(10)
+
+            def forward(self, x):
+                return self.layer_norm(x)
+
+        model = LayerNorm()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
