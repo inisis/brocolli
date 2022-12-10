@@ -24,8 +24,12 @@ class SplitFunc(BaseLayer):
 
         if out_names is None:
             out_names = []
-            for idx in range(len(self._output_shape)):
-                out_names.append(self._name + "_" + str(idx))
+
+            if len(self._output_shape) == 1:
+                out_names.append(self._name)
+            else:
+                for idx in range(len(self._output_shape)):
+                    out_names.append(self._name + "_" + str(idx))
 
         self._in_names.extend(in_names)
         self._out_names.extend(out_names)

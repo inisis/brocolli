@@ -21,6 +21,9 @@ class GemmFunc(BaseLayer):
 
         attr_dict = self.get_gemm_attr()
 
+        if self.get_value_by_key_or_index("bias", 2, None) is not None:
+            self._in_names.append(self.get_value_by_key_or_index("bias", 2, None).name)
+
         logger.debug(attr_dict)
         node = helper.make_node(
             "Gemm", self._in_names, self._out_names, self._name, **attr_dict
