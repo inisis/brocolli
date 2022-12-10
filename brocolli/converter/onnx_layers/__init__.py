@@ -86,3 +86,4 @@ from .avgpool_func import AvgPoolFunc
 from .normalize_func import NormalizeFunc
 from .getitem_func import GetItemFunc
 from .getattr_func import GetAttrFunc
+from .linear_func import LinearFunc
