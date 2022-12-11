@@ -117,9 +117,6 @@ class PytorchGraph:
             elif isinstance(module, nn.TransformerDecoderLayer):
                 converted_module = TransformerDecoderLayer.from_torch(module)
                 setattr(model, name, converted_module)
-            elif isinstance(module, nn.LayerNorm):
-                converted_module = LayerNorm.from_torch(module)
-                setattr(model, name, converted_module)
             elif list(module.named_children()):
                 self.replace(module)
 

@@ -1,10 +1,9 @@
-import copy
 import numpy as np
 from loguru import logger
 import torch
 import torch.nn as nn
 from torch.fx.graph_module import GraphModule
-from onnx import save, helper, checker
+from onnx import save, helper, checker, defs
 from tabulate import tabulate
 
 torch.manual_seed(0)
@@ -235,15 +234,12 @@ class PytorchOnnxParser:
                     conv_layer = ConvFunc(node, self.model)
                     self.node_post_process(conv_layer)
                 elif function_name == "linear":
-                    gemm_layer = GemmFunc(node, self.model)
-                    self.node_post_process(gemm_layer)
+                    linear_layer = LinearFunc(node)
+                    self.node_post_process(linear_layer)
                 elif function_name == "avg_pool2d" or function_name == "avg_pool1d":
                     avgpool_layer = AvgPoolFunc(node)
                     self.node_post_process(avgpool_layer)
-                elif function_name == "chunk":
-                    chunk_layer = ChunkFunc(node)
-                    self.node_post_process(chunk_layer)
-                elif function_name == "split":
+                elif function_name == "split" or function_name == "chunk":
                     split_layer = SplitFunc(node)
                     self.node_post_process(split_layer)
                 elif function_name == "getattr":
@@ -362,9 +358,6 @@ class PytorchOnnxParser:
                     self.node_post_process(reshape_layer)
                 elif str(node.target) == "contiguous":
                     pass
-                elif str(node.target) == "chunk":
-                    chunk_layer = ChunkFunc(node)
-                    self.node_post_process(chunk_layer)
                 elif str(node.target) == "mean":
                     mean_layer = MeanFunc(node)
                     self.node_post_process(mean_layer)
@@ -407,7 +400,7 @@ class PytorchOnnxParser:
                 elif str(node.target) == "transpose":
                     transpose_layer = TransposeFunc(node)
                     self.node_post_process(transpose_layer)
-                elif str(node.target) == "split":
+                elif str(node.target) == "split" or str(node.target) == "chunk":
                     split_layer = SplitFunc(node)
                     self.node_post_process(split_layer)
                 else:
@@ -433,7 +426,20 @@ class PytorchOnnxParser:
             self.init_tensor,
             value_info=self.value_info,
         )
-        self.model_def = helper.make_model(graph_def, producer_name="pytorch")
+
+        opset_imports = [
+            helper.make_operatorsetid(
+                domain=defs.ONNX_DOMAIN,
+                version=14,
+            ),
+            helper.make_operatorsetid(
+                domain="ai.onnx.contrib",
+                version=14,
+            ),
+        ]
+        self.model_def = helper.make_model(
+            graph_def, producer_name="pytorch", opset_imports=opset_imports
+        )
         self.freeze()
         self.model_def = optimize_model(self.model_def)
         checker.check_model(self.model_def)
@@ -481,16 +487,19 @@ class PytorchOnnxParser:
 
     def onnx_inference(self):
         import onnxruntime as rt
+        from onnxruntime_extensions import get_library_path
 
         sess_options = rt.SessionOptions()
         sess_options.graph_optimization_level = (
             rt.GraphOptimizationLevel.ORT_DISABLE_ALL
         )
+        sess_options.register_custom_ops_library(get_library_path())
         sess = rt.InferenceSession(self.dest_path, sess_options)
         onnx_rt_dict = self.get_onnx_input(sess, self.inputs)
-
         onnx_outname = [output.name for output in sess.get_outputs()]
         self.onnx_output = sess.run(onnx_outname, onnx_rt_dict)
+        if isinstance(self.onnx_output, np.ndarray):
+            self.onnx_output = [self.onnx_output]
 
     def export_onnx(self, name, opset_version=13):
         torch.onnx.export(
