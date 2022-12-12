@@ -35,13 +35,14 @@ from .layernorm_layer import LayerNormLayer
 from .embedding_layer import EmbeddingLayer
 from .add_layer import AddLayer
 from .cast_layer import CastLayer
+from .swish_layer import SwishLayer
+from .mul_layer import MulLayer
 
 from .flatten_func import FlattenFunc
 from .reshape_func import ReshapeFunc
 from .concat_func import ConcatFunc
 from .relu_func import ReluFunc
 from .pooling_func import PoolingFunc
-from .mul_func import MulFunc
 from .transpose_func import TransposeFunc
 from .chunk_func import ChunkFunc
 from .slice_func import SliceFunc
