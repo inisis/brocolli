@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from loguru import logger
 import torch
@@ -500,7 +501,10 @@ class PytorchOnnxParser:
         sess = rt.InferenceSession(self.dest_path, sess_options)
         onnx_rt_dict = self.get_onnx_input(sess, self.inputs)
         onnx_outname = [output.name for output in sess.get_outputs()]
+        start = time.time()
         self.onnx_output = sess.run(onnx_outname, onnx_rt_dict)
+        end = time.time()
+        logger.info("onnx ran in {:0.4f}s".format(end - start))
         if isinstance(self.onnx_output, np.ndarray):
             self.onnx_output = [self.onnx_output]
 
