@@ -167,6 +167,9 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.Tanh):
                     layer = TanhLayer(node, module)
                     self.node_post_process(layer)
+                elif isinstance(module, nn.SiLU):
+                    layer = SwishLayer(node, module)
+                    self.node_post_process(layer)
                 else:
                     raise NotImplementedError(
                         "module %s is not implemented" % (type(module))
@@ -195,7 +198,7 @@ class PytorchOnnxParser:
                     hardsigmoid_layer = HardsigmoidFunc(node)
                     self.node_post_process(hardsigmoid_layer)
                 elif function_name == "mul":
-                    mul_layer = MulFunc(node)
+                    mul_layer = MulLayer(node)
                     self.node_post_process(mul_layer)
                 elif function_name == "getitem":
                     getitem_layer = GetItemFunc(node)

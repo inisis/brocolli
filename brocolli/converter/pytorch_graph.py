@@ -137,6 +137,6 @@ class PytorchGraph:
     def shape_inference(self):
         shape_runner = BrocolliShapeRunner(self.graph_module, self.dynamic_batch)
         if self.concrete_args is not None:
-            shape_runner.run(*self.inputs + tuple(self.concrete_args.values()))
+            shape_runner.run(*self.inputs, tuple(self.concrete_args.values()))
         else:
             shape_runner.run(*self.inputs)
