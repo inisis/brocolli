@@ -1,4 +1,5 @@
 import os
+import sys
 import torch
 import pytest
 import warnings
@@ -101,6 +102,26 @@ def test_shufflenet(shape=(1, 3, 224, 224), fuse=FUSE):
     runner = PytorchOnnxParser(model, x, fuse)
     runner.convert()
     runner.save("tmp/shufflenet.onnx")
+    runner.check_result()
+
+
+@pytest.mark.skipif("cnocr" not in sys.modules, reason="requires the cnocr library")
+def test_cnocr(shape=(1, 3, 224, 224), fuse=FUSE):
+    from cnocr import CnOcr
+
+    ocr = CnOcr(rec_model_name="densenet_lite_136-gru", rec_model_backend="pytorch")
+    model = ocr.rec_model._model
+    img = torch.randn(1, 1, 32, 1024)
+    y = torch.rand(1)
+    concrete_args = {
+        "target": None,
+        "candidates": None,
+        "return_logits": True,
+        "return_preds": False,
+    }
+    runner = PytorchOnnxParser(model, (img, y), concrete_args=concrete_args)
+    runner.convert()
+    runner.save("tmp/cnocr.onnx")
     runner.check_result()
 
 
