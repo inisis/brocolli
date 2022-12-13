@@ -18,7 +18,7 @@ class SqueezeFunc(BaseLayer):
             axes = self._source_node.args[1]
             params = np.array([axes])
 
-        self.create_params(self._name + "_squeeze", params, tp.INT64)
+        self.create_params(self._name + "_squeeze", params)
 
         node = helper.make_node("Squeeze", self._in_names, self._out_names, self._name)
 

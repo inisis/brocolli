@@ -47,8 +47,8 @@ class PadFunc(BaseLayer):
         if attr_dict is None:
             attr_dict = self.gen_pad_attr()
 
-        self.create_params(self._name + "_pad", params[0], tp.INT64)
-        self.create_params(self._name + "_value", params[1], tp.FLOAT)
+        self.create_params(self._name + "_pad", params[0])
+        self.create_params(self._name + "_value", params[1])
 
         node = helper.make_node(
             "Pad", self._in_names, self._out_names, self._name, **attr_dict

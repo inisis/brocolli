@@ -14,10 +14,10 @@ class SliceFunc(BaseLayer):
         if name is not None:
             self._name = name
 
-        self.create_params(self._name + "_start", params[0], tp.INT64)
-        self.create_params(self._name + "_end", params[1], tp.INT64)
-        self.create_params(self._name + "_axes", params[2], tp.INT64)
-        self.create_params(self._name + "_steps", params[3], tp.INT64)
+        self.create_params(self._name + "_start", params[0])
+        self.create_params(self._name + "_end", params[1])
+        self.create_params(self._name + "_axes", params[2])
+        self.create_params(self._name + "_steps", params[3])
 
         node = helper.make_node("Slice", self._in_names, self._out_names, self._name)
         logger.info("slice_layer: " + self._name + " created")

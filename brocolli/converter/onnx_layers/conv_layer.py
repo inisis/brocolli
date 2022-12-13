@@ -69,13 +69,9 @@ class ConvLayer(BaseLayer):
         return attr_dict
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        self.create_params(
-            self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT
-        )
+        self.create_params(self._name + "_weight", self._module.weight.detach().numpy())
         if self._module.bias is not None:
-            self.create_params(
-                self._name + "_bias", self._module.bias.detach().numpy(), tp.FLOAT
-            )
+            self.create_params(self._name + "_bias", self._module.bias.detach().numpy())
 
         attr_dict = self.get_conv_attr()
         logger.debug(attr_dict)

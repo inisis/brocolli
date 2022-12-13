@@ -1,13 +1,12 @@
 from onnx import helper
-from onnx import TensorProto as tp
+from onnx.mapping import NP_TYPE_TO_TENSOR_TYPE
 from torch.fx.node import Node
 from ..utils import (
     get_function_name,
     get_shape,
     map_reduce,
     get_dtype,
-    scalar_type_to_pytorch_type,
-    scalar_type_to_onnx,
+    pytorch_dtype_to_onnx,
 )
 
 
@@ -52,18 +51,18 @@ class BaseLayer(object):
             self.add_bottom_top()
             self.generate_node()
 
-    def create_params(self, param_name, params, params_type=tp.FLOAT):
-        if params is None:
+    def create_params(self, param_name, param, param_type=None):
+        if param is None:
             self._in_names.append("")
         else:
-            params = params
-            param_type = params_type
-            param_shape = params.shape
+            if param_type is None:
+                param_type = NP_TYPE_TO_TENSOR_TYPE[param.dtype]
+            param_shape = param.shape
             param_tensor_value_info = helper.make_tensor_value_info(
                 param_name, param_type, param_shape
             )
             param_tensor = helper.make_tensor(
-                param_name, param_type, param_shape, params.flatten()
+                param_name, param_type, param_shape, param.flatten()
             )
             self._in_names.append(param_name)
             self._in_tensor_value_info.append(param_tensor_value_info)
@@ -140,8 +139,7 @@ class BaseLayer(object):
             self._out_names.extend(out_names)
 
         if len(self._output_shape) == len(self._out_names):
-            torch_type = scalar_type_to_pytorch_type.index(self._output_dtype[0])
-            onnx_type = scalar_type_to_onnx[torch_type]
+            onnx_type = pytorch_dtype_to_onnx(self._output_dtype[0])
             param_tensor_value_info = helper.make_tensor_value_info(
                 self._out_names[0], onnx_type, self._output_shape[0]
             )

@@ -19,4 +19,4 @@ class MatmulFunc(BaseLayer):
         self._node.append(node)
 
     def generate_params(self, params):
-        self.create_params(self._name + "_matmul_constant", params, tp.FLOAT)
+        self.create_params(self._name + "_matmul_constant", params)

@@ -51,7 +51,7 @@ class SplitFunc(BaseLayer):
         if attr_dict is None:
             attr_dict = self.get_split_attr()
 
-        self.create_params(self._name + "_split", params, tp.INT64)
+        self.create_params(self._name + "_split", params)
 
         node = helper.make_node(
             "Split", self._in_names, self._out_names, self._name, **attr_dict

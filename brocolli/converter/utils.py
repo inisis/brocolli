@@ -1,6 +1,7 @@
 import re
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 import onnx_graphsurgeon as gs
 from onnx import TensorProto as tp
@@ -163,3 +164,35 @@ scalar_type_to_onnx = [
     cast_pytorch_to_onnx["ComplexDouble"],
     cast_pytorch_to_onnx["Bool"],
 ]
+
+numpy_to_torch_dtype_dict = {
+    np.bool: torch.bool,
+    np.uint8: torch.uint8,
+    np.int8: torch.int8,
+    np.int16: torch.int16,
+    np.int32: torch.int32,
+    np.int64: torch.int64,
+    np.float16: torch.float16,
+    np.float32: torch.float32,
+    np.float64: torch.float64,
+    np.complex64: torch.complex64,
+    np.complex128: torch.complex128,
+}
+
+torch_to_numpy_dtype_dict = {
+    value: key for (key, value) in numpy_to_torch_dtype_dict.items()
+}
+
+
+def pytorch_dtype_to_onnx(scalar_type):
+    torch_type = scalar_type_to_pytorch_type.index(scalar_type)
+    onnx_type = scalar_type_to_onnx[torch_type]
+    return onnx_type
+
+
+def numpy_dtype_to_torch(scalar_type):
+    return numpy_to_torch_dtype_dict[scalar_type]
+
+
+def torch_dtype_to_numpy(scalar_type):
+    return torch_to_numpy_dtype_dict[scalar_type]

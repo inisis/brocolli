@@ -25,9 +25,9 @@ class ReshapeFunc(BaseLayer):
             self._name = name
 
         if params is None:
-            params = np.array(self._output_shape[0])
+            params = np.array(self._output_shape[0], dtype=np.int64)
 
-        self.create_params(self._name + "_reshape", params, tp.INT64)
+        self.create_params(self._name + "_reshape", params)
 
         node = helper.make_node("Reshape", self._in_names, self._out_names, self._name)
 

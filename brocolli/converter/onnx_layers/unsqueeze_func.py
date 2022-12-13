@@ -15,7 +15,7 @@ class UnsqueezeFunc(BaseLayer):
         axes = self._source_node.args[1]
         params = np.array([axes])
 
-        self.create_params(self._name + "_unsqueeze", params, tp.INT64)
+        self.create_params(self._name + "_unsqueeze", params)
         node = helper.make_node(
             "Unsqueeze", self._in_names, self._out_names, self._name
         )

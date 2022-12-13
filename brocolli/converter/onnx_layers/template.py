@@ -28,7 +28,7 @@ class Template(BaseLayer):
             # handle non user-defined situation optional
             attr_dict = self.get_template_attr()
 
-        self.create_params(self._name, params, tp.FLOAT)
+        self.create_params(self._name, params)
         node = helper.make_node(
             "template", self._in_names, self._out_names, self._name, **attr_dict
         )

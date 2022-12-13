@@ -35,9 +35,9 @@ class UpsampleFunc(BaseLayer):
 
             scales = [1, 1] + scale_factor
 
-        scales = np.array(scales)
-        self.create_params(self._name + "_roi", np.array([]), tp.FLOAT)
-        self.create_params(self._name + "_scale", scales, tp.FLOAT)
+        scales = np.array(scales, dtype="float32")
+        self.create_params(self._name + "_roi", np.array([], dtype=np.float32))
+        self.create_params(self._name + "_scale", scales)
         node = helper.make_node(
             "Resize", self._in_names, self._out_names, self._name, mode="nearest"
         )

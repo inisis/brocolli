@@ -36,17 +36,9 @@ class PReluFunc(BaseLayer):
             param_shape = [1] * len(shape)
             param_shape[1] = params.shape[0]
             params = params.reshape(param_shape)
-            self.create_params(self._name + "_prelu", params, tp.FLOAT)
+            self.create_params(self._name + "_prelu", params)
 
         node = helper.make_node("PRelu", self._in_names, self._out_names, self._name)
 
         logger.info("prelu_layer: " + self._name + " created")
         self._node.append(node)
-
-    def generate_params(self, params):
-        shape = self._output_shape[0]
-        param_shape = [1] * len(shape)
-        param_shape[1] = params.shape[0]
-        params = params.reshape(param_shape)
-
-        self.create_params(self._name, params, tp.FLOAT)

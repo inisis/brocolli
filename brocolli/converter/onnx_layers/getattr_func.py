@@ -1,5 +1,5 @@
 from loguru import logger
-from onnx import TensorProto as tp
+
 
 from .base_layer import BaseLayer
 
@@ -21,6 +21,6 @@ class GetAttrFunc(BaseLayer):
                 )
             attr_itr = getattr(attr_itr, atom)
 
-        self.create_params(self._name, attr_itr.detach().numpy(), tp.FLOAT)
+        self.create_params(self._name, attr_itr.detach().numpy())
 
         logger.info("getattr_layer: " + self._name + " created")

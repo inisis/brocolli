@@ -37,7 +37,7 @@ class AvgPoolFunc(BaseLayer):
         elif function_name == "avg_pool2d":
             pads = [0, 0, pad_h, pad_w, 0, 0, pad_h, pad_w]
 
-        params = [np.array(pads), np.array(0)]
+        params = [np.array(pads), np.array(0.0, dtype="float32")]
 
         pad_layer.generate_node(
             self._source_node.name + "_pad",

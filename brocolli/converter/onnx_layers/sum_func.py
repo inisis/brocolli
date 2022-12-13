@@ -25,7 +25,7 @@ class SumFunc(BaseLayer):
 
         params = np.array(axes)
 
-        self.create_params(self._name + "_sum", params, tp.INT64)
+        self.create_params(self._name + "_sum", params)
         attr_dict = self.get_sum_attr()
         node = helper.make_node(
             "ReduceSum", self._in_names, self._out_names, self._name, **attr_dict

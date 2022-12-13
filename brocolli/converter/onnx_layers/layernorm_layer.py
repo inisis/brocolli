@@ -17,8 +17,8 @@ class LayerNormLayer(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
 
-        self.create_params(self._name + "_weight", self._module.weight)
-        self.create_params(self._name + "_bias", self._module.bias)
+        self.create_params(self._name + "_weight", self._module.weight.detach().numpy())
+        self.create_params(self._name + "_bias", self._module.bias.detach().numpy())
         attr_dict = self.get_layernorm_attr()
         node = helper.make_node(
             "LayerNormalization",

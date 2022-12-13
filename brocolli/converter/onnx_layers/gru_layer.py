@@ -349,7 +349,7 @@ class GRUCell(BaseLayer):
         if name is not None:
             self._name = name
 
-        self.create_params(self._name + "_weight", params[0], tp.FLOAT)
-        self.create_params(self._name + "_recurrent_weight", params[1], tp.FLOAT)
-        self.create_params(self._name + "_bias", params[2], tp.FLOAT)
-        self.create_params(self._name + "_sequence_lens ", params[3], tp.INT64)
+        self.create_params(self._name + "_weight", params[0])
+        self.create_params(self._name + "_recurrent_weight", params[1])
+        self.create_params(self._name + "_bias", params[2])
+        self.create_params(self._name + "_sequence_lens ", params[3])

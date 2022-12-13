@@ -40,11 +40,11 @@ class PadLayer(BaseLayer):
             if hasattr(self._module, "value"):
                 value = self._module.value
             else:
-                value = 0
+                value = 0.0
             params = [np.array(pads), np.array(value)]
 
-        self.create_params(self._name + "_pad", params[0], tp.INT64)
-        self.create_params(self._name + "_value", params[1], tp.FLOAT)
+        self.create_params(self._name + "_pad", params[0])
+        self.create_params(self._name + "_value", params[1])
 
         if attr_dict is None:
             attr_dict = self.gen_pad_attr()

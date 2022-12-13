@@ -22,9 +22,7 @@ class EmbeddingLayer(BaseLayer):
         if attr_dict is None:
             attr_dict = self.get_gather_attr()
 
-        self.create_params(
-            self._name + "_weight", self._module.weight.detach().numpy(), tp.FLOAT
-        )
+        self.create_params(self._name + "_weight", self._module.weight.detach().numpy())
 
         self._in_names.reverse()  # weight & input
 

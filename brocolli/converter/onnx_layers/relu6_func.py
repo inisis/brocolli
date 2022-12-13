@@ -12,8 +12,8 @@ class Relu6Func(BaseLayer):
         super(Relu6Func, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        self.create_params(self._name + "_min", np.array(0), tp.FLOAT)
-        self.create_params(self._name + "_max", np.array(6), tp.FLOAT)
+        self.create_params(self._name + "_min", np.array(0, dtype=np.float32))
+        self.create_params(self._name + "_max", np.array(6, dtype=np.float32))
         node = helper.make_node("Clip", self._in_names, self._out_names, (self._name))
         logger.info("relu6_layer: " + self._name + " created")
         self._node.append(node)

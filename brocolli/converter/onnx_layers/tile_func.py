@@ -25,7 +25,7 @@ class TileFunc(BaseLayer):
 
             params = np.array(repeats)
 
-        self.create_params(self._name + "_tile", params, tp.INT64)
+        self.create_params(self._name + "_tile", params)
 
         node = helper.make_node("Tile", self._in_names, self._out_names, self._name)
 
