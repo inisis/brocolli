@@ -90,7 +90,10 @@ class TestShapeClass:
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
-    def test_tile(self, request, shape=([1, 3, 3, 3])):
+    @pytest.mark.parametrize(
+        ("dim"), [([1, 1, 1, 2]), ([1, 1, 2, 1]), ([1, 2, 1, 1]), ([2, 1, 1, 1])]
+    )
+    def test_tile(self, request, dim, shape=([1, 3, 3, 3])):
         class Tile(torch.nn.Module):
             def __init__(self, dim):
                 super().__init__()
@@ -100,7 +103,7 @@ class TestShapeClass:
                 out = torch.tile(x, dims=self.dim)
                 return out
 
-        model = Tile((1, 1, 2, 1))
+        model = Tile(dim)
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
@@ -141,6 +144,19 @@ class TestShapeClass:
                 return x[:, :, :, 2:3]
 
         model = Slice()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
+    @pytest.mark.parametrize("dim", (0, 1, 2, 3))
+    def test_unbind(self, request, dim, shape=([1, 3, 32, 32])):
+        class Unbind(torch.nn.Module):
+            def __init__(self):
+                super(Unbind, self).__init__()
+
+            def forward(self, x):
+                return x.unbind(dim=dim)
+
+        model = Unbind()
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 

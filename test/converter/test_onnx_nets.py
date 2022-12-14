@@ -125,6 +125,47 @@ def test_cnocr(shape=(1, 3, 224, 224), fuse=FUSE):
     runner.check_result()
 
 
+def test_yolov5(shape=(1, 3, 640, 640), fuse=FUSE):
+    concrete_args = {"augment": False, "profile": False, "visualize": False}
+    model = torch.hub.load(
+        "ultralytics/yolov5",
+        "yolov5s",
+        autoshape=False,
+        pretrained=True,
+        device=torch.device("cpu"),
+    )
+
+    class Identity(torch.nn.Module):
+        def __init__(self):
+            super(Identity, self).__init__()
+
+        def forward(self, x):
+            for i in range(self.nl):
+                x[i] = self.m[i](x[i])
+                bs, _, ny, nx = x[i].shape
+                x[i] = (
+                    x[i]
+                    .view(bs, self.na, self.no, ny, nx)
+                    .permute(0, 1, 3, 4, 2)
+                    .contiguous()
+                )
+
+            return x
+
+    name, _ = list(model.model.model.named_children())[-1]
+
+    identity = Identity()
+    detect = getattr(model.model.model, name)
+    identity.__dict__.update(detect.__dict__)
+    setattr(model.model.model, name, identity)
+    x = torch.rand(shape)
+
+    runner = PytorchOnnxParser(model.model, x, concrete_args=concrete_args)
+    runner.convert()
+    runner.save("yolov5_lp.onnx")
+    runner.check_result()
+
+
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     parser = argparse.ArgumentParser(description="Pytorch 2 Onnx network test.")
