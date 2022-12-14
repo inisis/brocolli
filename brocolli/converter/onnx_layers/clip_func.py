@@ -12,6 +12,11 @@ class ClipFunc(BaseLayer):
         super(ClipFunc, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
+        params_clip = [
+            np.array(self._source_node.kwargs["min_val"]),
+            np.array(self._source_node.kwargs["max_val"]),
+        ]
+        self.generate_params(params_clip)
         node = helper.make_node("Clip", self._in_names, self._out_names, (self._name))
         logger.info("relu6_layer: " + self._name + " created")
         self._node.append(node)

@@ -37,6 +37,7 @@ from .add_layer import AddLayer
 from .cast_layer import CastLayer
 from .swish_layer import SwishLayer
 from .mul_layer import MulLayer
+from .gelu_layer import GELULayer
 
 from .flatten_func import FlattenFunc
 from .reshape_func import ReshapeFunc
@@ -88,3 +89,4 @@ from .normalize_func import NormalizeFunc
 from .getitem_func import GetItemFunc
 from .getattr_func import GetAttrFunc
 from .linear_func import LinearFunc
+from .unbind_func import UnbindFunc

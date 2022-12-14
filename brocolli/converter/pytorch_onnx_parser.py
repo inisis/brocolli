@@ -171,6 +171,9 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.SiLU):
                     layer = SwishLayer(node, module)
                     self.node_post_process(layer)
+                elif isinstance(module, nn.GELU):
+                    layer = GELULayer(node, module)
+                    self.node_post_process(layer)
                 else:
                     raise NotImplementedError(
                         "module %s is not implemented" % (type(module))
@@ -214,13 +217,6 @@ class PytorchOnnxParser:
                     self.node_post_process(prelu_layer)
                 elif function_name == "hardtanh":
                     clip_layer = ClipFunc(node, auto_gen=False)
-                    clip_layer.add_bottom_top()
-                    params_clip = [
-                        np.array(node.kwargs["min_val"]),
-                        np.array(node.kwargs["max_val"]),
-                    ]
-                    clip_layer.generate_params(params_clip)
-                    clip_layer.generate_node()
                     self.node_post_process(clip_layer)
                 elif function_name == "leaky_relu":
                     leakyrelu_layer = LeakyReluFunc(node)
@@ -333,13 +329,6 @@ class PytorchOnnxParser:
                     self.node_post_process(normalize_layer)
                 elif function_name == "clamp":
                     clip_layer = ClipFunc(node, auto_gen=False)
-                    clip_layer.add_bottom_top()
-                    params_clip = [
-                        np.array(node.kwargs["min"]),
-                        np.array(node.kwargs["max"]),
-                    ]
-                    clip_layer.generate_params(params_clip)
-                    clip_layer.generate_node()
                     self.node_post_process(clip_layer)
                 elif function_name == "reshape":
                     reshape_layer = ReshapeFunc(node)
@@ -407,6 +396,12 @@ class PytorchOnnxParser:
                 elif str(node.target) == "split" or str(node.target) == "chunk":
                     split_layer = SplitFunc(node)
                     self.node_post_process(split_layer)
+                elif str(node.target) == "flatten":
+                    flatten_layer = FlattenFunc(node)
+                    self.node_post_process(flatten_layer)
+                elif str(node.target) == "unbind":
+                    unbind_layer = UnbindFunc(node)
+                    self.node_post_process(unbind_layer)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
