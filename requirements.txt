@@ -6,3 +6,4 @@ onnxruntime==1.8.0
 tabulate
 nvidia-pyindex
 onnx-graphsurgeon
+onnxruntime_extensions
