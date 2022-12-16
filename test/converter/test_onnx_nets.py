@@ -166,6 +166,18 @@ def test_yolov5(shape=(1, 3, 640, 640), fuse=FUSE):
     runner.check_result()
 
 
+@pytest.mark.skipif("timm" not in sys.modules, reason="requires the timm library")
+def test_swim(shape=(1, 3, 224, 224), fuse=FUSE):
+    import timm
+
+    model = timm.models.swin_tiny_patch4_window7_224()
+    x = torch.rand((1, 3, 224, 224))
+    runner = PytorchOnnxParser(model, x)
+    runner.convert()
+    runner.save("swin_tiny_patch4_window7_224.onnx")
+    runner.check_result()
+
+
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     parser = argparse.ArgumentParser(description="Pytorch 2 Onnx network test.")
