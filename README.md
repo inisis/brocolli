@@ -53,37 +53,36 @@ Curently supported layers
 
 |                    |Caffe|TensorRT|
 |---                 |---|---|
-|Conv                |✔️|✔️|
-|PRelu               |✔️|❔|
-|MaxPooling          |✔️|✔️|
-|Sigmoid             |✔️|✔️|
-|BatchNormalization  |✔️|✔️|
-|Relu                |✔️|✔️|
-|LeakyRelu           |✔️|✔️|
 |Add                 |✔️|✔️|
 |AvgPool             |✔️|✔️|
+|BatchNormalization  |✔️|✔️|
+|BilinearInterpolate |✔️|✔️|
+|Concat              |✔️|✔️|
+|Conv                |✔️|✔️|
+|ConvTranspose       |✔️|✔️|
 |Flatten             |✔️|✔️|
 |FullyConnected      |✔️|✔️|
-|Softmax             |✔️|✔️|
-|Upsample            |✔️|✔️|
-|Permute             |✔️|✔️|
-|Concat              |✔️|✔️|
-|Unsqueeze           |✔️|❔|
-|Relu6               |✔️|✔️|
-|Pad                 |✔️|✔️|
-|HardSwish           |✔️|✔️|
-|HardSigmoid         |✔️|✔️|
-|Mul                 |✔️|✔️|
-|Slice               |✔️|✔️|
-|L2Normalization     |✔️|❔|
-|Resize              |✔️|✔️|
-|ReduceMean          |✔️|✔️|
-|BilinearInterpolate |✔️|✔️|
-|MaxUnPool           |✔️|❌|
-|ConvTranspose       |✔️|✔️|
 |Gather              |❌|✔️|
+|HardSigmoid         |✔️|✔️|
+|HardSwish           |✔️|✔️|
+|L2Normalization     |✔️|❔|
+|LeakyRelu           |✔️|✔️|
+|MaxPooling          |✔️|✔️|
+|MaxUnPool           |✔️|❌|
+|Mul                 |✔️|✔️|
+|PRelu               |✔️|❔|
+|Pad                 |✔️|✔️|
+|Permute             |✔️|✔️|
 |PixelShufle         |✔️|❔|
-
+|ReduceMean          |✔️|✔️|
+|Relu                |✔️|✔️|
+|Relu6               |✔️|✔️|
+|Resize              |✔️|✔️|
+|Sigmoid             |✔️|✔️|
+|Slice               |✔️|✔️|
+|Softmax             |✔️|✔️|
+|Unsqueeze           |✔️|❔|
+|Upsample            |✔️|✔️|
 
 Curently supported network
 
