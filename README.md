@@ -26,7 +26,8 @@ pip install brocolli
     from brocolli.converter.pytorch_caffe_parser import PytorchCaffeParser
 
     net = models.alexnet(pretrained=False)
-    pytorch_parser = PytorchCaffeParser(net, (1, 3, 224, 224))
+    x = torch.rand(1, 3, 224, 224)
+    pytorch_parser = PytorchCaffeParser(net, x)
     pytorch_parser.convert()
     pytorch_parser.save('alexnet')
     ```
@@ -38,81 +39,12 @@ pip install brocolli
     from brocolli.converter.pytorch_onnx_parser import PytorchOnnxParser
 
     net = models.alexnet(pretrained=False)
-    pytorch_parser = PytorchCaffeParser(net, (1, 3, 224, 224))
+    x = torch.rand(1, 3, 224, 224)
+    pytorch_parser = PytorchCaffeParser(net, x)
     pytorch_parser.convert()
     pytorch_parser.save('alexnet.onnx')
     ```
     run this script until you see "accuracy test passed" on screen, then you can get alexnet.onnx under current folder.
-
-# Notice 
-* ✔️ : support 
-* ❔ : shall support
-* ❌ : not support
-
-Curently supported layers
-
-|                    |Caffe|TensorRT|
-|---                 |---|---|
-|Add                 |✔️|✔️|
-|AvgPool             |✔️|✔️|
-|BatchNormalization  |✔️|✔️|
-|BilinearInterpolate |✔️|✔️|
-|Concat              |✔️|✔️|
-|Conv                |✔️|✔️|
-|ConvTranspose       |✔️|✔️|
-|Flatten             |✔️|✔️|
-|FullyConnected      |✔️|✔️|
-|Gather              |❌|✔️|
-|HardSigmoid         |✔️|✔️|
-|HardSwish           |✔️|✔️|
-|L2Normalization     |✔️|❔|
-|LeakyRelu           |✔️|✔️|
-|MaxPooling          |✔️|✔️|
-|MaxUnPool           |✔️|❌|
-|Mul                 |✔️|✔️|
-|PRelu               |✔️|❔|
-|Pad                 |✔️|✔️|
-|Permute             |✔️|✔️|
-|PixelShufle         |✔️|❔|
-|ReduceMean          |✔️|✔️|
-|Relu                |✔️|✔️|
-|Relu6               |✔️|✔️|
-|Resize              |✔️|✔️|
-|Sigmoid             |✔️|✔️|
-|Slice               |✔️|✔️|
-|Softmax             |✔️|✔️|
-|Unsqueeze           |✔️|❔|
-|Upsample            |✔️|✔️|
-
-Curently supported network
-
-|          |Caffe|TensorRT|
-|---       |---|---|
-|SSD       |✔️|❔|
-|AlexNet   |✔️|✔️|
-|ResNet    |✔️|✔️|
-|GoogleNet |✔️|✔️|
-|SqueezeNet|✔️|✔️|
-|MobileNet |✔️|✔️|
-|DenseNet  |✔️|✔️|
-|ShuffleNet|✔️|✔️|
-|SCNN      |✔️|✔️|
-|SegNet    |✔️|❌|
-|YoloV5    |✔️|✔️|
-|YoloV3    |✔️|✔️|
-|Realcugan |✔️|❔|
-|Yolo-Lite |✔️|❔|
-|Resa      |❌|✔️|
-|YoloX     |✔️|✔️|
-|BiSeNet   |❌|✔️|
-|fbnet     |✔️|❔|
-|regnet    |✔️|❔|
-|ghostnet  |✔️|❔|
-|tinynet   |✔️|❔|
-|YoloV7    |✔️|❔|
-
-# TODO
-RNN support
 
 # Contact
  QQ Group: 597059928
