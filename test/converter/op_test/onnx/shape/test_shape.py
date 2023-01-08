@@ -43,6 +43,27 @@ class TestShapeClass:
         z = torch.rand(shape[0])
         Tester(request.node.name, model, (x, y, z))
 
+    @pytest.mark.parametrize("dim", (1, -2))
+    def test_Stack(
+        self,
+        request,
+        dim,
+        shape=((1, 4, 4), (1, 3, 4), (1, 17, 4)),
+    ):
+        class Stack(torch.nn.Module):
+            def __init__(self, dim):
+                super(Stack, self).__init__()
+                self.dim = dim
+
+            def forward(self, x, y, z):
+                return torch.stack([x, y, z], dim=self.dim)
+
+        model = Stack(dim)
+        x = torch.rand(shape[0])
+        y = torch.rand(shape[0])
+        z = torch.rand(shape[0])
+        Tester(request.node.name, model, (x, y, z))
+
     def test_Permute(
         self,
         request,
