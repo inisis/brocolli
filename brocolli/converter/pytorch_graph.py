@@ -14,6 +14,8 @@ from .pytorch_layer.transformer import (
     TransformerEncoderLayer,
     TransformerDecoderLayer,
 )
+from .pytorch_layer.mha import MultiheadAttention
+
 from .pytorch_layer.layernorm import LayerNorm
 
 
@@ -117,6 +119,9 @@ class PytorchGraph:
             elif isinstance(module, nn.TransformerDecoderLayer):
                 converted_module = TransformerDecoderLayer.from_torch(module)
                 setattr(model, name, converted_module)
+            elif isinstance(module, nn.MultiheadAttention):
+                converted_module = MultiheadAttention.from_torch(module)
+                setattr(model, name, converted_module)
             elif list(module.named_children()):
                 self.replace(module)
 
@@ -137,6 +142,6 @@ class PytorchGraph:
     def shape_inference(self):
         shape_runner = BrocolliShapeRunner(self.graph_module, self.dynamic_batch)
         if self.concrete_args is not None:
-            shape_runner.run(*self.inputs, tuple(self.concrete_args.values()))
+            shape_runner.run(*self.inputs + tuple(self.concrete_args.values()))
         else:
             shape_runner.run(*self.inputs)

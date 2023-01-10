@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from loguru import logger
+from .utils import transform_weight
 
 
 def scaled_dot_product(q, k, v, attn_mask=None):
@@ -24,7 +26,7 @@ class MultiheadAttention(nn.Module):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
-        self.scale = self.head_dim**-0.5
+        self.scale = self.head_dim ** -0.5
 
         # Stack all weight matrices 1...h together for efficiency
         # Note that in many implementations you see "bias=False" which is optional
@@ -45,6 +47,17 @@ class MultiheadAttention(nn.Module):
         self.v_proj.bias.data.fill_(0)
         nn.init.xavier_uniform_(self.out_proj.weight)
         self.out_proj.bias.data.fill_(0)
+
+    @classmethod
+    def from_torch(cls, mod):
+        mha = cls(
+            mod.embed_dim,
+            mod.num_heads,
+        )
+        state_dict = transform_weight(mod)
+        mha.load_state_dict(state_dict)
+
+        return mha
 
     def forward(
         self,
