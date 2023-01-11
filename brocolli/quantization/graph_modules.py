@@ -12,4 +12,7 @@ class BrocolliGraphModule(GraphModule):
         fake_mod = torch.nn.Module()
         fake_mod.__dict__ = copy.deepcopy(self.__dict__)
         graph_copy = copy.deepcopy(self.graph)
-        return BrocolliGraphModule(fake_mod, graph_copy, self.class_name)
+        graph_module = BrocolliGraphModule(fake_mod, graph_copy, self.class_name)
+        graph_module.__dict__.update(fake_mod.__dict__)
+
+        return graph_module
