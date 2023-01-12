@@ -154,7 +154,7 @@ class PytorchCaffeParser:
                 if isinstance(module, nn.Conv2d):
                     layer_data = self.rename_Conv(node, module)
                     self.layers.append(layer_data)
-                elif isinstance(module, nn.BatchNorm2d):
+                elif isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d)):
                     layer_data = self.rename_BatchNormalization(node, module)
                     self.layers.append(layer_data[0])
                     self.layers.append(layer_data[1])
