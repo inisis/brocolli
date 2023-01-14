@@ -174,6 +174,9 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.GELU):
                     layer = GELULayer(node, module)
                     self.node_post_process(layer)
+                elif hasattr(module, "_is_leaf_module"):
+                    layer = CustomLayer(node, module)
+                    self.node_post_process(layer)
                 else:
                     raise NotImplementedError(
                         "module %s is not implemented" % (type(module))
@@ -336,6 +339,9 @@ class PytorchOnnxParser:
                 elif function_name == "dropout":
                     reshape_layer = DropoutLayer(node)
                     self.node_post_process(reshape_layer)
+                elif function_name == "stack":
+                    stack_layer = StackFunc(node)
+                    self.node_post_process(stack_layer)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
