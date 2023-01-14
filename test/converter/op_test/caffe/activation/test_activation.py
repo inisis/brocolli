@@ -3,7 +3,6 @@ import sys
 import torch
 import pytest
 import warnings
-
 from brocolli.testing.common_utils import CaffeBaseTester as Tester
 
 
@@ -44,30 +43,14 @@ class TestActivationClass:
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
-    def test_Softmax_basic(
+    @pytest.mark.parametrize("dim", (-1, 1, 2))
+    def test_Softmax(
         self,
         request,
+        dim,
         shape=[1, 3, 32, 32],
     ):
         model = torch.nn.Softmax()
-        x = torch.rand(shape)
-        Tester(request.node.name, model, x)
-
-    def test_Softmax_dim_2(
-        self,
-        request,
-        shape=[1, 3, 32, 32],
-    ):
-        model = torch.nn.Softmax(dim=2)
-        x = torch.rand(shape)
-        Tester(request.node.name, model, x)
-
-    def test_Softmax_dim_3(
-        self,
-        request,
-        shape=[1, 3, 32, 32],
-    ):
-        model = torch.nn.Softmax(dim=2)
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
