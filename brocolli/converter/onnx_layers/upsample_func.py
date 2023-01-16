@@ -14,13 +14,9 @@ class UpsampleFunc(BaseLayer):
         scale_factor = self._source_node.kwargs["scale_factor"]
 
         if scale_factor is None:
-            size = self._source_node.kwargs["size"]
-
-            if isinstance(size, int):
-                dim = len(self._output_shape[0])
-                output_size = self._output_shape[0]
-                input_size = self._input_shape[0]
-                size = [size] * dim
+            dim = len(self._output_shape[0])
+            output_size = self._output_shape[0]
+            input_size = self._input_shape[0]
 
             scales = [
                 1.0
