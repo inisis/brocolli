@@ -177,9 +177,10 @@ class GRUBlock(BaseLayer):
         else:
             weight_ih_reverse_name = "weight_ih_l{0}_reverse".format(layer_index)
             weight_hh_reverse_name = "weight_hh_l{0}_reverse".format(layer_index)
-            weight_ih_l0_reverse, weight_hh_l0_reverse = getattr(
-                self._module, weight_ih_reverse_name
-            ), getattr(self._module, weight_hh_reverse_name)
+            weight_ih_l0_reverse, weight_hh_l0_reverse = (
+                getattr(self._module, weight_ih_reverse_name),
+                getattr(self._module, weight_hh_reverse_name),
+            )
             params[0], params[1] = np.stack(
                 [
                     self.get_permute_weight(weight_ih_l0),
@@ -211,9 +212,10 @@ class GRUBlock(BaseLayer):
             else:
                 bias_ih_reverse_name = "bias_ih_l{0}_reverse".format(layer_index)
                 bias_hh_reverse_name = "bias_hh_l{0}_reverse".format(layer_index)
-                bias_ih_l0_reverse, bias_hh_l0_reverse = getattr(
-                    self._module, bias_ih_reverse_name
-                ), getattr(self._module, bias_hh_reverse_name)
+                bias_ih_l0_reverse, bias_hh_l0_reverse = (
+                    getattr(self._module, bias_ih_reverse_name),
+                    getattr(self._module, bias_hh_reverse_name),
+                )
                 params[2] = np.concatenate(
                     (
                         np.stack(
