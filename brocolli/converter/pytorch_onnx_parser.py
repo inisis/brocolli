@@ -179,7 +179,7 @@ class PytorchOnnxParser:
                     self.node_post_process(layer)
                 else:
                     raise NotImplementedError(
-                        "module %s is not implemented" % (type(module))
+                        "module %s is not implemented" % (module.__class__.__name__)
                     )
             elif node.op == "call_function":
                 function_name = get_function_name(node.target)
@@ -448,7 +448,7 @@ class PytorchOnnxParser:
         self.freeze()
         self.model_def = optimize_model(self.model_def)
         checker.check_model(self.model_def)
-        logger.info("onnx model conversion completed")
+        logger.info("onnx model conversion completed")G
         save(self.model_def, dest_path)
         logger.info("onnx model saved to {}".format(dest_path))
 
