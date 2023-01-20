@@ -448,7 +448,7 @@ class PytorchOnnxParser:
         self.freeze()
         self.model_def = optimize_model(self.model_def)
         checker.check_model(self.model_def)
-        logger.info("onnx model conversion completed")G
+        logger.info("onnx model conversion completed")
         save(self.model_def, dest_path)
         logger.info("onnx model saved to {}".format(dest_path))
 
