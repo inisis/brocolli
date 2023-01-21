@@ -3,8 +3,6 @@
 torch fx based pytorch model converter, including pytorch2caffe, pytorch2onnx.  
 torch fx based pytorch model quantizier.
 
-Pytorch version 1.9.0 and above are all supported  
-
 # Installation
 ```
 pip install brocolli
