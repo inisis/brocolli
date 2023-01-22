@@ -296,6 +296,24 @@ class TestArithmeticClass:
         model = Matmul()
         Tester(request.node.name, model, (x, y))
 
+    def test_TorchBADDBMM(
+        self,
+        request,
+        shape=((10, 3, 5), (10, 3, 4), (10, 4, 5)),
+    ):
+        class TorchMul(torch.nn.Module):
+            def __init__(self):
+                super(TorchMul, self).__init__()
+
+            def forward(self, x, y, z):
+                return torch.baddbmm(x, y, z)
+
+        x = torch.rand(shape[0])
+        y = torch.rand(shape[1])
+        z = torch.rand(shape[2])
+        model = TorchMul()
+        Tester(request.node.name, model, (x, y, z))
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
