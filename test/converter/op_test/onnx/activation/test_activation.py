@@ -192,6 +192,23 @@ class TestActivationClass:
         model = Softplus()
         Tester(request.node.name, model, x)
 
+    def test_GELU_module(
+        self,
+        request,
+        shape=[1, 3, 32, 32],
+    ):
+        class GELU(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.gelu = torch.nn.GELU()
+
+            def forward(self, x):
+                return self.gelu(x)
+
+        x = torch.rand(shape)
+        model = GELU()
+        Tester(request.node.name, model, x)
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
