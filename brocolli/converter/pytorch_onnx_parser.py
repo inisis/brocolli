@@ -4,7 +4,7 @@ from loguru import logger
 import torch
 import torch.nn as nn
 from torch.fx.graph_module import GraphModule
-from onnx import save, helper, checker, defs
+from onnx import save, helper, checker, defs, load
 from tabulate import tabulate
 
 torch.manual_seed(0)
@@ -509,10 +509,14 @@ class PytorchOnnxParser:
         if isinstance(self.onnx_output, np.ndarray):
             self.onnx_output = [self.onnx_output]
 
-    def export_onnx(self, name, opset_version=13):
+    def export_onnx(self, name, opset_version=13, optimize=False):
         torch.onnx.export(
             self.model, tuple(self.inputs), name, opset_version=opset_version
         )
+        if optimize:
+            model = load(name)
+            model = optimize_model(model)
+            save(model, name)
 
     def node_post_process(self, onnx_layer):
         if onnx_layer._node:
