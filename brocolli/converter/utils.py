@@ -96,8 +96,57 @@ def graph_constant_fold_inplace(graph):
             node.outputs.clear()
 
 
+def find_gelu_nodes(graph):
+    out_nodes = []
+    for node in graph.nodes:
+        if node.op == "Mul":
+            if (
+                node.i(1).op == "Constant"
+                and node.i(0).op == "Mul"
+                and node.i(0).i(1).op == "Add"
+                and node.i(0).i(1).i(0).op == "Erf"
+                and node.i(0).i(1).i(0).i(0).op == "Div"
+            ):
+
+                out_nodes += [
+                    {
+                        "inps": [node.i(0).i(1).i(0).i(0).inputs[0].name],
+                        "outs": [node.outputs[0].name],
+                    }
+                ]
+
+    return out_nodes
+
+
+@gs.Graph.register()
+def replace_gelu(self, inputs, outputs, name):
+    # Disconnect output nodes of all input tensors
+    for inp in inputs:
+        inp.outputs.clear()
+
+    # Disconnet input nodes of all output tensors
+    for out in outputs:
+        out.inputs.clear()
+
+    return self.layer(
+        op="GELU",
+        inputs=inputs,
+        outputs=outputs,
+        name=name,
+    )
+
+
 def optimize_model(model):
     graph = gs.import_onnx(model)
+    tmap = graph.tensors()
+    out_nodes = find_gelu_nodes(graph)
+
+    for i, itn in enumerate(out_nodes):
+        inputs = [tmap[i] for i in itn["inps"]]
+        outputs = [tmap[i] for i in itn["outs"]]
+        name = "gelu_{}".format(i)
+        graph.replace_gelu(inputs, outputs, name)
+
     graph_constant_fold_inplace(graph)
     graph_cleanup_inplace(graph)
     model = gs.export_onnx(graph)
