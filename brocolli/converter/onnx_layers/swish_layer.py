@@ -1,3 +1,7 @@
+import torch
+import torch.nn.functional as F
+from onnxruntime_extensions import onnx_op, PyOp
+
 from .base_layer import BaseLayer
 from .sigmoid_layer import SigmoidLayer
 from .mul_layer import MulLayer
@@ -22,3 +26,15 @@ class SwishLayer(BaseLayer):
         )
         mul_layer.generate_node(self._source_node.name)
         self.node_post_process(mul_layer)
+
+
+@onnx_op(
+    op_type="Swish",
+    inputs=[PyOp.dt_float],
+    outputs=[PyOp.dt_float],
+)
+def Swish(x):
+    x = torch.from_numpy(x)
+    output = F.silu(x)
+
+    return output
