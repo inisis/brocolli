@@ -118,6 +118,21 @@ def find_gelu_nodes(graph):
     return out_nodes
 
 
+def find_swish_nodes(graph):
+    out_nodes = []
+    for node in graph.nodes:
+        if node.op == "Mul":
+            if node.i(1).op == "Sigmoid":
+                out_nodes += [
+                    {
+                        "inps": [node.i(1).inputs[0].name],
+                        "outs": [node.outputs[0].name],
+                    }
+                ]
+
+    return out_nodes
+
+
 @gs.Graph.register()
 def replace_gelu(self, inputs, outputs, name):
     # Disconnect output nodes of all input tensors
@@ -136,16 +151,38 @@ def replace_gelu(self, inputs, outputs, name):
     )
 
 
+@gs.Graph.register()
+def replace_swish(self, inputs, outputs, name):
+    # Disconnect output nodes of all input tensors
+    for inp in inputs:
+        inp.outputs.clear()
+
+    # Disconnet input nodes of all output tensors
+    for out in outputs:
+        out.inputs.clear()
+
+    return self.layer(
+        op="Swish", inputs=inputs, outputs=outputs, name=name, domain="ai.onnx.contrib"
+    )
+
+
 def optimize_model(model):
     graph = gs.import_onnx(model)
     tmap = graph.tensors()
-    out_nodes = find_gelu_nodes(graph)
+    gelu_nodes = find_gelu_nodes(graph)
+    swish_node = find_swish_nodes(graph)
 
-    for i, itn in enumerate(out_nodes):
+    for i, itn in enumerate(gelu_nodes):
         inputs = [tmap[i] for i in itn["inps"]]
         outputs = [tmap[i] for i in itn["outs"]]
         name = "gelu_{}".format(i)
         graph.replace_gelu(inputs, outputs, name)
+
+    for i, itn in enumerate(swish_node):
+        inputs = [tmap[i] for i in itn["inps"]]
+        outputs = [tmap[i] for i in itn["outs"]]
+        name = "swish_{}".format(i)
+        graph.replace_swish(inputs, outputs, name)
 
     graph_constant_fold_inplace(graph)
     graph_cleanup_inplace(graph)
