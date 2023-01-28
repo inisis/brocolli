@@ -209,6 +209,23 @@ class TestActivationClass:
         model = GELU()
         Tester(request.node.name, model, x)
 
+    def test_SiLU_module(
+        self,
+        request,
+        shape=[1, 3, 32, 32],
+    ):
+        class SiLU(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.silu = torch.nn.SiLU()
+
+            def forward(self, x):
+                return self.silu(x)
+
+        x = torch.rand(shape)
+        model = SiLU()
+        Tester(request.node.name, model, x)
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
