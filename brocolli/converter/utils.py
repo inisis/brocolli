@@ -4,6 +4,7 @@ import torch.nn as nn
 import numpy as np
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 import onnx_graphsurgeon as gs
+from onnx_graphsurgeon.ir.tensor import Variable
 from onnx import TensorProto as tp
 
 
@@ -101,13 +102,12 @@ def find_gelu_nodes(graph):
     for node in graph.nodes:
         if node.op == "Mul":
             if (
-                node.i(1).op == "Constant"
+                node.i(0) is not None
                 and node.i(0).op == "Mul"
                 and node.i(0).i(1).op == "Add"
                 and node.i(0).i(1).i(0).op == "Erf"
                 and node.i(0).i(1).i(0).i(0).op == "Div"
             ):
-
                 out_nodes += [
                     {
                         "inps": [node.i(0).i(1).i(0).i(0).inputs[0].name],
@@ -122,10 +122,41 @@ def find_swish_nodes(graph):
     out_nodes = []
     for node in graph.nodes:
         if node.op == "Mul":
-            if node.i(1).op == "Sigmoid":
+            if node.i(1) is not None and node.i(1).op == "Sigmoid":
                 out_nodes += [
                     {
                         "inps": [node.i(1).inputs[0].name],
+                        "outs": [node.outputs[0].name],
+                    }
+                ]
+
+    return out_nodes
+
+
+def find_layernorm_nodes(graph):
+    out_nodes = []
+    for node in graph.nodes:
+        if node.op == "Add":
+            if (
+                node.i(0) is not None
+                and node.i(0).op == "Mul"
+                and node.i(0).i(0).op == "Div"
+                and node.i(0).i(0).i(0).op == "Sub"
+                and node.i(0).i(0).i(1).op == "Sqrt"
+                and node.i(0).i(0).i(1).i(0).op == "Add"
+                and node.i(0).i(0).i(1).i(0).i(0).op == "ReduceMean"
+                and node.i(0).i(0).i(1).i(0).i(0).i(0).op == "Pow"
+                and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).op == "Sub"
+                and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).op == "ReduceMean"
+            ):
+
+                out_nodes += [
+                    {
+                        "inps": [
+                            node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).inputs[0].name,
+                            node.i(0).inputs[1].name,
+                            node.inputs[1].name,
+                        ],
                         "outs": [node.outputs[0].name],
                     }
                 ]
@@ -148,6 +179,7 @@ def replace_gelu(self, inputs, outputs, name):
         inputs=inputs,
         outputs=outputs,
         name=name,
+        domain="ai.onnx.contrib"
     )
 
 
@@ -162,7 +194,30 @@ def replace_swish(self, inputs, outputs, name):
         out.inputs.clear()
 
     return self.layer(
-        op="Swish", inputs=inputs, outputs=outputs, name=name, domain="ai.onnx.contrib"
+        op="Swish",
+        inputs=inputs,
+        outputs=outputs,
+        name=name,
+        domain="ai.onnx.contrib"
+    )
+
+
+@gs.Graph.register()
+def replace_layernorm(self, inputs, outputs, name):
+    # Disconnect output nodes of all input tensors
+    for inp in inputs:
+        inp.outputs.clear()
+
+    # Disconnet input nodes of all output tensors
+    for out in outputs:
+        out.inputs.clear()
+
+    return self.layer(
+        op="LayerNormalization",
+        inputs=inputs,
+        outputs=outputs,
+        name=name,
+        domain="ai.onnx.contrib",
     )
 
 
@@ -171,6 +226,7 @@ def optimize_model(model):
     tmap = graph.tensors()
     gelu_nodes = find_gelu_nodes(graph)
     swish_node = find_swish_nodes(graph)
+    layernorm_node = find_layernorm_nodes(graph)
 
     for i, itn in enumerate(gelu_nodes):
         inputs = [tmap[i] for i in itn["inps"]]
@@ -183,6 +239,12 @@ def optimize_model(model):
         outputs = [tmap[i] for i in itn["outs"]]
         name = "swish_{}".format(i)
         graph.replace_swish(inputs, outputs, name)
+
+    for i, itn in enumerate(layernorm_node):
+        inputs = [tmap[i] for i in itn["inps"]]
+        outputs = [tmap[i] for i in itn["outs"]]
+        name = "layernorm_{}".format(i)
+        graph.replace_layernorm(inputs, outputs, name)
 
     graph_constant_fold_inplace(graph)
     graph_cleanup_inplace(graph)
