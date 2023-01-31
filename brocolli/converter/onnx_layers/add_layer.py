@@ -96,7 +96,7 @@ class AddFunc(BaseLayer):
                     if self._output_dtype:
                         numpy_dtype = torch_dtype_to_numpy(self._output_dtype[0])
                         self.generate_params(
-                            np.array([self._source_node.args[1]], dtype=numpy_dtype)
+                            np.array(self._source_node.args[1], dtype=numpy_dtype)
                         )
                     else:
                         self.generate_params(np.array([self._source_node.args[1]]))
@@ -105,10 +105,10 @@ class AddFunc(BaseLayer):
                     if self._output_dtype:
                         numpy_dtype = torch_dtype_to_numpy(self._output_dtype[0])
                         self.generate_params(
-                            np.array([self._source_node.args[0]], dtype=numpy_dtype)
+                            np.array(self._source_node.args[0], dtype=numpy_dtype)
                         )
                     else:
-                        self.generate_params(np.array([self._source_node.args[0]]))
+                        self.generate_params(np.array(self._source_node.args[0]))
 
         node = helper.make_node("Add", self._in_names, self._out_names, self._name)
         logger.info("add_layer: " + self._name + " created")
