@@ -1,10 +1,10 @@
 import re
+import contextlib
 import torch
 import torch.nn as nn
 import numpy as np
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 import onnx_graphsurgeon as gs
-from onnx_graphsurgeon.ir.tensor import Variable
 from onnx import TensorProto as tp
 
 
@@ -98,153 +98,212 @@ def graph_constant_fold_inplace(graph):
 
 
 def find_gelu_nodes(graph):
+    # fmt: off
+    '''
+             x
+         /      \
+         |     Div
+         |      |
+         |     Erf
+         |      |
+         |     Add
+         \      /
+            Mul
+             |
+            Mul
+    '''
+    # fmt: on
     out_nodes = []
     for node in graph.nodes:
-        if node.op == "Mul":
-            if (
-                node.i(0) is not None
-                and node.i(0).op == "Mul"
-                and node.i(0).i(1).op == "Add"
-                and node.i(0).i(1).i(0).op == "Erf"
-                and node.i(0).i(1).i(0).i(0).op == "Div"
-            ):
-                out_nodes += [
-                    {
-                        "inps": [node.i(0).i(1).i(0).i(0).inputs[0].name],
-                        "outs": [node.outputs[0].name],
-                    }
-                ]
+        with contextlib.suppress(IndexError):
+            if node.op == "Mul":
+                if (
+                    node.i(0).op == "Mul"
+                    and node.i(0).i(1).op == "Add"
+                    and node.i(0).i(1).i(0).op == "Erf"
+                    and node.i(0).i(1).i(0).i(0).op == "Div"
+                ):
+                    input_variable = node.i(0).i(1).i(0).i(0).inputs[0]
+                    mul_node = node.i(0)
+                    div_node = node.i(0).i(1).i(0).i(0)
+
+                    input_variable.outputs.remove(mul_node)
+                    input_variable.outputs.remove(div_node)
+
+                    output_variable = node.outputs[0]
+                    output_variable.inputs.clear()
+                    out_nodes += [
+                        {
+                            "inps": [input_variable],
+                            "outs": [output_variable],
+                        }
+                    ]
 
     return out_nodes
 
 
 def find_swish_nodes(graph):
+    # fmt: off
+    '''
+             x
+         /      \
+         |    Sigmoid
+         \      /
+            Mul
+    '''
+    # fmt: on
     out_nodes = []
     for node in graph.nodes:
-        if node.op == "Mul":
-            if node.i(1) is not None and node.i(1).op == "Sigmoid":
-                out_nodes += [
-                    {
-                        "inps": [node.i(1).inputs[0].name],
-                        "outs": [node.outputs[0].name],
-                    }
-                ]
+        with contextlib.suppress(IndexError):
+            if node.op == "Mul":
+                if node.i(1).op == "Sigmoid":
+                    input_variable = node.i(1).inputs[0]
+                    mul_node = node.i(1)
+                    sigmoid_node = node
+
+                    input_variable.outputs.remove(mul_node)
+                    input_variable.outputs.remove(sigmoid_node)
+
+                    output_variable = node.outputs[0]
+                    output_variable.inputs.clear()
+                    out_nodes += [
+                        {
+                            "inps": [input_variable],
+                            "outs": [output_variable],
+                        }
+                    ]
 
     return out_nodes
 
 
 def find_layernorm_nodes(graph):
+    # fmt: off
+    '''
+             x
+         /      \
+         |  ReduceMean
+         \      /
+            Sub
+         /      \
+         |     Pow
+         |      |
+         |  ReduceMean
+         |      |
+         |     Add
+         |      |
+         |     Sqrt
+         \      /
+            Div
+             |
+            Mul
+             |
+            Add
+    '''
+    # fmt: on
     out_nodes = []
     for node in graph.nodes:
-        if node.op == "Add":
-            if (
-                node.i(0) is not None
-                and node.i(0).op == "Mul"
-                and node.i(0).i(0).op == "Div"
-                and node.i(0).i(0).i(0).op == "Sub"
-                and node.i(0).i(0).i(1).op == "Sqrt"
-                and node.i(0).i(0).i(1).i(0).op == "Add"
-                and node.i(0).i(0).i(1).i(0).i(0).op == "ReduceMean"
-                and node.i(0).i(0).i(1).i(0).i(0).i(0).op == "Pow"
-                and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).op == "Sub"
-                and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).op == "ReduceMean"
-            ):
+        with contextlib.suppress(IndexError):
+            if node.op == "Add":
+                if (
+                    node.i(0).op == "Mul"
+                    and node.i(0).i(0).op == "Div"
+                    and node.i(0).i(0).i(0).op == "Sub"
+                    and node.i(0).i(0).i(1).op == "Sqrt"
+                    and node.i(0).i(0).i(1).i(0).op == "Add"
+                    and node.i(0).i(0).i(1).i(0).i(0).op == "ReduceMean"
+                    and node.i(0).i(0).i(1).i(0).i(0).i(0).op == "Pow"
+                    and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).op == "Sub"
+                    and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).op == "ReduceMean"
+                ):
 
-                out_nodes += [
-                    {
-                        "inps": [
-                            node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).inputs[0].name,
-                            node.i(0).inputs[1].name,
-                            node.inputs[1].name,
-                        ],
-                        "outs": [node.outputs[0].name],
-                    }
-                ]
+                    input_variable = (
+                        node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).inputs[0]
+                    )
+                    sub_node = node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1)
+                    reducemean_node = node.i(0).i(0).i(1).i(0).i(0).i(0).i(0)
 
+                    input_variable.outputs.remove(sub_node)
+                    input_variable.outputs.remove(reducemean_node)
+
+                    weight_variable = node.i(0).inputs[1]
+                    bias_variable = node.inputs[1]
+
+                    output_variable = node.outputs[0]
+                    output_variable.inputs.clear()
+
+                    out_nodes += [
+                        {
+                            "inps": [
+                                input_variable,
+                                weight_variable,
+                                bias_variable,
+                            ],
+                            "outs": [output_variable],
+                            "attrs": {
+                                "axis": str(
+                                    node.i(0).i(0).i(1).i(0).i(0).attrs["axes"][0]
+                                ),
+                                "eps": str(node.i(0).i(0).i(1).i(0).inputs[1].values),
+                            },
+                        }
+                    ]
     return out_nodes
 
 
 @gs.Graph.register()
 def replace_gelu(self, inputs, outputs, name):
-    # Disconnect output nodes of all input tensors
-    for inp in inputs:
-        inp.outputs.clear()
-
-    # Disconnet input nodes of all output tensors
-    for out in outputs:
-        out.inputs.clear()
 
     return self.layer(
-        op="GELU",
-        inputs=inputs,
-        outputs=outputs,
-        name=name,
-        domain="ai.onnx.contrib"
+        op="GELU", inputs=inputs, outputs=outputs, name=name, domain="ai.onnx.contrib"
     )
 
 
 @gs.Graph.register()
 def replace_swish(self, inputs, outputs, name):
-    # Disconnect output nodes of all input tensors
-    for inp in inputs:
-        inp.outputs.clear()
-
-    # Disconnet input nodes of all output tensors
-    for out in outputs:
-        out.inputs.clear()
 
     return self.layer(
-        op="Swish",
-        inputs=inputs,
-        outputs=outputs,
-        name=name,
-        domain="ai.onnx.contrib"
+        op="Swish", inputs=inputs, outputs=outputs, name=name, domain="ai.onnx.contrib"
     )
 
 
 @gs.Graph.register()
-def replace_layernorm(self, inputs, outputs, name):
-    # Disconnect output nodes of all input tensors
-    for inp in inputs:
-        inp.outputs.clear()
-
-    # Disconnet input nodes of all output tensors
-    for out in outputs:
-        out.inputs.clear()
+def replace_layernorm(self, inputs, outputs, attrs, name):
 
     return self.layer(
         op="LayerNormalization",
         inputs=inputs,
         outputs=outputs,
         name=name,
+        attrs=attrs,
         domain="ai.onnx.contrib",
     )
 
 
 def optimize_model(model):
     graph = gs.import_onnx(model)
-    tmap = graph.tensors()
+    graph.fold_constants().cleanup()
     gelu_nodes = find_gelu_nodes(graph)
     swish_node = find_swish_nodes(graph)
     layernorm_node = find_layernorm_nodes(graph)
 
     for i, itn in enumerate(gelu_nodes):
-        inputs = [tmap[i] for i in itn["inps"]]
-        outputs = [tmap[i] for i in itn["outs"]]
+        inputs = itn["inps"]
+        outputs = itn["outs"]
         name = "gelu_{}".format(i)
         graph.replace_gelu(inputs, outputs, name)
 
     for i, itn in enumerate(swish_node):
-        inputs = [tmap[i] for i in itn["inps"]]
-        outputs = [tmap[i] for i in itn["outs"]]
+        inputs = itn["inps"]
+        outputs = itn["outs"]
         name = "swish_{}".format(i)
         graph.replace_swish(inputs, outputs, name)
 
     for i, itn in enumerate(layernorm_node):
-        inputs = [tmap[i] for i in itn["inps"]]
-        outputs = [tmap[i] for i in itn["outs"]]
+        inputs = itn["inps"]
+        outputs = itn["outs"]
+        attrs = itn["attrs"]
         name = "layernorm_{}".format(i)
-        graph.replace_layernorm(inputs, outputs, name)
+        graph.replace_layernorm(inputs, outputs, attrs, name)
 
     graph_constant_fold_inplace(graph)
     graph_cleanup_inplace(graph)
