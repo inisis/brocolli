@@ -12,6 +12,8 @@ class LayerNormLayer(BaseLayer):
 
     def get_layernorm_attr(self):
         attr_dict = {"axis": "1", "eps": "1e-5"}
+        attr_dict["axis"] = str(-len(self._module.normalized_shape))
+        attr_dict["eps"] = str(self._module.eps)
 
         return attr_dict
 
@@ -26,7 +28,7 @@ class LayerNormLayer(BaseLayer):
             self._out_names,
             self._name,
             domain="ai.onnx.contrib",
-            **attr_dict
+            attrs=str(attr_dict),
         )
         logger.info("layernorm_layer: " + self._name + " created")
         self._node.append(node)
@@ -36,17 +38,19 @@ class LayerNormLayer(BaseLayer):
     op_type="LayerNormalization",
     inputs=[PyOp.dt_float, PyOp.dt_float, PyOp.dt_float],
     outputs=[PyOp.dt_float],
-    attrs=["axis", "eps"],
+    attrs=["attrs"],
 )
 def LayerNormalization(x, weight, bias, **kwargs):
-    eps = float(kwargs.get("eps", 1e-5))
-    axis = int(kwargs.get("axis", -1))
-
+    attrs = eval(kwargs["attrs"])
+    eps = float(attrs.get("eps", 1e-5))
+    axis = int(attrs.get("axis", -1))
     x = torch.from_numpy(x)
-    mean = x.mean(dim=-1, keepdim=True)
-    var = ((x - mean) ** 2).mean(dim=-1, keepdim=True)
+    dim = list(range(axis, 0))
+    mean = x.mean(dim=dim, keepdim=True)
+    x -= mean
+    var = (x**2).mean(dim=dim, keepdim=True)
     std = (var + eps).sqrt()
-    y = (x - mean) / std
+    y = x / std
     y *= weight
     y += bias
 

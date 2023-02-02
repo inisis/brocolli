@@ -8,11 +8,11 @@ class LayerNorm(nn.Module):
         super(LayerNorm, self).__init__()
         if isinstance(normalized_shape, int):
             normalized_shape = (normalized_shape,)
-        else:
-            normalized_shape = (normalized_shape[-1],)
+
         self.normalized_shape = torch.Size(normalized_shape)
         self.eps = eps
         self.elementwise_affine = elementwise_affine
+        self.dim = list(range(-len(self.normalized_shape), 0))
         if self.elementwise_affine:
             self.weight = Parameter(torch.empty(self.normalized_shape))
             self.bias = Parameter(torch.empty(self.normalized_shape))
@@ -34,10 +34,11 @@ class LayerNorm(nn.Module):
         return layernorm
 
     def forward(self, x):
-        mean = x.mean(dim=-1, keepdim=True)
-        var = ((x - mean) ** 2).mean(dim=-1, keepdim=True)
+        mean = x.mean(dim=self.dim, keepdim=True)
+        x -= mean
+        var = (x**2).mean(dim=self.dim, keepdim=True)
         std = (var + self.eps).sqrt()
-        y = (x - mean) / std
+        y = x / std
         if self.elementwise_affine:
             y *= self.weight
             y += self.bias

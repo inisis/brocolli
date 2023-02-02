@@ -25,22 +25,22 @@ class TestNormalizationClass:
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
+    @pytest.mark.parametrize(("normalized_shape"), [([10]), ([10, 10]), ([5, 10, 10])])
     def test_Layernorm(
         self,
         request,
-        shape=(20, 5, 10),
+        normalized_shape,
+        shape=(20, 5, 10, 10),
     ):
         class LayerNorm(torch.nn.Module):
-            def __init__(
-                self,
-            ):
+            def __init__(self, normalized_shape):
                 super(LayerNorm, self).__init__()
-                self.layer_norm = torch.nn.LayerNorm(10)
+                self.layer_norm = torch.nn.LayerNorm(normalized_shape)
 
             def forward(self, x):
                 return self.layer_norm(x)
 
-        model = LayerNorm()
+        model = LayerNorm(normalized_shape)
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
