@@ -28,19 +28,20 @@ def test_mha():
     torch.testing.assert_close(out_pytorch, out_brocolli, rtol=tol, atol=tol)
 
 
-def test_layernorm():
+@pytest.mark.parametrize(("normalized_shape"), [([10]), ([10, 10]), ([5, 10, 10])])
+def test_layernorm(normalized_shape):
     import torch
     import torch.nn as nn
     from brocolli.converter.pytorch_layer.layernorm import LayerNorm
 
-    batch, sentence_length, embedding_dim = 20, 5, 10
-    embedding = torch.randn(batch, sentence_length, embedding_dim)
-    model_pytorch = nn.LayerNorm(embedding_dim)
+    N, C, H, W = 20, 5, 10, 10
+    embedding = torch.randn(N, C, H, W)
+    model_pytorch = nn.LayerNorm(normalized_shape)
     model_pytorch.eval()
 
     out_pytorch = model_pytorch(embedding)
 
-    model_brocolli = LayerNorm(embedding_dim)
+    model_brocolli = LayerNorm(normalized_shape)
     model_brocolli.eval()
 
     model_brocolli.weight = torch.nn.Parameter(model_pytorch.weight)
