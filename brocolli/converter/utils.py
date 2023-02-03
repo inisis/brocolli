@@ -85,10 +85,6 @@ def get_function_name(node_target):
     return function_name
 
 
-def graph_cleanup_inplace(graph):
-    graph.cleanup()
-
-
 def graph_constant_fold_inplace(graph):
     for node in graph.nodes:
         if node.op == "Identity" or node.op == "Dropout":
@@ -230,7 +226,6 @@ def find_layernorm_nodes(graph):
 
                     output_variable = node.outputs[0]
                     output_variable.inputs.clear()
-
                     out_nodes += [
                         {
                             "inps": [
@@ -240,10 +235,19 @@ def find_layernorm_nodes(graph):
                             ],
                             "outs": [output_variable],
                             "attrs": {
-                                "axis": str(
-                                    node.i(0).i(0).i(1).i(0).i(0).attrs["axes"][0]
-                                ),
-                                "eps": str(node.i(0).i(0).i(1).i(0).inputs[1].values),
+                                "attrs": str(
+                                    {
+                                        "axis": node.i(0)
+                                        .i(0)
+                                        .i(1)
+                                        .i(0)
+                                        .i(0)
+                                        .attrs["axes"][0],
+                                        "eps": float(
+                                            node.i(0).i(0).i(1).i(0).inputs[1].values
+                                        ),
+                                    }
+                                )
                             },
                         }
                     ]
@@ -306,7 +310,7 @@ def optimize_model(model):
         graph.replace_layernorm(inputs, outputs, attrs, name)
 
     graph_constant_fold_inplace(graph)
-    graph_cleanup_inplace(graph)
+    graph.cleanup().toposort()
     model = gs.export_onnx(graph)
 
     return model
