@@ -34,6 +34,17 @@ class PytorchOnnxParser:
         self.concrete_args = concrete_args
         self.dynamic_batch = dynamic_batch
 
+    def print_tabular(self, graph_module):
+        nodes = list(graph_module.graph.nodes)
+        node_specs = [[n.op, n.name, n.target, n.args, n.kwargs] for n in nodes]
+        logger.debug(
+            tabulate(
+                node_specs,
+                headers=["\nopcode", "\nname", "\ntarget", "\nargs", "\nkwargs"],
+            )
+        )
+
+    def convert(self):
         if isinstance(self.model, GraphModule):
             pass
         elif isinstance(self.model, nn.Module):
@@ -52,18 +63,6 @@ class PytorchOnnxParser:
         self.out_tensor_value_info = []
         self.init_tensor = []
         self.value_info = []
-
-    def print_tabular(self, graph_module):
-        nodes = list(graph_module.graph.nodes)
-        node_specs = [[n.op, n.name, n.target, n.args, n.kwargs] for n in nodes]
-        logger.debug(
-            tabulate(
-                node_specs,
-                headers=["\nopcode", "\nname", "\ntarget", "\nargs", "\nkwargs"],
-            )
-        )
-
-    def convert(self):
         self.gen_onnx_graph()
 
     def gen_onnx_graph(self):
@@ -516,6 +515,18 @@ class PytorchOnnxParser:
         if optimize:
             model = load(name)
             model = optimize_model(model)
+            opset_imports = [
+                helper.make_operatorsetid(
+                    domain=defs.ONNX_DOMAIN,
+                    version=14,
+                ),
+                helper.make_operatorsetid(
+                    domain="ai.onnx.contrib",
+                    version=14,
+                ),
+            ]
+            model.opset_import.extend(opset_imports)
+            checker.check_model(model)
             save(model, name)
 
     def node_post_process(self, onnx_layer):
