@@ -211,7 +211,6 @@ def find_layernorm_nodes(graph):
                     and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).op == "Sub"
                     and node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).op == "ReduceMean"
                 ):
-
                     input_variable = (
                         node.i(0).i(0).i(1).i(0).i(0).i(0).i(0).i(1).inputs[0]
                     )
@@ -256,7 +255,6 @@ def find_layernorm_nodes(graph):
 
 @gs.Graph.register()
 def replace_gelu(self, inputs, outputs, name):
-
     return self.layer(
         op="GELU", inputs=inputs, outputs=outputs, name=name, domain="ai.onnx.contrib"
     )
@@ -264,7 +262,6 @@ def replace_gelu(self, inputs, outputs, name):
 
 @gs.Graph.register()
 def replace_swish(self, inputs, outputs, name):
-
     return self.layer(
         op="Swish", inputs=inputs, outputs=outputs, name=name, domain="ai.onnx.contrib"
     )
@@ -272,7 +269,6 @@ def replace_swish(self, inputs, outputs, name):
 
 @gs.Graph.register()
 def replace_layernorm(self, inputs, outputs, attrs, name):
-
     return self.layer(
         op="LayerNormalization",
         inputs=inputs,
@@ -310,7 +306,7 @@ def optimize_model(model):
         graph.replace_layernorm(inputs, outputs, attrs, name)
 
     graph_constant_fold_inplace(graph)
-    graph.cleanup().toposort()
+    graph.cleanup(remove_unused_graph_inputs=True).toposort()
     model = gs.export_onnx(graph)
 
     return model
