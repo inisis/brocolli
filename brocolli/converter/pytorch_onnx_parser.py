@@ -17,8 +17,8 @@ from .utils import (
     get_function_name,
     map_reduce,
     gen_numpy_data,
-    optimize_model,
 )
+from .optimizer import optimize_model
 
 
 class PytorchOnnxParser:
