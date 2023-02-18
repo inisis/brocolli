@@ -91,7 +91,8 @@ class PytorchGraph:
             self.graph_module = GraphModule(self.tracer.root, self.graph)
             if concrete_args is not None:
                 self.trace_prune(self.graph_module)
-            self.shape_inference()
+            with torch.no_grad():
+                self.shape_inference()
         else:
             raise Exception(
                 "model must be a torch.nn.Module \
