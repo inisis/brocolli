@@ -2,7 +2,7 @@ from loguru import logger
 from onnx import helper
 import torch
 from .base_layer import BaseLayer
-from ..utils import pytorch_dtype_to_onnx
+from ..onnx_utils import pytorch_dtype_to_onnx
 
 
 class InputLayer(BaseLayer):

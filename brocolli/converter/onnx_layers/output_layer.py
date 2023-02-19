@@ -4,7 +4,7 @@ from onnx import TensorProto as tp
 import torch
 
 from .base_layer import BaseLayer
-from ..utils import pytorch_dtype_to_onnx
+from ..onnx_utils import pytorch_dtype_to_onnx
 
 
 class OutputLayer(BaseLayer):

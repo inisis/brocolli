@@ -1,13 +1,13 @@
 from onnx import helper
 from onnx.mapping import NP_TYPE_TO_TENSOR_TYPE
 from torch.fx.node import Node
-from ..utils import (
+from ..common_utils import (
     get_function_name,
     get_shape,
     map_reduce,
     get_dtype,
-    pytorch_dtype_to_onnx,
 )
+from ..onnx_utils import pytorch_dtype_to_onnx
 
 
 class BaseLayer(object):

@@ -8,7 +8,7 @@ import torch
 
 from .base_layer import BaseLayer
 from .cast_layer import CastLayer
-from ..utils import torch_dtype_to_numpy
+from ..onnx_utils import torch_dtype_to_numpy
 
 
 class AddLayer(BaseLayer):

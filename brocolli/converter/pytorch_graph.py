@@ -6,7 +6,7 @@ from torch.fx import Tracer, Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import map_aggregate
 
-from .utils import get_function_name, map_replace, gen_torch_tensor
+from .common_utils import get_function_name, map_replace, gen_torch_tensor
 from .pytorch_layer.transformer import (
     Transformer,
     TransformerEncoder,

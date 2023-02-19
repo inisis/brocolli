@@ -5,7 +5,7 @@ import numbers
 import numpy as np
 
 from .base_layer import BaseLayer
-from ..utils import torch_dtype_to_numpy
+from ..onnx_utils import torch_dtype_to_numpy
 
 
 class MulLayer(BaseLayer):

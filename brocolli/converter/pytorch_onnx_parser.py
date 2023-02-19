@@ -12,7 +12,7 @@ np.random.seed(0)
 
 from .onnx_layers import *
 from .pytorch_graph import PytorchGraph
-from .utils import (
+from .common_utils import (
     fuse_all_conv_bn,
     get_function_name,
     map_reduce,

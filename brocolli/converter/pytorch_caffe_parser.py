@@ -12,7 +12,7 @@ from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
 from torch.fx.node import Node
 from torch.fx.graph_module import GraphModule
 import google.protobuf.text_format
-from .utils import get_function_name
+from .common_utils import get_function_name
 
 
 def as_blob(array):
