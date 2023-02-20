@@ -87,11 +87,11 @@ def find_swish_nodes(node):
     if node.op == "Mul":
         if node.i(1).op == "Sigmoid":
             input_variable = node.i(1).inputs[0]
-            mul_node = node.i(1)
-            sigmoid_node = node
+            sigmoid_node = node.i(1)
+            mul_node = node
 
-            input_variable.outputs.remove(mul_node)
             input_variable.outputs.remove(sigmoid_node)
+            input_variable.outputs.remove(mul_node)
 
             output_variable = node.outputs[0]
             output_variable.inputs.clear()
