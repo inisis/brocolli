@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
+from .utils import transform_weight
 
 
 class LayerNorm(nn.Module):
@@ -30,7 +31,9 @@ class LayerNorm(nn.Module):
     @classmethod
     def from_torch(cls, mod):
         layernorm = cls(mod.normalized_shape, mod.eps, mod.elementwise_affine)
-
+        if mod.elementwise_affine:
+            state_dict = transform_weight(mod)
+            layernorm.load_state_dict(state_dict)
         return layernorm
 
     def forward(self, x):

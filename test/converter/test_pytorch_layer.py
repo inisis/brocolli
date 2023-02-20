@@ -29,23 +29,23 @@ def test_mha():
 
 
 @pytest.mark.parametrize(("normalized_shape"), [([10]), ([10, 10]), ([5, 10, 10])])
-def test_layernorm(normalized_shape):
+@pytest.mark.parametrize(("elementwise_affine"), (True, False))
+def test_layernorm(normalized_shape, elementwise_affine):
     import torch
     import torch.nn as nn
     from brocolli.converter.pytorch_layer.layernorm import LayerNorm
 
     N, C, H, W = 20, 5, 10, 10
     embedding = torch.randn(N, C, H, W)
-    model_pytorch = nn.LayerNorm(normalized_shape)
+    model_pytorch = nn.LayerNorm(
+        normalized_shape, elementwise_affine=elementwise_affine
+    )
     model_pytorch.eval()
 
     out_pytorch = model_pytorch(embedding)
 
-    model_brocolli = LayerNorm(normalized_shape)
+    model_brocolli = LayerNorm.from_torch(model_pytorch)
     model_brocolli.eval()
-
-    model_brocolli.weight = torch.nn.Parameter(model_pytorch.weight)
-    model_brocolli.bias = torch.nn.Parameter(model_pytorch.bias)
 
     out_brocolli = model_brocolli(embedding)
 

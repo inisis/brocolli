@@ -104,6 +104,11 @@ def transform_transformer_weight(state_dict, num_encoder_layers, num_decoder_lay
     return brocolli_state_dict
 
 
+def transform_layernorm_weight(state_dict):
+    if state_dict:
+        return state_dict
+
+
 def transform_weight(module):
     if isinstance(module, torch.nn.TransformerEncoderLayer):
         return transform_transformer_encoder_layer_weight(module.state_dict())
@@ -123,5 +128,7 @@ def transform_weight(module):
         return transform_transformer_weight(
             module.state_dict(), module.encoder.num_layers, module.decoder.num_layers
         )
+    elif isinstance(module, torch.nn.LayerNorm):
+        return transform_layernorm_weight(module.state_dict())
     else:
         raise ValueError("Unknown module: {}".format(module))
