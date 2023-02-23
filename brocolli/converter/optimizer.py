@@ -199,7 +199,7 @@ def find_matches(graph, fusion_patterns):
                 with contextlib.suppress(IndexError):
                     match = func(node)
                     if match:
-                        logger.debug("matched patter {}", layer_type)
+                        logger.debug("matched pattern {}", layer_type)
                         match.update({"op": layer_type})
                         match.update(
                             {
