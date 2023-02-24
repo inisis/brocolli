@@ -226,6 +226,23 @@ class TestActivationClass:
         model = SiLU()
         Tester(request.node.name, model, x)
 
+    def test_Relu6(
+        self,
+        request,
+        shape=[1, 3, 32, 32],
+    ):
+        class ReLU6(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.relu6 = torch.nn.ReLU6()
+
+            def forward(self, x):
+                return self.relu6(x)
+
+        x = torch.rand(shape)
+        model = ReLU6()
+        Tester(request.node.name, model, x)
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")

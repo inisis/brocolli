@@ -16,7 +16,6 @@ class TestArithmeticClass:
                 super(Add, self).__init__()
 
             def forward(self, x, y):
-
                 return x + y
 
         x = torch.rand(shape[0])
@@ -313,6 +312,27 @@ class TestArithmeticClass:
         z = torch.rand(shape[2])
         model = TorchMul()
         Tester(request.node.name, model, (x, y, z))
+
+    def test_Clamp(
+        self,
+        request,
+        shape=(10, 3, 5),
+    ):
+        class TorchMul(torch.nn.Module):
+            def __init__(self):
+                super(TorchMul, self).__init__()
+
+            def forward(self, x):
+                x = torch.clamp(
+                    x,
+                    min=torch.log(torch.tensor(1.0 / 0.01)),
+                    max=torch.log(torch.tensor(1.0 / 0.01)),
+                ).exp()
+                return x
+
+        x = torch.rand(shape)
+        model = TorchMul()
+        Tester(request.node.name, model, x)
 
 
 if __name__ == "__main__":

@@ -330,7 +330,7 @@ class PytorchOnnxParser:
                     normalize_layer = NormalizeFunc(node)
                     self.node_post_process(normalize_layer)
                 elif function_name == "clamp":
-                    clip_layer = ClipFunc(node, auto_gen=False)
+                    clip_layer = ClipFunc(node)
                     self.node_post_process(clip_layer)
                 elif function_name == "reshape":
                     reshape_layer = ReshapeFunc(node)
@@ -407,6 +407,9 @@ class PytorchOnnxParser:
                 elif str(node.target) == "unbind":
                     unbind_layer = UnbindFunc(node)
                     self.node_post_process(unbind_layer)
+                elif str(node.target) == "exp":
+                    exp_layer = ExpFunc(node)
+                    self.node_post_process(exp_layer)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
