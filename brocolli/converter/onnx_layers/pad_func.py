@@ -16,7 +16,7 @@ class PadFunc(BaseLayer):
     def gen_pad_attr(self):
         attr_dict = {"mode": "constant"}
 
-        mode = self._source_node.kwargs["mode"]
+        mode = self.get_value_by_key_or_index("mode", 2, "constant")
 
         if mode == "replicate":
             attr_dict["mode"] = "edge"
@@ -39,8 +39,7 @@ class PadFunc(BaseLayer):
                 pads[output_dim * 2 - idx - 1] = padding[idx * 2 + 1]
 
             params = np.array(pads)
-
-            value = self._source_node.kwargs["value"]
+            value = self.get_value_by_key_or_index("value", 3, 0.0)
 
             params = [np.array(pads), np.array(value)]
 
