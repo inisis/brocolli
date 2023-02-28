@@ -86,21 +86,21 @@ def find_swish_nodes(node):
     match = {}
     if node.op == "Mul":
         if node.i(1).op == "Sigmoid":
-            input_variable = node.i(1).inputs[0]
             sigmoid_node = node.i(1)
             mul_node = node
+            if sigmoid_node.inputs[0] in mul_node.inputs:
+                input_variable = node.i(1).inputs[0]
+                input_variable.outputs.remove(sigmoid_node)
+                input_variable.outputs.remove(mul_node)
 
-            input_variable.outputs.remove(sigmoid_node)
-            input_variable.outputs.remove(mul_node)
-
-            output_variable = node.outputs[0]
-            output_variable.inputs.clear()
-            match.update(
-                {
-                    "inputs": [input_variable],
-                    "outputs": [output_variable],
-                }
-            )
+                output_variable = node.outputs[0]
+                output_variable.inputs.clear()
+                match.update(
+                    {
+                        "inputs": [input_variable],
+                        "outputs": [output_variable],
+                    }
+                )
 
     return match
 
