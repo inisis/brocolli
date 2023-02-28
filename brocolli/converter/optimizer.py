@@ -23,8 +23,9 @@ def get_default_fusion_patterns():
 def graph_constant_fold_inplace(graph):
     for node in graph.nodes:
         if node.op == "Identity" or node.op == "Dropout":
-            inp_node = node.i()
-            inp_node.outputs = node.outputs
+            input_node = node.i()
+            input_node.outputs.remove(node.inputs[0])
+            input_node.outputs.append(node.outputs[0])
             node.outputs.clear()
 
 
