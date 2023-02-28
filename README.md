@@ -34,7 +34,7 @@ pip install brocolli
 
     net = models.alexnet(pretrained=False)
     x = torch.rand(1, 3, 224, 224)
-    pytorch_parser = PytorchCaffeParser(net, x)
+    pytorch_parser = PytorchOnnxParser(net, x)
     pytorch_parser.convert()
     pytorch_parser.save('alexnet.onnx')
     ```
