@@ -15,8 +15,8 @@ from .pytorch_layer.transformer import (
     TransformerDecoderLayer,
 )
 from .pytorch_layer.mha import MultiheadAttention
-
 from .pytorch_layer.layernorm import LayerNorm
+from .pytorch_layer.glu import GLU
 
 
 class BrocolliTracer(Tracer):
@@ -26,7 +26,6 @@ class BrocolliTracer(Tracer):
 
     def is_leaf_module(self, m: torch.nn.Module, module_qualified_name: str):
         if self.customed_leaf_module and isinstance(m, self.customed_leaf_module):
-
             return True
 
         if hasattr(m, "_is_leaf_module") and m._is_leaf_module:
@@ -122,6 +121,9 @@ class PytorchGraph:
                 setattr(model, name, converted_module)
             elif isinstance(module, nn.MultiheadAttention):
                 converted_module = MultiheadAttention.from_torch(module)
+                setattr(model, name, converted_module)
+            elif isinstance(module, nn.GLU):
+                converted_module = GLU(dim=module.dim)
                 setattr(model, name, converted_module)
             elif list(module.named_children()):
                 self.replace(module)
