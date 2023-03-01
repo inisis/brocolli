@@ -11,7 +11,6 @@ AVIAIABLE_OBSERVERS = []
 
 
 def register_observer(cls):
-
     AVIAIABLE_OBSERVERS.append(cls)
 
     return cls

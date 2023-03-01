@@ -84,7 +84,6 @@ class ConvBNFusion:
         assert self.bn_node is not None
         op_list.append(self.conv)
         op_list.append(self.bn)
-
         fused_conv = fuse_conv_bn_eval(self.conv, self.bn)
         replace_node_module(self.conv_node, modules, fused_conv)
 

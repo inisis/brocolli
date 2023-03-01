@@ -156,7 +156,8 @@ class _ConvNd(nn.Module):
 
         qconv.qbit = mod.qbit
         qconv.weight = torch.nn.Parameter(qweight, requires_grad=False)
-        qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
+        if mod.bias is not None:
+            qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
         qconv.act_scale = float(act_scale)
         qconv.wt_scale = wt_scale.reshape(1, -1, 1, 1)
         qconv.output_scale = float(output_scale)
@@ -231,7 +232,7 @@ class Conv2d(_ConvNd, BaseOperator):
         out = F.conv2d(
             input.to(torch.int64),
             self.weight.to(torch.int64),
-            self.bias.to(torch.int64),
+            self.bias.to(torch.int64) if self.bias is not None else None,
             self.stride,
             self.padding,
             self.dilation,

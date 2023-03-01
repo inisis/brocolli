@@ -30,7 +30,7 @@ def calibrate_func(model):
         True,
     )
     val_loader = torch.utils.data.DataLoader(
-        Subset(dataset, indices=[_ for _ in range(0, 128)]),
+        Subset(dataset, indices=[_ for _ in range(0, 8)]),
         batch_size=8,
         shuffle=False,
         num_workers=8,
@@ -67,11 +67,11 @@ def calibrate_func(model):
         )
 
 
-model = models.resnet18(pretrained=True)
+model = models.vgg11(pretrained=True)
 model.eval()
 
 pytorch_quantizer = PytorchQuantizer(model, (1, 3, 224, 224))
-# pytorch_quantizer.fuse()
+pytorch_quantizer.fuse()
 pytorch_quantizer.prepare()
 pytorch_quantizer.calibrate(calibrate_func)
 pytorch_quantizer.convert()

@@ -45,7 +45,7 @@ class BrocolliTracer(Tracer):
 class PytorchQuantizer:
     def __init__(self, model, input_shape, concrete_args=None):
         super(PytorchQuantizer, self).__init__()
-        self.model = model
+        self.model = model.eval()
         self.input_shape = input_shape
         if isinstance(input_shape, (tuple, list)) and all(
             isinstance(element, int) for element in input_shape
@@ -118,8 +118,7 @@ class PytorchQuantizer:
                 assert obj is not None
                 env[node.name] = obj.fuse(fused_graph, modules)
 
-        fused_model = BrocolliGraphModule(self.model, fused_graph)
-
+        fused_model = BrocolliGraphModule(graph_module, fused_graph)
         dummy_input = self.gen_input_tensor(self.input_shape)
         float_output = self.forward(fused_model, dummy_input)
         fused_output = self.forward(self.model, dummy_input)
@@ -170,7 +169,7 @@ class PytorchQuantizer:
         modules = dict(graph_module.named_modules())
         for node in list(graph_module.graph.nodes):
             if node.op == "placeholder":
-                next_node = node.next
+                users = list(node.users)
                 qconfig = get_qconfig(8)
                 observer_module = qconfig.activation()
                 with graph_module.graph.inserting_after(node):
@@ -178,11 +177,11 @@ class PytorchQuantizer:
                     new_node = graph_module.graph.call_module(
                         node.name + "_observer", (node,), type_expr="observer"
                     )
-
-                next_node.replace_input_with(node, new_node)
+                for user in users:
+                    user.replace_input_with(node, new_node)
             elif node.op == "call_module":
+                users = list(node.users)
                 module = modules[node.target]
-                next_node = node.next
                 qconfig = get_qconfig(8)
                 observer_module = qconfig.activation()
                 module.qconfig = qconfig
@@ -192,10 +191,10 @@ class PytorchQuantizer:
                     new_node = graph_module.graph.call_module(
                         node.name + "_observer", (node,), type_expr="observer"
                     )
-
-                next_node.replace_input_with(node, new_node)
+                for user in users:
+                    user.replace_input_with(node, new_node)
             elif node.op == "call_function":
-                next_node = node.next
+                users = list(node.users)
                 qconfig = get_qconfig(8)
                 observer_module = qconfig.activation()
                 with graph_module.graph.inserting_after(node):
@@ -203,8 +202,8 @@ class PytorchQuantizer:
                     new_node = graph_module.graph.call_module(
                         node.name + "_observer", (node,), type_expr="observer"
                     )
-
-                next_node.replace_input_with(node, new_node)
+                for user in users:
+                    user.replace_input_with(node, new_node)
             elif node.op == "output":
                 pass
 
@@ -212,7 +211,6 @@ class PytorchQuantizer:
 
     def calibrate(self, calibtraion_func):
         calibtraion_func(self.observed_model)
-
         logger.info("calibtraion finish")
 
     def convert(self):
@@ -246,8 +244,12 @@ class PytorchQuantizer:
                     quantized = MaxPool2d.from_float(module)
                 elif isinstance(module, nn.Linear):
                     quantized = Linear.from_float(module)
+                elif isinstance(module, nn.AdaptiveMaxPool2d):
+                    quantized = MaxPool2d.from_float(module)
                 elif isinstance(module, tuple(get_available_observers())):
                     continue
+                else:
+                    print(module)
 
                 with graph_module.graph.inserting_after(node):
                     replace_node_module(node, modules, quantized)
