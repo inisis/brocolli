@@ -243,6 +243,25 @@ class TestActivationClass:
         model = ReLU6()
         Tester(request.node.name, model, x)
 
+    @pytest.mark.parametrize("dim", (1, -1))
+    def test_GLU(
+        self,
+        request,
+        dim,
+        shape=[1, 3, 32, 32],
+    ):
+        class GLU(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.glu = torch.nn.GLU(dim=dim)
+
+            def forward(self, x):
+                return self.glu(x)
+
+        x = torch.rand(shape)
+        model = GLU(dim)
+        Tester(request.node.name, model, x)
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
