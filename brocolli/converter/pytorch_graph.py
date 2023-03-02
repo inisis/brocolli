@@ -6,6 +6,8 @@ from torch.fx import Tracer, Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import map_aggregate
 
+import numbers
+
 from .common_utils import get_function_name, map_replace, gen_torch_tensor
 from .pytorch_layer.transformer import (
     Transformer,
@@ -43,6 +45,8 @@ class BrocolliShapeRunner(Interpreter):
 
     def run_node(self, n):
         result = super().run_node(n)
+        if isinstance(result, numbers.Number):
+            result = torch.tensor(result)
 
         found_tensor = False
 
@@ -51,6 +55,8 @@ class BrocolliShapeRunner(Interpreter):
             shape = list(result.shape)
             if self.dynamic_batch:
                 shape[0] = -1
+
+            meta_info["value"] = result
             meta_info["shape"] = torch.Size(shape)
             meta_info["dtype"] = result.dtype
 
