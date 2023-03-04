@@ -13,15 +13,24 @@ class DivFunc(BaseLayer):
         super(DivFunc, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-
         assert len(self._source_node.args) == 2
         if len(self._source_node.all_input_nodes) == 1:
             if isinstance(self._source_node.args[0], Node):
                 assert isinstance(self._source_node.args[1], numbers.Number)
-                self.generate_params(np.array([self._source_node.args[1]]))
+                if isinstance(self._source_node.args[1], float):
+                    self.generate_params(
+                        np.array([self._source_node.args[1]]).astype(np.float32)
+                    )
+                else:
+                    self.generate_params(np.array([self._source_node.args[1]]))
             else:
                 assert isinstance(self._source_node.args[0], numbers.Number)
-                self.generate_params(np.array([self._source_node.args[0]]))
+                if isinstance(self._source_node.args[0], float):
+                    self.generate_params(
+                        np.array([self._source_node.args[0]]).astype(np.float32)
+                    )
+                else:
+                    self.generate_params(np.array([self._source_node.args[0]]))
 
         node = helper.make_node("Div", self._in_names, self._out_names, self._name)
 
