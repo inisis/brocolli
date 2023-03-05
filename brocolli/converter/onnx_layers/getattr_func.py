@@ -1,3 +1,4 @@
+import torch
 from loguru import logger
 
 
@@ -20,7 +21,11 @@ class GetAttrFunc(BaseLayer):
                     f"Node referenced nonexistent target {'.'.join(target_atoms[:i])}"
                 )
             attr_itr = getattr(attr_itr, atom)
+        if not isinstance(attr_itr, torch.Tensor):
+            logger.warning(
+                "getattr_layer: " + self._name + " not created, because it's not Tensor"
+            )
+        else:
+            self.create_params(self._name, attr_itr.detach().numpy())
 
-        self.create_params(self._name, attr_itr.detach().numpy())
-
-        logger.info("getattr_layer: " + self._name + " created")
+            logger.info("getattr_layer: " + self._name + " created")
