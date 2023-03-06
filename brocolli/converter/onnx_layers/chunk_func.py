@@ -13,10 +13,7 @@ class ChunkFunc(BaseLayer):
         pass
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        if "dim" in self._source_node.kwargs:
-            axis = self._source_node.kwargs["dim"]
-        else:
-            axis = self._source_node.args[2]
+        axis = self.get_value_by_key_or_index("dim", 2)
 
         if len(self._output_shape) == 1:
             slice_shape = self._output_shape[0][axis]
