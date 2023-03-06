@@ -1,9 +1,36 @@
 import sys
+import torch
 from loguru import logger
 import numpy as np
 
 from .base_layer import BaseLayer
 from .slice_func import SliceFunc
+
+
+def gen_slice_params(args):
+    params_slices = []
+    for idx, function in enumerate(args):
+        if function.start is None and function.stop is None and function.step is None:
+            continue
+        else:
+            start_ = function.start if function.start is not None else 0
+            end_ = (
+                function.stop if function.stop is not None else sys.maxsize
+            )  # maybe a bug
+            axes_ = idx
+            step_ = function.step if function.step is not None else 1
+            if isinstance(end_, torch.fx.node.Node):
+                end_ = end_.meta["tensor_meta"]["value"]
+
+            params_slice = [
+                np.array([start_]),
+                np.array([end_]),
+                np.array([axes_]),
+                np.array([step_]),
+            ]
+            params_slices.append(params_slice)
+
+    return params_slices
 
 
 class GetItemFunc(BaseLayer):
@@ -14,33 +41,17 @@ class GetItemFunc(BaseLayer):
         pass
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-        if isinstance(self._source_node.args[1], tuple):
+        if isinstance(self._source_node.args[1], slice):
+            params_slices = gen_slice_params([self._source_node.args[1]])
+            slice_layer = SliceFunc(self._source_node, auto_gen=False)
+            slice_layer.add_bottom_top()
+            slice_layer.generate_node(params=params_slices[0])
+            self.node_post_process(slice_layer)
+        elif isinstance(self._source_node.args[1], tuple):
             if all(
                 isinstance(function, slice) for function in self._source_node.args[1]
             ):
-                params_slices = []
-                for idx, function in enumerate(self._source_node.args[1]):
-                    if (
-                        function.start is None
-                        and function.stop is None
-                        and function.step is None
-                    ):
-                        continue
-                    else:
-                        start_ = function.start if function.start is not None else 0
-                        end_ = (
-                            function.stop if function.stop is not None else sys.maxsize
-                        )  # maybe a bug
-                        axes_ = idx
-                        step_ = function.step if function.step is not None else 1
-
-                        params_slice = [
-                            np.array([start_]),
-                            np.array([end_]),
-                            np.array([axes_]),
-                            np.array([step_]),
-                        ]
-                        params_slices.append(params_slice)
+                params_slices = gen_slice_params(self._source_node.args[1])
                 if len(params_slices) == 1:
                     slice_layer = SliceFunc(self._source_node, auto_gen=False)
                     slice_layer.add_bottom_top()
