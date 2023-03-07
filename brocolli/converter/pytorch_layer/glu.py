@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.nn.parameter import Parameter
-from .utils import transform_weight
 
 
 class GLU(nn.Module):

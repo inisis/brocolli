@@ -168,6 +168,19 @@ class TestShapeClass:
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
+    def test_Slice_dynamic(self, request, shape=([8, 4])):
+        class Slice(torch.nn.Module):
+            def __init__(self):
+                super(Slice, self).__init__()
+                self.register_buffer("pe", torch.randn(8, 8))
+
+            def forward(self, x):
+                return x + self.pe[:, : x.size(1)]
+
+        model = Slice()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
     @pytest.mark.parametrize("dim", (0, 1, 2, 3))
     def test_unbind(self, request, dim, shape=([1, 3, 32, 32])):
         class Unbind(torch.nn.Module):

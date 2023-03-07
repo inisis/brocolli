@@ -33,6 +33,7 @@ class PytorchOnnxParser:
         self.fuse = fuse
         self.concrete_args = concrete_args
         self.dynamic_batch = dynamic_batch
+        self.pyotrch_inference()
 
     def print_tabular(self, graph_module):
         nodes = list(graph_module.graph.nodes)
@@ -75,7 +76,7 @@ class PytorchOnnxParser:
                 if isinstance(module, (nn.Conv2d, nn.Conv1d)):
                     conv_layer = ConvLayer(node, module)
                     self.node_post_process(conv_layer)
-                elif isinstance(module, nn.BatchNorm2d):
+                elif isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d)):
                     batchnorm_layer = BatchNormLayer(node, module)
                     self.node_post_process(batchnorm_layer)
                 elif isinstance(module, nn.ReLU):
@@ -320,7 +321,7 @@ class PytorchOnnxParser:
                 elif function_name == "interpolate":
                     upsample_layer = UpsampleFunc(node)
                     self.node_post_process(upsample_layer)
-                elif function_name == "_pad":
+                elif function_name == "_pad" or function_name == "pad":
                     pad_layer = PadFunc(node)
                     self.node_post_process(pad_layer)
                 elif function_name == "tile":
@@ -341,6 +342,12 @@ class PytorchOnnxParser:
                 elif function_name == "stack":
                     stack_layer = StackFunc(node)
                     self.node_post_process(stack_layer)
+                elif function_name == "glu":
+                    glu_layer = GLUFunc(node)
+                    self.node_post_process(glu_layer)
+                elif function_name == "baddbmm":
+                    baddbmm_layer = BADDBMMFunc(node)
+                    self.node_post_process(baddbmm_layer)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -410,6 +417,9 @@ class PytorchOnnxParser:
                 elif str(node.target) == "exp":
                     exp_layer = ExpFunc(node)
                     self.node_post_process(exp_layer)
+                elif str(node.target) == "__getitem__":
+                    getitem_layer = GetItemFunc(node)
+                    self.node_post_process(getitem_layer)
                 else:
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
@@ -455,7 +465,6 @@ class PytorchOnnxParser:
         logger.info("onnx model saved to {}".format(dest_path))
 
     def check_result(self):
-        self.pyotrch_inference()
         self.onnx_inference()
         pytorch_output_list = map_reduce(self.pytorch_output, gen_numpy_data)
         assert len(pytorch_output_list) == len(

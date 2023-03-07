@@ -295,9 +295,13 @@ class TestArithmeticClass:
         model = Matmul()
         Tester(request.node.name, model, (x, y))
 
+    @pytest.mark.parametrize("alpha", (1.0, 2.0))
+    @pytest.mark.parametrize("beta", (1.0, 2.0))
     def test_TorchBADDBMM(
         self,
         request,
+        alpha,
+        beta,
         shape=((10, 3, 5), (10, 3, 4), (10, 4, 5)),
     ):
         class TorchMul(torch.nn.Module):
@@ -305,7 +309,7 @@ class TestArithmeticClass:
                 super(TorchMul, self).__init__()
 
             def forward(self, x, y, z):
-                return torch.baddbmm(x, y, z)
+                return torch.baddbmm(x, y, z, alpha=alpha, beta=beta)
 
         x = torch.rand(shape[0])
         y = torch.rand(shape[1])

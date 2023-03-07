@@ -244,19 +244,38 @@ class TestActivationClass:
         Tester(request.node.name, model, x)
 
     @pytest.mark.parametrize("dim", (1, -1))
-    def test_GLU(
+    def test_GLU_module(
         self,
         request,
         dim,
-        shape=[1, 3, 32, 32],
+        shape=[1, 4, 32, 32],
     ):
         class GLU(torch.nn.Module):
-            def __init__(self):
+            def __init__(self, dim):
                 super().__init__()
                 self.glu = torch.nn.GLU(dim=dim)
 
             def forward(self, x):
                 return self.glu(x)
+
+        x = torch.rand(shape)
+        model = GLU(dim)
+        Tester(request.node.name, model, x)
+
+    @pytest.mark.parametrize("dim", (1, -1))
+    def test_GLU(
+        self,
+        request,
+        dim,
+        shape=[1, 4, 32, 32],
+    ):
+        class GLU(torch.nn.Module):
+            def __init__(self, dim):
+                super().__init__()
+                self.dim = dim
+
+            def forward(self, x):
+                return F.glu(x, dim=self.dim)
 
         x = torch.rand(shape)
         model = GLU(dim)
