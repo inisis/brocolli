@@ -12,5 +12,5 @@ class LogLayer(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         node = helper.make_node("Log", self._in_names, self._out_names, self._name)
-        logging.info("log_layer: " + self._name + " created")
+        logger.info("log_layer: " + self._name + " created")
         self._node.append(node)
