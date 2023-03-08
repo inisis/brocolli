@@ -54,6 +54,8 @@ class MulFunc(BaseLayer):
         super(MulFunc, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
+        if name is not None:
+            self._name = name
         node = helper.make_node("Mul", self._in_names, self._out_names, self._name)
 
         logger.info("mul_layer: " + self._name + " created")

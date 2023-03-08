@@ -35,6 +35,9 @@ class SplitFunc(BaseLayer):
         self._out_names.extend(out_names)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
+        if name is not None:
+            self._name = name
+
         if params is None:
             if "dim" in self._source_node.kwargs:
                 axis = self._source_node.kwargs["dim"]
