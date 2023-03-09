@@ -41,7 +41,7 @@ class PadFunc(BaseLayer):
             params = np.array(pads)
             value = self.get_value_by_key_or_index("value", 3, 0.0)
 
-            params = [np.array(pads), np.array(value)]
+            params = [np.array(pads), np.array(value).astype(np.float32)]
 
         if attr_dict is None:
             attr_dict = self.gen_pad_attr()

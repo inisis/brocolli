@@ -41,7 +41,7 @@ class PadLayer(BaseLayer):
                 value = self._module.value
             else:
                 value = 0.0
-            params = [np.array(pads), np.array(value)]
+            params = [np.array(pads), np.array(value).astype(np.float32)]
 
         self.create_params(self._name + "_pad", params[0])
         self.create_params(self._name + "_value", params[1])
