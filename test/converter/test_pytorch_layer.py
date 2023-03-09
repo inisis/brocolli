@@ -2,6 +2,26 @@ import pytest
 import warnings
 
 
+def test_glu():
+    import torch
+    import torch.nn as nn
+    from brocolli.converter.pytorch_layer.glu import GLU
+
+    batch_size, seq_len, feature_dim, head_num = 7, 12, 16, 4
+    x = torch.rand((batch_size, seq_len, feature_dim))
+    model_pytorch = nn.GLU(dim=-1)
+    model_pytorch.eval()
+    out_pytorch = model_pytorch(x)
+
+    model_brocolli = GLU(dim=-1)
+    model_brocolli.eval()
+
+    out_brocolli = model_brocolli(x)
+
+    tol = 1e-5
+    torch.testing.assert_close(out_pytorch, out_brocolli, rtol=tol, atol=tol)
+
+
 def test_mha():
     import torch
     import torch.nn as nn
