@@ -44,3 +44,6 @@ pip install brocolli
  QQ Group: 597059928
  
  ![image](https://raw.githubusercontent.com/inisis/brocolli/master/imgs/QGRPOUP.png)
+ 
+# Show your support
+  Give a 🌟 if this project helpes~
