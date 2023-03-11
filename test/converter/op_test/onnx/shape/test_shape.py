@@ -184,13 +184,14 @@ class TestShapeClass:
     @pytest.mark.parametrize("dim", (0, 1, 2, 3))
     def test_unbind(self, request, dim, shape=([1, 3, 32, 32])):
         class Unbind(torch.nn.Module):
-            def __init__(self):
+            def __init__(self, dim):
                 super(Unbind, self).__init__()
+                self.dim = dim
 
             def forward(self, x):
-                return x.unbind(dim=dim)
+                return x.unbind(dim=self.dim)
 
-        model = Unbind()
+        model = Unbind(dim)
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
