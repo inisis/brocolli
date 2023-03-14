@@ -15,7 +15,7 @@ from brocolli.quantization.quantizer import PytorchQuantizer  # noqa
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Subset
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 
 
 class Net(nn.Module):
@@ -78,7 +78,7 @@ def calibrate_func(model):
         [transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))]
     )
     dataset_train = MNISTCHINA("data", download=True, train=True, transform=transform)
-    dataset_train = Subset(dataset_train, indices=[_ for _ in range(0, 1280)])
+    dataset_train = Subset(dataset_train, indices=[_ for _ in range(0, 128)])
     train_loader = DataLoader(dataset_train, batch_size=8, shuffle=False, num_workers=8)
 
     with torch.no_grad():
@@ -102,7 +102,7 @@ def evaluate_func(model):
         [transforms.ToTensor(), transforms.Normalize((0.1307), (0.3081))]
     )
     dataset_test = MNISTCHINA("data", download=True, train=False, transform=transform)
-    dataset_test = Subset(dataset_test, indices=[_ for _ in range(0, 1280)])
+    dataset_test = Subset(dataset_test, indices=[_ for _ in range(0, 128)])
     test_loader = DataLoader(dataset_test, batch_size=8, shuffle=False, num_workers=8)
 
     with torch.no_grad():
