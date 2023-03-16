@@ -8,17 +8,15 @@ from brocolli.testing.common_utils import OnnxBaseTester as Tester
 
 class TestTransformerClass:
     def test_mha(self, request):
-        from brocolli.converter.pytorch_layer.mha import MultiheadAttention
-
         class MultiheadAttentionModel(nn.Module):
             def __init__(self):
                 super(MultiheadAttentionModel, self).__init__()
-                self.mha = MultiheadAttention(16, 4)
+                self.mha = nn.MultiheadAttention(16, 4)
 
             def forward(self, q, k, v):
-                return self.mha(q, k, v)
+                return self.mha(q, k, v, need_weights=False)
 
-        batch_size, seq_len, feature_dim, head_num = 7, 12, 16, 4
+        batch_size, seq_len, feature_dim = 7, 12, 16
         model = MultiheadAttentionModel()
         shape = (
             (batch_size, seq_len, feature_dim),
@@ -32,7 +30,15 @@ class TestTransformerClass:
         Tester(request.node.name, model, (q, k, v))
 
     def test_layernorm(self, request):
-        from brocolli.converter.pytorch_layer.layernorm import LayerNorm
+        class LayerNorm(nn.Module):
+            def __init__(self, embedding_dim):
+                super(LayerNorm, self).__init__()
+                self.layernorm = nn.LayerNorm(embedding_dim)
+
+            def forward(self, src):
+                output = self.layernorm(src)
+
+                return output
 
         batch, sentence_length, embedding_dim = 20, 5, 10
         model = LayerNorm(embedding_dim)

@@ -159,9 +159,6 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.Softplus):
                     layer = SoftplusLayer(node, module)
                     self.node_post_process(layer)
-                elif isinstance(module, nn.LayerNorm):
-                    layer = LayerNormLayer(node, module)
-                    self.node_post_process(layer)
                 elif isinstance(module, nn.Embedding):
                     layer = EmbeddingLayer(node, module)
                     self.node_post_process(layer)

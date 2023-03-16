@@ -128,6 +128,9 @@ class PytorchGraph:
             elif isinstance(module, nn.MultiheadAttention):
                 converted_module = MultiheadAttention.from_torch(module)
                 setattr(model, name, converted_module)
+            elif isinstance(module, nn.LayerNorm):
+                converted_module = LayerNorm.from_torch(module)
+                setattr(model, name, converted_module)
             elif isinstance(module, nn.GLU):
                 converted_module = GLU(dim=module.dim)
                 setattr(model, name, converted_module)
