@@ -8,7 +8,7 @@ from torch.fx.node import map_aggregate
 
 import numbers
 
-from .common_utils import get_function_name, map_replace, gen_torch_tensor
+from .common_utils import get_function_name
 from .pytorch_layer.transformer import (
     Transformer,
     TransformerEncoder,
