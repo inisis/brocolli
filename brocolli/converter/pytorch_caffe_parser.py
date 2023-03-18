@@ -1,4 +1,3 @@
-from builtins import isinstance
 import numpy as np
 from loguru import logger
 from brocolli.converter.pytorch_graph import PytorchGraph
