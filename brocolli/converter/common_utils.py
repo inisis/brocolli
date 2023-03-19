@@ -1,10 +1,7 @@
 import re
 import torch
 import torch.nn as nn
-import numpy as np
 from torch.nn.utils.fusion import fuse_conv_bn_eval, fuse_linear_bn_eval
-
-# from onnx import TensorProto as tp
 
 
 def get_shape(obj):
