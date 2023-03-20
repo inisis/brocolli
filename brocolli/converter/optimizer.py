@@ -177,6 +177,41 @@ def find_layernorm_nodes(node):
     return match
 
 
+# @register_fusion_pattern("GLU")
+def find_glu_nodes(node):
+    # fmt: off
+    '''
+             x
+             |
+           Split
+         /      \
+         |    Sigmoid
+         \      /
+            Mul
+    '''
+    # fmt: on
+    match = {}
+    if node.op == "Mul":
+        if node.i(1).op == "Sigmoid":
+            sigmoid_node = node.i(1)
+            mul_node = node
+            if sigmoid_node.inputs[0] in mul_node.inputs:
+                input_variable = node.i(1).inputs[0]
+                input_variable.outputs.remove(sigmoid_node)
+                input_variable.outputs.remove(mul_node)
+
+                output_variable = node.outputs[0]
+                output_variable.inputs.clear()
+                match.update(
+                    {
+                        "inputs": [input_variable],
+                        "outputs": [output_variable],
+                    }
+                )
+
+    return match
+
+
 @gs.Graph.register()
 def replace_custom_layer(
     self, op, inputs, outputs, name, attrs=None, domain="ai.onnx.contrib"
@@ -225,7 +260,9 @@ def optimize_model(model):
     for _, match in fusion_pairs.items():
         graph.replace_custom_layer(**match)
     graph_constant_fold_inplace(graph)
-    graph.cleanup(remove_unused_graph_inputs=True).toposort()
+    graph.cleanup(
+        remove_unused_node_outputs=True, remove_unused_graph_inputs=True
+    ).toposort()
     model = gs.export_onnx(graph)
 
     return model
