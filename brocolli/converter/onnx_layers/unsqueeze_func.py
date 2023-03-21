@@ -1,7 +1,6 @@
 from loguru import logger
 import numpy as np
 from onnx import helper
-from onnx import TensorProto as tp
 
 
 from .base_layer import BaseLayer
