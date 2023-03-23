@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import torch.fx
-from torch.fx import Tracer, Graph
+from torch.fx import Tracer, Graph, Node
 from torch.fx.passes.shape_prop import ShapeProp
 from torch.fx.graph_module import GraphModule
 
@@ -255,17 +255,31 @@ class PytorchQuantizer:
                     replace_node_module(node, modules, quantized)
 
             elif node.op == "output":
-                prev_node = node.args[0]
-                module = dict(graph_module.named_modules())[prev_node.target]
+                if isinstance(node.args[0], Node):
+                    prev_node = node.args[0]
+                    module = dict(graph_module.named_modules())[prev_node.target]
 
-                output = Output.from_float(module)
-                with graph_module.graph.inserting_after(prev_node):
-                    graph_module.add_module("output", output)
-                    new_node = graph_module.graph.call_module(
-                        "output", node.args, node.kwargs
-                    )
+                    output = Output.from_float(module)
+                    with graph_module.graph.inserting_after(prev_node):
+                        graph_module.add_module("output", output)
+                        new_node = graph_module.graph.call_module(
+                            "output", node.args, node.kwargs
+                        )
 
-                node.replace_input_with(prev_node, new_node)
+                    node.replace_input_with(prev_node, new_node)
+                else:
+                    for idx in range(len(node.args[0])):
+                        prev_node = node.args[0][idx]
+                        module = dict(graph_module.named_modules())[prev_node.target]
+
+                        output = Output.from_float(module)
+                        with graph_module.graph.inserting_after(prev_node):
+                            graph_module.add_module("output_"+str(idx), output)
+                            new_node = graph_module.graph.call_module(
+                                "output_"+str(idx), (prev_node,)
+                            )
+
+                        node.replace_input_with(prev_node, new_node)
 
         for node in list(graph_module.graph.nodes):  # remove observer
             if node.op == "call_module" and node.type == "observer":
