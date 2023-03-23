@@ -254,18 +254,6 @@ class PytorchQuantizer:
                 with graph_module.graph.inserting_after(node):
                     replace_node_module(node, modules, quantized)
 
-            # elif node.op == "output":
-            #     prev_node = node.args[0]
-            #     module = dict(graph_module.named_modules())[prev_node.target]
-            #
-            #     output = Output.from_float(module)
-            #     with graph_module.graph.inserting_after(prev_node):
-            #         graph_module.add_module("output", output)
-            #         new_node = graph_module.graph.call_module(
-            #             "output", node.args, node.kwargs
-            #         )
-            #
-            #     node.replace_input_with(prev_node, new_node)
             elif node.op == "output":
                 if isinstance(node.args[0], Node):
                     prev_node = node.args[0]
