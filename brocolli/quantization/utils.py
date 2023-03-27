@@ -34,8 +34,8 @@ def check_result(actual, desired):
 
     for idx in range(len(actual)):
         np.testing.assert_allclose(
-            actual[idx].detach().numpy(),
-            desired[idx].detach().numpy(),
+            actual[idx].cpu().detach().numpy(),
+            desired[idx].cpu().detach().numpy(),
             rtol=1e-7,
             atol=1e-3,
         )

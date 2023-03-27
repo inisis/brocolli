@@ -46,6 +46,7 @@ class PytorchQuantizer:
     def __init__(self, model, input_shape, concrete_args=None):
         super(PytorchQuantizer, self).__init__()
         self.model = model.eval()
+        self.device = next(self.model.parameters()).device
         self.input_shape = input_shape
         if isinstance(input_shape, (tuple, list)) and all(
             isinstance(element, int) for element in input_shape
@@ -89,11 +90,13 @@ class PytorchQuantizer:
         for shape in shapes:
             if isinstance(shape, (tuple, list)):
                 if all(isinstance(element, int) for element in shape):
-                    input_tensor.append(torch.rand(shape).to(torch.float32))
+                    input_tensor.append(
+                        torch.rand(shape).to(torch.float32).to(self.device)
+                    )
                 else:
                     input_tensor.append(self.gen_input_tensor(shape))
             else:
-                input_tensor.append(torch.rand(shape).to(torch.float32))
+                input_tensor.append(torch.rand(shape).to(torch.float32).to(self.device))
 
         return input_tensor
 
@@ -274,9 +277,9 @@ class PytorchQuantizer:
 
                         output = Output.from_float(module)
                         with graph_module.graph.inserting_after(prev_node):
-                            graph_module.add_module("output_"+str(idx), output)
+                            graph_module.add_module("output_" + str(idx), output)
                             new_node = graph_module.graph.call_module(
-                                "output_"+str(idx), (prev_node,)
+                                "output_" + str(idx), (prev_node,)
                             )
 
                         node.replace_input_with(prev_node, new_node)

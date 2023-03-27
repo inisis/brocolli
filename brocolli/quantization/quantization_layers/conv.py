@@ -158,9 +158,9 @@ class _ConvNd(nn.Module):
         qconv.weight = torch.nn.Parameter(qweight, requires_grad=False)
         if mod.bias is not None:
             qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
-        qconv.act_scale = float(act_scale)
-        qconv.wt_scale = wt_scale.reshape(1, -1, 1, 1)
-        qconv.output_scale = float(output_scale)
+        qconv.act_scale = torch.Tensor(act_scale).to(qweight.device)
+        qconv.wt_scale = torch.Tensor(wt_scale).reshape(1, -1, 1, 1).to(qweight.device)
+        qconv.output_scale = torch.Tensor(output_scale).to(qweight.device)
         qconv.output_min_value = activation_post_process.min_val
         qconv.output_max_value = activation_post_process.max_val
 
@@ -230,15 +230,14 @@ class Conv2d(_ConvNd, BaseOperator):
             raise ValueError("Input shape must be `(N, C, H, W)`!")
 
         out = F.conv2d(
-            input.to(torch.int64),
-            self.weight.to(torch.int64),
-            self.bias.to(torch.int64) if self.bias is not None else None,
+            input.to(torch.double),
+            self.weight.to(torch.double),
+            self.bias.to(torch.double) if self.bias is not None else None,
             self.stride,
             self.padding,
             self.dilation,
             self.groups,
         )
-
         out = out * self.act_scale * self.wt_scale / self.output_scale
         out = self.clamp(out)
 

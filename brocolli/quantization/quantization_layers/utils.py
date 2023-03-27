@@ -28,8 +28,8 @@ def _quantize_weight(float_wt, observer):
         wt_axis = observer.ch_axis
         qweight = torch.quantize_per_channel(
             float_wt,
-            wt_scale.to(torch.double),
-            torch.zeros_like(wt_scale).to(torch.int64),
+            wt_scale.to(torch.double).to(float_wt.device),
+            torch.zeros_like(wt_scale).to(torch.int64).to(float_wt.device),
             wt_axis,
             torch.qint8,
         ).int_repr()
@@ -45,8 +45,8 @@ def _quantize_weight(float_wt, observer):
 def _quantize_bias(float_bias, scale):
     qbias = torch.quantize_per_channel(
         float_bias,
-        scale.to(torch.double),
-        torch.zeros_like(scale).to(torch.int64),
+        scale.to(torch.double).to(float_bias.device),
+        torch.zeros_like(scale).to(torch.int64).to(float_bias.device),
         0,
         torch.qint32,
     ).int_repr()
