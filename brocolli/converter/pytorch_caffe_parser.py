@@ -353,6 +353,9 @@ class PytorchCaffeParser:
                     self.layers.append(layer_data)
                 elif function_name == "getattr":
                     pass
+                elif function_name == "interpolate":
+                    layer_data = self.rename_interpolate(node)
+                    self.layers.append(layer_data)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -767,11 +770,21 @@ class PytorchCaffeParser:
 
         return layer
 
-    def rename_Upsample(self, source_node, module):
+    def rename_Upsample(self, source_node, module=None):
         layer = pb2.LayerParameter()
         layer.type = "Upsample"
 
         layer.upsample_param.scale = int(module.scale_factor)
+
+        self.add_bottom_top(layer, source_node)
+
+        return layer
+
+    def rename_interpolate(self, source_node, module=None):
+        layer = pb2.LayerParameter()
+        layer.type = "Upsample"
+
+        layer.upsample_param.scale = int(source_node.kwargs["scale_factor"])
 
         self.add_bottom_top(layer, source_node)
 
