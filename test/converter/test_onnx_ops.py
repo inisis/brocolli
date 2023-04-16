@@ -1,7 +1,9 @@
+import os
 import pytest
 import warnings
 import argparse
 
+os.makedirs("tmp", exist_ok=True)
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")

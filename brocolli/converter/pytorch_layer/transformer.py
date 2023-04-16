@@ -335,7 +335,6 @@ class Transformer(nn.Module):
         tgt_key_padding_mask=None,
         memory_key_padding_mask=None,
     ):
-
         memory = self.encoder(
             src, mask=src_mask, src_key_padding_mask=src_key_padding_mask
         )
