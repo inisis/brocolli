@@ -15,7 +15,7 @@ class PowerFunc(BaseLayer):
         params = np.array([self._source_node.args[1]])
         self.create_params(self._name + "_weight", params)
         node = helper.make_node("Pow", self._in_names, self._out_names, self._name)
-        logger.info("power_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
 
     def generate_params(self, params):

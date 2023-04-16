@@ -12,5 +12,5 @@ class NegFunc(BaseLayer):
 
     def generate_node(self, name=None, params=None, attr_dict=None):
         node = helper.make_node("Neg", self._in_names, self._out_names, self._name)
-        logger.info("neg_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)

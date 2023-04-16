@@ -322,7 +322,6 @@ class GRUCell(BaseLayer):
         super(GRUCell, self).__init__(source_node, module, auto_gen)
 
     def get_gru_attr(self):
-
         attr_dict = {
             "hidden_size": [1],  # list of ints defaults is 1
         }
@@ -344,7 +343,7 @@ class GRUCell(BaseLayer):
         node = helper.make_node(
             "GRU", self._in_names, self._out_names, self._name, **attr_dict
         )
-        logger.info("gru_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
 
     def generate_params(self, params, name=None):

@@ -12,7 +12,6 @@ class GELULayer(BaseLayer):
         super(GELULayer, self).__init__(source_node, module, auto_gen)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-
         node = helper.make_node(
             "GELU",
             self._in_names,
@@ -20,7 +19,7 @@ class GELULayer(BaseLayer):
             self._name,
             domain="ai.onnx.contrib",
         )
-        logger.info("gelu_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
 
 

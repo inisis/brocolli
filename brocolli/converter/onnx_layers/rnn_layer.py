@@ -334,7 +334,6 @@ class RNNCell(BaseLayer):
         super(RNNCell, self).__init__(source_node, module, auto_gen)
 
     def get_rnn_attr(self):
-
         attr_dict = {
             "hidden_size": [1],  # list of ints defaults is 1
         }
@@ -355,7 +354,7 @@ class RNNCell(BaseLayer):
         node = helper.make_node(
             "RNN", self._in_names, self._out_names, self._name, **attr_dict
         )
-        logger.info("rnn_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
 
     def generate_params(self, params, name=None):

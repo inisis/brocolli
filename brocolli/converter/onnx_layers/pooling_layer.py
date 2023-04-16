@@ -111,12 +111,12 @@ class PoolingLayer(BaseLayer):
                     self._in_names,
                     self._out_names,
                     self._name,
-                    **attr_dict
+                    **attr_dict,
                 )
         elif isinstance(self._module, (nn.AvgPool1d, nn.AvgPool2d)):
             attr_dict = self.get_pooling_attr()
             node = helper.make_node(
                 "AveragePool", self._in_names, self._out_names, self._name, **attr_dict
             )
-        logger.info("pooling_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)

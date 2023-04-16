@@ -22,14 +22,14 @@ class OutputLayer(BaseLayer):
             output_tvi = helper.make_tensor_value_info(
                 name, onnx_type, self._output_shape[0]
             )
-            logger.info("output_layer: " + name + " created")
+            logger.info(f"{self.__class__.__name__}: {self._name} created")
             self._out_tensor_value_info.append(output_tvi)
         elif len(self._output_shape) == len(self._source_node.all_input_nodes):
             for idx, shape in enumerate(self._output_shape):
                 name = self.recursive_find_name(self._source_node.all_input_nodes[idx])
                 onnx_type = pytorch_dtype_to_onnx(self._output_dtype[idx])
                 output_tvi = helper.make_tensor_value_info(name, onnx_type, shape)
-                logger.info("output_layer: " + name + " created")
+                logger.info(f"{self.__class__.__name__}: {self._name} created")
                 self._out_tensor_value_info.append(output_tvi)
         else:
             for idx, shape in enumerate(self._output_shape):

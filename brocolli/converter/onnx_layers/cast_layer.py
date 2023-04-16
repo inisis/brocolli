@@ -23,5 +23,5 @@ class CastLayer(BaseLayer):
         node = helper.make_node(
             "Cast", self._in_names, self._out_names, self._name, **attr_dict
         )
-        logger.info("cast_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)

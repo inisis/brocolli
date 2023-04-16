@@ -17,12 +17,12 @@ class InputLayer(BaseLayer):
                 input_tvi = helper.make_tensor_value_info(
                     self._name + "_" + str(idx), onnx_type, self._output_shape[idx]
                 )
-                logger.info("input_layer: " + self._name + "_" + str(idx) + " created")
+                logger.info(f"{self.__class__.__name__}: {self._name} created")
                 self._in_tensor_value_info.append(input_tvi)
         else:
             onnx_type = pytorch_dtype_to_onnx(self._output_dtype[0])
             input_tvi = helper.make_tensor_value_info(
                 self._name, onnx_type, self._output_shape[0]
             )
-            logger.info("input_layer: " + self._name + " created")
+            logger.info(f"{self.__class__.__name__}: {self._name} created")
             self._in_tensor_value_info.append(input_tvi)

@@ -22,7 +22,6 @@ class PReluFunc(BaseLayer):
         self._out_names.extend(out_names)
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-
         target_atoms = self._source_node.args[1].target.split(".")
         attr_itr = self._module
         for i, atom in enumerate(target_atoms):
@@ -40,5 +39,5 @@ class PReluFunc(BaseLayer):
 
         node = helper.make_node("PRelu", self._in_names, self._out_names, self._name)
 
-        logger.info("prelu_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)

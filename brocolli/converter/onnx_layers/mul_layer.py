@@ -37,7 +37,7 @@ class MulLayer(BaseLayer):
 
             node = helper.make_node("Mul", self._in_names, self._out_names, self._name)
 
-            logger.info("mul_layer: " + self._name + " created")
+            logger.info(f"{self.__class__.__name__}: {self._name} created")
             self._node.append(node)
         else:
             mul_layer = MulFunc(self._source_node, self._module, auto_gen=False)
@@ -58,7 +58,7 @@ class MulFunc(BaseLayer):
             self._name = name
         node = helper.make_node("Mul", self._in_names, self._out_names, self._name)
 
-        logger.info("mul_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
 
     def generate_params(self, params, dtype=None):

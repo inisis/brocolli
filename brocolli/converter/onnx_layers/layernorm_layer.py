@@ -18,7 +18,6 @@ class LayerNormLayer(BaseLayer):
         return attr_dict
 
     def generate_node(self, name=None, params=None, attr_dict=None):
-
         self.create_params(self._name + "_weight", self._module.weight.detach().numpy())
         self.create_params(self._name + "_bias", self._module.bias.detach().numpy())
         attr_dict = self.get_layernorm_attr()
@@ -30,7 +29,7 @@ class LayerNormLayer(BaseLayer):
             domain="ai.onnx.contrib",
             attrs=str(attr_dict),
         )
-        logger.info("layernorm_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
 
 

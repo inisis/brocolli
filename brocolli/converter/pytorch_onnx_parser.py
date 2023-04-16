@@ -1,3 +1,4 @@
+import sys
 import time
 import numpy as np
 from loguru import logger
@@ -5,7 +6,6 @@ import torch
 import torch.nn as nn
 from torch.fx.graph_module import GraphModule
 from onnx import save, helper, checker, defs, load
-from tabulate import tabulate
 
 torch.manual_seed(0)
 np.random.seed(0)
@@ -23,7 +23,13 @@ from .optimizer import optimize_model
 
 class PytorchOnnxParser:
     def __init__(
-        self, model, inputs, fuse=False, concrete_args=None, dynamic_batch=False
+        self,
+        model,
+        inputs,
+        fuse=False,
+        concrete_args=None,
+        dynamic_batch=False,
+        level=1,
     ):
         super(PytorchOnnxParser, self).__init__()
         self.model = model.eval()
@@ -33,17 +39,21 @@ class PytorchOnnxParser:
         self.fuse = fuse
         self.concrete_args = concrete_args
         self.dynamic_batch = dynamic_batch
+        self.init_logging(level)
         self.pyotrch_inference()
 
-    def print_tabular(self, graph_module):
-        nodes = list(graph_module.graph.nodes)
-        node_specs = [[n.op, n.name, n.target, n.args, n.kwargs] for n in nodes]
-        logger.debug(
-            tabulate(
-                node_specs,
-                headers=["\nopcode", "\nname", "\ntarget", "\nargs", "\nkwargs"],
-            )
-        )
+    def init_logging(self, level):
+        logger.remove()
+        if level == 0:
+            logger.add(sys.stderr, level="DEBUG")
+        elif level == 1:
+            logger.add(sys.stderr, level="INFO")
+        elif level == 2:
+            logger.add(sys.stderr, level="WARNING")
+        elif level == 3:
+            logger.add(sys.stderr, level="ERROR")
+        else:
+            raise Exception("level must be 0, 1, 2 or 3")
 
     def convert(self):
         if isinstance(self.model, GraphModule):
@@ -459,7 +469,7 @@ class PytorchOnnxParser:
         checker.check_model(self.model_def)
         logger.info("onnx model conversion completed")
         save(self.model_def, dest_path)
-        logger.info("onnx model saved to {}".format(dest_path))
+        logger.info(f"onnx model saved to {dest_path}")
 
     def check_result(self):
         self.onnx_inference()
@@ -513,7 +523,7 @@ class PytorchOnnxParser:
         start = time.time()
         self.onnx_output = sess.run(onnx_outname, onnx_rt_dict)
         end = time.time()
-        logger.info("onnx ran in {:0.4f}s".format(end - start))
+        logger.info(f"onnx ran in {(end - start):0.4f}s")
         if isinstance(self.onnx_output, np.ndarray):
             self.onnx_output = [self.onnx_output]
 
@@ -552,7 +562,7 @@ class PytorchOnnxParser:
         name_to_input = {}
         for input in inputs:
             if input.name in name_to_input.keys():
-                logger.warning("Duplicate input name: {}".format(input.name))
+                logger.warning(f"Duplicate input name: {input.name}")
             name_to_input[input.name] = input
 
         for initializer in self.model_def.graph.initializer:

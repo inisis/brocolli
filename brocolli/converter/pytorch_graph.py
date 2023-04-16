@@ -7,6 +7,8 @@ from torch.fx.graph_module import GraphModule
 from torch.fx.node import map_aggregate
 
 import numbers
+from loguru import logger
+from tabulate import tabulate
 
 from .common_utils import get_function_name
 from .pytorch_layer.transformer import (
@@ -106,7 +108,17 @@ class PytorchGraph:
 
         self.graph = self.graph_module.graph
         self.nodes = list(self.graph_module.graph.nodes)
-        self.graph.print_tabular()
+        self.print_tabular(self.graph_module)
+
+    def print_tabular(self, graph_module):
+        nodes = list(graph_module.graph.nodes)
+        node_specs = [[n.op, n.name, n.target, n.args, n.kwargs] for n in nodes]
+        logger.debug(
+            tabulate(
+                node_specs,
+                headers=["\nopcode", "\nname", "\ntarget", "\nargs", "\nkwargs"],
+            )
+        )
 
     def replace(self, model):
         for name, module in model.named_children():

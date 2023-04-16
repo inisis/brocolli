@@ -12,7 +12,6 @@ class PoolingFunc(BaseLayer):
         super(PoolingFunc, self).__init__(source_node, module, auto_gen)
 
     def get_pooling_attr(self, function_name):
-
         pool_dim = int(re.findall(r"(?:pool)([0-9]d*?)", str(function_name))[0])
 
         attr_dict = {
@@ -127,12 +126,12 @@ class PoolingFunc(BaseLayer):
                     self._in_names,
                     self._out_names,
                     self._name,
-                    **attr_dict
+                    **attr_dict,
                 )
         elif function_name == "avg_pool2d" or function_name == "avg_pool1d":
             attr_dict = self.get_pooling_attr(function_name)
             node = helper.make_node(
                 "AveragePool", self._in_names, self._out_names, self._name, **attr_dict
             )
-        logger.info("pooling_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)

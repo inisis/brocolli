@@ -28,4 +28,4 @@ class GetAttrFunc(BaseLayer):
         else:
             self.create_params(self._name, attr_itr.detach().numpy())
 
-            logger.info("getattr_layer: " + self._name + " created")
+            logger.info(f"{self.__class__.__name__}: {self._name} created")

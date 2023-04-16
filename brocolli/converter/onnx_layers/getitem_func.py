@@ -89,4 +89,4 @@ class GetItemFunc(BaseLayer):
             else:
                 raise
         else:
-            logger.info("getitem_layer: " + self._name + " not supported")
+            logger.info(f"{self.__class__.__name__}: {self._name} created")

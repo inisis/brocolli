@@ -20,5 +20,5 @@ class CeluFunc(BaseLayer):
         node = helper.make_node(
             "Celu", self._in_names, self._out_names, self._name, **attr_dict
         )
-        logger.info("celu_layer: " + self._name + " created")
+        logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
