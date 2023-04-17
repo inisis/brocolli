@@ -4,18 +4,19 @@ from torchvision.datasets.utils import download_and_extract_archive, check_integ
 from urllib.error import URLError
 
 
-class ImageNetDatasetValCHINA(datasets.ImageFolder):
+class ImageNetDatasetCHINA(datasets.ImageFolder):
     mirrors = ["http://120.224.26.73:15030/aifarm/imagenet/"]
 
-    resources = [("imagenet-mini-val.zip", "9634a5c9a077baf161dd436bbe98f9fe")]
+    resources = [("imagenet-mini.zip", "6efde63fedbd28e4960533efa61005a8")]
 
     @property
     def processed_folder(self) -> str:
         return os.path.join(self.root, self.__class__.__name__, "processed")
 
-    def __init__(self, root: str, transform=None, download=False):
+    def __init__(self, root: str, transform=None, download=False, mode="val"):
         self.root = root
         self.transform = transform
+        self.mode = mode
 
         if not self._check_exist() and download:
             self.download()
@@ -24,7 +25,7 @@ class ImageNetDatasetValCHINA(datasets.ImageFolder):
             raise RuntimeError(
                 "Dataset not found." + " You can use download=True to download it"
             )
-        super(ImageNetDatasetValCHINA, self).__init__(self.processed_folder, transform)
+        super(ImageNetDatasetCHINA, self).__init__(self.processed_folder, transform)
 
     def _check_exist(self):
         return os.path.exists(self.processed_folder)
@@ -35,7 +36,7 @@ class ImageNetDatasetValCHINA(datasets.ImageFolder):
 
     @property
     def processed_folder(self) -> str:
-        return os.path.join(self.root, self.__class__.__name__, "val")
+        return os.path.join(self.root, self.__class__.__name__, self.mode)
 
     def _check_exists(self) -> bool:
         return all(
@@ -69,3 +70,12 @@ class ImageNetDatasetValCHINA(datasets.ImageFolder):
                 break
             else:
                 raise RuntimeError("Error downloading {}".format(filename))
+
+
+class ImageNetDatasetValCHINA(ImageNetDatasetCHINA):
+    mirrors = ["http://120.224.26.73:15030/aifarm/imagenet/"]
+
+    resources = [("imagenet-mini-val.zip", "9634a5c9a077baf161dd436bbe98f9fe")]
+
+    def __init__(self, root: str, transform=None, download=False):
+        super(ImageNetDatasetValCHINA, self).__init__(root, transform, download)
