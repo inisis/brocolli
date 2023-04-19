@@ -15,13 +15,13 @@ class Input(nn.Module, BaseOperator):
 
     @classmethod
     def from_float(cls, mod):
-        activation_pre_process = mod
-        scale = activation_pre_process.calculate_qparams()
-        output_min_value = activation_pre_process.min_val
-        output_max_value = activation_pre_process.max_val
+        activation_post_process = mod
+        scale = activation_post_process.calculate_qparams()
+        output_min_value = activation_post_process.min_val
+        output_max_value = activation_post_process.max_val
 
         qinput = cls()
-        qinput.scale = float(scale)
+        qinput.output_scale = float(scale)
         qinput.qbit = 8
         qinput.output_min_value = output_min_value
         qinput.output_max_value = output_max_value
@@ -29,7 +29,7 @@ class Input(nn.Module, BaseOperator):
         return qinput
 
     def forward(self, x):
-        output = x / self.scale
+        output = x / self.output_scale
         output = self.clamp(output)
 
         return output
