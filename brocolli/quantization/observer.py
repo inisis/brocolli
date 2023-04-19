@@ -125,6 +125,7 @@ class _ObserverBase(ObserverBase):
             self._validate_qmin_qmax(quant_min, quant_max)
         self.quant_min = quant_min
         self.quant_max = quant_max
+        self.input_shape = None
 
     @torch.jit.export
     def _validate_qmin_qmax(self, quant_min: int, quant_max: int):
@@ -241,6 +242,7 @@ class MinMaxObserver(_ObserverBase):
             )
 
     def forward(self, x_orig):
+        self.input_shape = x_orig.shape
         if x_orig.numel() == 0:
             return x_orig
         x = x_orig.detach()  # avoid keeping autograd tape
@@ -299,6 +301,7 @@ class PerChannelMinMaxObserver(_ObserverBase):
             )
 
     def forward(self, x_orig):
+        self.input_shape = x_orig.shape
         return self._forward(x_orig)
 
     def _forward(self, x_orig):
@@ -337,7 +340,7 @@ class PerChannelMinMaxObserver(_ObserverBase):
         return "min_val={}, max_val={}".format(self.min_vals, self.max_vals)
 
 
-default_observer = MinMaxObserver.with_args()
+default_observer = MinMaxObserver.with_args(qscheme=torch.per_tensor_symmetric)
 default_weight_observer = PerChannelMinMaxObserver.with_args(
     dtype=torch.qint8, qscheme=torch.per_channel_symmetric
 )
