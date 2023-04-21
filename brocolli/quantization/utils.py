@@ -39,3 +39,6 @@ def check_result(actual, desired):
             rtol=1e-7,
             atol=1e-3,
         )
+
+def _node_dict(graph_module):
+    return {n.name: n for n in graph_module.graph.nodes}

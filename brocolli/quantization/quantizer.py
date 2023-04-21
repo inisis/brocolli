@@ -1,3 +1,4 @@
+import sys
 import copy
 from loguru import logger
 from tabulate import tabulate
@@ -13,12 +14,10 @@ from torch.fx.graph_module import GraphModule
 
 from .fuser import is_match
 from .profiler import FXProfiler
+from .comparator import FXComparator
 from .qconfig import get_qconfig
 from .pattern import get_default_fusion_patterns
-from .utils import (
-    replace_node_module,
-    check_result,
-)
+from .utils import replace_node_module, check_result, _node_dict
 from .graph_modules import BrocolliGraphModule
 from .observer import get_available_observers
 
@@ -43,7 +42,7 @@ class BrocolliTracer(Tracer):
 
 
 class PytorchQuantizer:
-    def __init__(self, model, input_shape, concrete_args=None):
+    def __init__(self, model, input_shape, concrete_args=None, level=1):
         super(PytorchQuantizer, self).__init__()
         self.model = model.eval()
         self.device = next(self.model.parameters()).device
@@ -55,10 +54,23 @@ class PytorchQuantizer:
         self.concrete_args = concrete_args
         self.qconfig = None
         self.qconfig_dict = {"": self.qconfig}
-
+        self.init_logging(level)
         self.graph_module = self.get_graph_module(self.model, self.concrete_args, False)
         self.modules = dict(self.graph_module.named_modules())
         self.print_tabular(self.graph_module)
+
+    def init_logging(self, level):
+        logger.remove()
+        if level == 0:
+            logger.add(sys.stderr, level="DEBUG")
+        elif level == 1:
+            logger.add(sys.stderr, level="INFO")
+        elif level == 2:
+            logger.add(sys.stderr, level="WARNING")
+        elif level == 3:
+            logger.add(sys.stderr, level="ERROR")
+        else:
+            raise Exception("level must be 0, 1, 2 or 3")
 
     def get_graph_module(self, model, concrete_args, inplace=True):
         if not inplace:
@@ -102,7 +114,7 @@ class PytorchQuantizer:
 
     def shape_inference(self):
         dummy_input = self.gen_input_tensor(self.input_shape)
-        ShapeProp(self.trace).propagate(*dummy_input)
+        ShapeProp(self.graph_module).propagate(*dummy_input)
 
     def fuse(self):
         graph_module = self.get_graph_module(self.model, self.concrete_args, False)
@@ -171,21 +183,21 @@ class PytorchQuantizer:
             graph_module = copy.deepcopy(self.graph_module)
         modules = dict(graph_module.named_modules())
         for node in list(graph_module.graph.nodes):
-            if node.op == "placeholder":
-                users = list(node.users)
-                qconfig = get_qconfig(8)
-                observer_module = qconfig.activation()
-                with graph_module.graph.inserting_after(node):
-                    graph_module.add_module(node.name + "_observer", observer_module)
-                    new_node = graph_module.graph.call_module(
-                        node.name + "_observer", (node,), type_expr="observer"
-                    )
-                for user in users:
-                    user.replace_input_with(node, new_node)
-            elif node.op == "call_module":
+            # if node.op == "placeholder":
+            #     users = list(node.users)
+            #     qconfig = get_qconfig(8, lsq=True)
+            #     observer_module = qconfig.activation()
+            #     with graph_module.graph.inserting_after(node):
+            #         graph_module.add_module(node.name + "_observer", observer_module)
+            #         new_node = graph_module.graph.call_module(
+            #             node.name + "_observer", (node,), type_expr="observer"
+            #         )
+            #     for user in users:
+            #         user.replace_input_with(node, new_node)
+            if node.op == "call_module":
                 users = list(node.users)
                 module = modules[node.target]
-                qconfig = get_qconfig(8)
+                qconfig = get_qconfig(8, lsq=True)
                 observer_module = qconfig.activation()
                 module.qconfig = qconfig
                 module.qbit = 8
@@ -196,23 +208,28 @@ class PytorchQuantizer:
                     )
                 for user in users:
                     user.replace_input_with(node, new_node)
-            elif node.op == "call_function":
-                users = list(node.users)
-                qconfig = get_qconfig(8)
-                observer_module = qconfig.activation()
-                with graph_module.graph.inserting_after(node):
-                    graph_module.add_module(node.name + "_observer", observer_module)
-                    new_node = graph_module.graph.call_module(
-                        node.name + "_observer", (node,), type_expr="observer"
-                    )
-                for user in users:
-                    user.replace_input_with(node, new_node)
+            # elif node.op == "call_function":
+            #     users = list(node.users)
+            #     qconfig = get_qconfig(8, lsq=True)
+            #     observer_module = qconfig.activation()
+            #     with graph_module.graph.inserting_after(node):
+            #         graph_module.add_module(node.name + "_observer", observer_module)
+            #         new_node = graph_module.graph.call_module(
+            #             node.name + "_observer", (node,), type_expr="observer"
+            #         )
+            #     for user in users:
+            #         user.replace_input_with(node, new_node)
             elif node.op == "output":
                 pass
 
         self.observed_model = torch.fx.GraphModule(graph_module, graph_module.graph)
 
+    def finetune(self, train_func):
+        train_func(self.observed_model)
+        logger.info("calibtraion finish")
+
     def calibrate(self, calibtraion_func):
+        self.calibrate_func = calibtraion_func
         calibtraion_func(self.observed_model)
         logger.info("calibtraion finish")
 
@@ -244,15 +261,17 @@ class PytorchQuantizer:
                 elif isinstance(module, nn.ReLU):
                     quantized = ReLU.from_float(module)
                 elif isinstance(module, nn.MaxPool2d):
-                    quantized = MaxPool2d.from_float(module)
+                    quantized = MaxPool.from_float(module)
                 elif isinstance(module, nn.Linear):
                     quantized = Linear.from_float(module)
                 elif isinstance(module, nn.AdaptiveMaxPool2d):
-                    quantized = MaxPool2d.from_float(module)
+                    quantized = MaxPool.from_float(module)
+                elif isinstance(module, nn.AdaptiveAvgPool2d):
+                    quantized = AdaptiveAvgPool.from_float(module)
                 elif isinstance(module, tuple(get_available_observers())):
-                    continue
+                    logger.info("skip observer")
                 else:
-                    print(module)
+                    raise Exception(f"not supported module {module.__class__.__name__}")
 
                 with graph_module.graph.inserting_after(node):
                     replace_node_module(node, modules, quantized)
@@ -324,3 +343,59 @@ class PytorchQuantizer:
 
         print_model_size(self.graph_module)
         print_model_size(self.quanted_model)
+
+    def compare(self):
+        logger.info("float runs")
+        prof_float = FXComparator(self.graph_module)
+        self.calibrate_func(prof_float)
+
+        logger.info("quantized runs")
+        prof_quant = FXComparator(self.quanted_model)
+        self.calibrate_func(prof_quant)
+
+        float_node_dict = _node_dict(self.graph_module)
+        quant_node_dict = _node_dict(self.quanted_model)
+
+        def compare(float_node_dict, quant_node_dict, quanted_model):
+            modules = dict(quanted_model.named_modules())
+            node_compare_specs = []
+            for node_name in float_node_dict.keys():
+                float_node = float_node_dict[node_name]
+                if float_node.op == "placeholder":
+                    quant_node = quant_node_dict[node_name]
+                    quant_node = list(quant_node.users)[0]
+                else:
+                    quant_node = quant_node_dict[node_name]
+
+                with torch.no_grad():
+                    if node_name == "flatten":
+                        continue
+                    elif node_name == "max_pool":
+                        continue
+                    elif node_name == "output":
+                        continue
+                    else:
+                        module = modules[quant_node.target]
+
+                    float_data = float_node.meta["tensor_meta"]["tensor"].flatten()
+                    quant_data = (
+                        quant_node.meta["tensor_meta"]["tensor"].flatten()
+                        * module.output_scale
+                    )
+                    cos_sim = F.cosine_similarity(float_data, quant_data, dim=0)
+                    mae = (
+                        torch.abs(quant_data - float_data).sum()
+                        * 100.0
+                        / torch.abs(float_data).sum()
+                    )
+                    node_compare_specs.append([node_name, cos_sim, mae])
+
+            logger.info(
+                tabulate(
+                    node_compare_specs,
+                    headers=["\nname", "\ncos_sim", "\nmre"],
+                    floatfmt=".4f",
+                )
+            )
+
+        compare(float_node_dict, quant_node_dict, self.quanted_model)
