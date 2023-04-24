@@ -52,9 +52,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         if (batch_idx + 1) % 20 == 0:
             progress.display(batch_idx + 1)
 
-    logger.info(
-        f"==> Top1: {top1.avg:.3f}    Top5 {top5.avg:.3f}    Loss {losses.avg:.3f}\n",
-    )
+    logger.info(f" * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f} Loss {losses.avg:.3f}")
 
     return top1.avg, top5.avg, losses.avg
 
@@ -148,9 +146,7 @@ def calibrate_func(model):
             if i % 10 == 0:
                 progress.display(i)
 
-        logger.info(
-            " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
-        )
+        logger.info(f" * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}")
 
 
 model = models.resnet18(pretrained=True)
