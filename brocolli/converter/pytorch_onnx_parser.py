@@ -83,19 +83,24 @@ class PytorchOnnxParser:
                 self.node_post_process(input_layer)
             elif node.op == "call_module":
                 module = self.modules[node.target]
-                if isinstance(module, (nn.Conv2d, nn.Conv1d)):
+                if isinstance(module, (nn.Conv1d, nn.Conv2d, nn.Conv3d)):
                     conv_layer = ConvLayer(node, module)
                     self.node_post_process(conv_layer)
-                elif isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d)):
+                elif isinstance(
+                    module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)
+                ):
                     batchnorm_layer = BatchNormLayer(node, module)
                     self.node_post_process(batchnorm_layer)
                 elif isinstance(module, nn.ReLU):
                     relu_layer = ReluLayer(node, module)
                     self.node_post_process(relu_layer)
-                elif isinstance(module, (nn.MaxPool1d, nn.MaxPool2d)):
+                elif isinstance(module, (nn.MaxPool1d, nn.MaxPool2d, nn.MaxPool3d)):
                     pooling_layer = PoolingLayer(node, module)
                     self.node_post_process(pooling_layer)
-                elif isinstance(module, (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d)):
+                elif isinstance(
+                    module,
+                    (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d, nn.AdaptiveAvgPool3d),
+                ):
                     pooling_layer = PoolingLayer(node, module)
                     self.node_post_process(pooling_layer)
                 elif isinstance(module, nn.Linear):

@@ -69,6 +69,12 @@ def fuse_all_conv_bn(model):
             if isinstance(stack[-1][1], nn.Linear):
                 setattr(model, stack[-1][0], fuse_linear_bn_eval(stack[-1][1], module))
                 setattr(model, name, nn.Identity())
+        elif isinstance(module, nn.BatchNorm3d):
+            if not stack:
+                continue
+            if isinstance(stack[-1][1], nn.Conv3d):
+                setattr(model, stack[-1][0], fuse_conv_bn_eval(stack[-1][1], module))
+                setattr(model, name, nn.Identity())
         else:
             stack.append((name, module))
 

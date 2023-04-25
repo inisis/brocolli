@@ -85,12 +85,15 @@ class PoolingLayer(BaseLayer):
         if name is not None:
             self._name = name
 
-        if isinstance(self._module, (nn.MaxPool1d, nn.MaxPool2d)):
+        if isinstance(self._module, (nn.MaxPool1d, nn.MaxPool2d, nn.MaxPool3d)):
             attr_dict = self.get_pooling_attr()
             node = helper.make_node(
                 "MaxPool", self._in_names, self._out_names, self._name, **attr_dict
             )
-        elif isinstance(self._module, (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d)):
+        elif isinstance(
+            self._module,
+            (nn.AdaptiveAvgPool1d, nn.AdaptiveAvgPool2d, nn.AdaptiveAvgPool3d),
+        ):
             if isinstance(self._module.output_size, int):
                 output_size = [self._module.output_size]
                 output_size_len = 1
@@ -117,6 +120,10 @@ class PoolingLayer(BaseLayer):
             attr_dict = self.get_pooling_attr()
             node = helper.make_node(
                 "AveragePool", self._in_names, self._out_names, self._name, **attr_dict
+            )
+        else:
+            raise NotImplementedError(
+                "module %s is not implemented" % (self._module.__class__.__name__)
             )
         logger.info(f"{self.__class__.__name__}: {self._name} created")
         self._node.append(node)
