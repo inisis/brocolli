@@ -32,7 +32,7 @@ class MaxPool(nn.Module, BaseOperator):
         out = F.max_pool2d(
             input, self.kernel_size, self.stride, self.padding, self.dilation
         )
-        out = out.to(torch.int64)
+        out = out.to(torch.float64)
 
         return out
 

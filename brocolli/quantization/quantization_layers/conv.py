@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from .base import BaseOperator
 from .utils import _pair, _quantize_weight, _quantize_bias
-
+from .registry import register_quant_op
 
 _SUPPORTED_PADDING = {"zeros", "reflect"}
 
@@ -154,7 +154,7 @@ class _ConvNd(nn.Module):
             mod.padding_mode,
         )
 
-        qconv.qbit = mod.qbit
+        qconv.qbit = mod.activation_pre_process.qbit
         qconv.weight = torch.nn.Parameter(qweight, requires_grad=False)
         if mod.bias is not None:
             qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
@@ -176,15 +176,18 @@ class _ConvNd(nn.Module):
             + " but got:"
             + str(type(mod))
         )
-        assert hasattr(mod, "qconfig"), "Input float module must have qconfig defined."
+        assert hasattr(
+            mod.activation_pre_process, "qconfig"
+        ), "Conv float module must have qconfig defined."
         activation_pre_process = mod.activation_pre_process
-        weight_post_process = mod.qconfig.weight()
+        weight_post_process = activation_pre_process.qconfig.weight()
         activation_post_process = mod.activation_post_process
         return cls.get_qconv(
             mod, activation_pre_process, weight_post_process, activation_post_process
         )
 
 
+@register_quant_op(torch.nn.Conv2d)
 class Conv2d(_ConvNd, BaseOperator):
     _FLOAT_MODULE = nn.Conv2d
 

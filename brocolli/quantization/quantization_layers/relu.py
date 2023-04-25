@@ -4,8 +4,10 @@ import torch.nn.functional as F
 
 from .base import BaseOperator
 from .utils import _gen_lut
+from .registry import register_quant_op
 
 
+@register_quant_op(torch.nn.ReLU)
 class ReLU(nn.Module, BaseOperator):
     def __init__(self):
         super(ReLU, self).__init__()
@@ -19,7 +21,9 @@ class ReLU(nn.Module, BaseOperator):
 
     @classmethod
     def from_float(cls, mod, lut=False):
-        assert hasattr(mod, "qconfig"), "Relu float module must have qconfig defined."
+        assert hasattr(
+            mod.activation_pre_process, "qconfig"
+        ), "ReLU float module must have qconfig defined."
         activation_pre_process = mod.activation_pre_process
         activation_post_process = mod.activation_post_process
         act_scale = activation_pre_process.calculate_qparams()
@@ -37,7 +41,7 @@ class ReLU(nn.Module, BaseOperator):
             lut_weight = _gen_lut(F.relu, act_scale, output_scale, lut_start, lut_end)
             lut_weight = torch.nn.Parameter(lut_weight, requires_grad=False)
             qrelu = cls()
-            qrelu.qbit = mod.qbit
+            qrelu.qbit = mod.activation_pre_process.qbit
             qrelu.lut_weight = lut_weight
             qrelu.zero_point = zero_point
             qrelu.act_scale = float(act_scale)
@@ -46,7 +50,7 @@ class ReLU(nn.Module, BaseOperator):
             qrelu.output_max_value = activation_post_process.max_val
         else:
             qrelu = cls()
-            qrelu.qbit = mod.qbit
+            qrelu.qbit = mod.activation_pre_process.qbit
             qrelu.act_scale = float(act_scale)
             qrelu.output_scale = float(output_scale)
             qrelu.output_min_value = activation_post_process.min_val
@@ -59,7 +63,7 @@ class ReLU(nn.Module, BaseOperator):
             input = input.to(torch.int64) + self.zero_point
             out = F.embedding(input, self.lut_weight).squeeze(-1)
         else:
-            out = F.relu(input.to(torch.int64))
+            out = F.relu(input.to(torch.float64))
             out = out * self.act_scale / self.output_scale
 
         out = self.clamp(out)

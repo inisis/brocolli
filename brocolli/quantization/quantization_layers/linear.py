@@ -4,8 +4,10 @@ import torch.nn.functional as F
 
 from .base import BaseOperator
 from .utils import _quantize_weight, _quantize_bias
+from .registry import register_quant_op
 
 
+@register_quant_op(torch.nn.Linear)
 class Linear(nn.Module, BaseOperator):
     def __init__(self, in_features, out_features, bias=True):
         super(Linear, self).__init__()
@@ -24,7 +26,10 @@ class Linear(nn.Module, BaseOperator):
 
     @classmethod
     def from_float(cls, mod):
-        weight_post_process = mod.qconfig.weight()
+        assert hasattr(
+            mod.activation_pre_process, "qconfig"
+        ), "Conv float module must have qconfig defined."
+        weight_post_process = mod.activation_pre_process.qconfig.weight()
         weight_post_process(mod.weight)
         qweight, wt_scale = _quantize_weight(mod.weight.float(), weight_post_process)
         act_scale = mod.activation_pre_process.calculate_qparams()
@@ -36,7 +41,7 @@ class Linear(nn.Module, BaseOperator):
         output_scale = mod.activation_post_process.calculate_qparams()
         qlinear = cls(mod.in_features, mod.out_features, mod.bias)
 
-        qlinear.qbit = mod.qbit
+        qlinear.qbit = mod.activation_pre_process.qbit
         qlinear.weight = torch.nn.Parameter(qweight, requires_grad=False)
         qlinear.bias = torch.nn.Parameter(qbias, requires_grad=False)
         qlinear.act_scale = torch.Tensor(act_scale).to(qweight.device)
