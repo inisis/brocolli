@@ -10,7 +10,8 @@ class BaseOperator:
             threshold_max = 2 ** (self.qbit) - 1
             threshold_min = 0
 
-        x = torch.clamp(x, threshold_min, threshold_max)
+        x = x.to(torch.int64)  # round
+        x = torch.clamp(x, threshold_min, threshold_max)  # clip
         x = x.to(torch.float64)
 
         return x
