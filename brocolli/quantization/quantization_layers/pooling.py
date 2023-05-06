@@ -69,6 +69,6 @@ class AdaptiveAvgPool(nn.Module, BaseOperator):
     def forward(self, input):
         input = input.to(torch.float64)
         out = F.avg_pool2d(input, self.kernel_size, self.stride, self.padding)
-        out = out.to(torch.int64)
+        out = out.to(torch.float64)
 
         return out

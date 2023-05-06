@@ -7,7 +7,6 @@ from .utils import _gen_lut
 from .registry import register_quant_op
 
 
-@register_quant_op(torch.nn.ReLU)
 class ReLU(nn.Module, BaseOperator):
     def __init__(self):
         super(ReLU, self).__init__()

@@ -139,7 +139,7 @@ class _ObserverBase(ObserverBase):
     @torch.jit.export
     def _calculate_qmin_qmax(self):
         if self.dtype == torch.qint8:
-            quant_min, quant_max = -128, 127
+            quant_min, quant_max = -127, 127
         elif self.dtype == torch.quint8:
             quant_min, quant_max = 0, 255
 
@@ -389,6 +389,7 @@ class LSQObserver(_ObserverBase):
             )
 
     def forward(self, x):
+        print(self.s)
         if self.per_channel:
             s_grad_scale = 1.0 / ((self.thd_pos * x.numel()) ** 0.5)
         else:

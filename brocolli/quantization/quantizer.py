@@ -1,3 +1,4 @@
+import re
 import sys
 import copy
 from loguru import logger
@@ -17,11 +18,18 @@ from .profiler import FXProfiler
 from .comparator import FXComparator
 from .qconfig import get_qconfig
 from .pattern import get_default_fusion_patterns
-from .utils import replace_node_module, check_result, _node_dict
+from .utils import (
+    replace_node_module,
+    check_result,
+    _node_dict,
+    create_target,
+    get_function_name,
+)
 from .graph_modules import BrocolliGraphModule
 from .observer import get_available_observers
 
-from brocolli.quantization.quantization_layers import *
+from .quantization_layers import *
+from .quantization_layers.registry import get_default_quant_ops
 
 
 class BrocolliTracer(Tracer):
@@ -58,6 +66,7 @@ class PytorchQuantizer:
         self.graph_module = self.get_graph_module(self.model, self.concrete_args, False)
         self.modules = dict(self.graph_module.named_modules())
         self.print_tabular(self.graph_module)
+        self.quant_ops = get_default_quant_ops()
 
     def init_logging(self, level):
         logger.remove()
@@ -77,15 +86,15 @@ class PytorchQuantizer:
             model = copy.deepcopy(model)
 
         if isinstance(model, GraphModule):
-            trace = BrocolliGraphModule(model.root, model.graph)
+            graph_module = BrocolliGraphModule(model.root, model.graph)
         elif isinstance(model, nn.Module):
             tracer = BrocolliTracer()
             graph = tracer.trace(model, concrete_args)
-            trace = BrocolliGraphModule(tracer.root, graph)
+            graph_module = BrocolliGraphModule(tracer.root, graph)
         else:
             raise Exception("model must be a torch.nn.Module or a torch.fx.GraphModule")
 
-        return trace
+        return graph_module
 
     def print_tabular(self, graph_module):
         nodes = list(graph_module.graph.nodes)
@@ -118,7 +127,9 @@ class PytorchQuantizer:
 
     def fuse(self):
         graph_module = self.get_graph_module(self.model, self.concrete_args, False)
+
         modules = dict(graph_module.named_modules())
+
         fusion_patterns = get_default_fusion_patterns()
         fusion_pairs = self._find_matches(
             graph_module, graph_module.graph, fusion_patterns
@@ -172,7 +183,64 @@ class PytorchQuantizer:
 
         return match_map
 
-    def prepare(self):
+    def _is_quant_op(self, node, graph_module, quant_ops):
+        modules = dict(graph_module.named_modules())
+        if node.op == "placeholder":
+            return True
+        elif node.op == "call_module":
+            module = modules[node.target]
+            for op, _ in quant_ops.items():
+                if not isinstance(op, str) and isinstance(module, op):
+                    return True
+        elif node.op == "call_function":
+            function_name = get_function_name(node.target)
+            if function_name == "add":
+                return True
+            else:
+                return False
+        elif node.op == "output":
+            return False
+        else:
+            return False
+
+    def _is_observer_needed(self, node, graph_module, quant_ops, lsq):
+        modules = dict(graph_module.named_modules())
+        if node.op == "placeholder":
+            if lsq:
+                return False
+            else:
+                return True
+        elif node.op == "call_module":
+            user = list(node.users)[0]
+            if user.op == "call_module":
+                user_module = modules[user.target]
+                if isinstance(user_module, nn.ReLU):
+                    return False
+
+            module = modules[node.target]
+            if isinstance(module, nn.MaxPool2d):
+                return False
+            else:
+                return True
+
+        elif node.op == "call_function":
+            user = list(node.users)[0]
+            if user.op == "call_module":
+                user_module = modules[user.target]
+                if isinstance(user_module, nn.ReLU):
+                    return False
+
+            function_name = get_function_name(node.target)
+            if function_name == "add":
+                return False
+            else:
+                return False
+        elif node.op == "output":
+            return False
+        else:
+            return False
+
+    def prepare(self, lsq=False):
         """
         Return:
             A GraphModule with observer (configured by qconfig_dict), ready for calibration
@@ -181,26 +249,27 @@ class PytorchQuantizer:
             graph_module = copy.deepcopy(self.fused_model)
         else:
             graph_module = copy.deepcopy(self.graph_module)
+
         modules = dict(graph_module.named_modules())
         for node in list(graph_module.graph.nodes):
-            # if node.op == "placeholder":
-            #     users = list(node.users)
-            #     qconfig = get_qconfig(8, lsq=True)
-            #     observer_module = qconfig.activation()
-            #     with graph_module.graph.inserting_after(node):
-            #         graph_module.add_module(node.name + "_observer", observer_module)
-            #         new_node = graph_module.graph.call_module(
-            #             node.name + "_observer", (node,), type_expr="observer"
-            #         )
-            #     for user in users:
-            #         user.replace_input_with(node, new_node)
             if node.op == "call_module":
-                users = list(node.users)
                 module = modules[node.target]
-                qconfig = get_qconfig(8, lsq=True)
+                target_atoms = node.target.split(".")
+                target = "_".join(target_atoms)
+                match = re.findall(r"{}(_+\d)".format(str(target)), node.name)
+                if match:
+                    module = copy.deepcopy(module)
+                    with graph_module.graph.inserting_after(node):
+                        node_target = str(node.target) + match[0]
+                        graph_module.add_submodule(node_target, module)
+                        node.target = node_target
+
+            if self._is_observer_needed(node, graph_module, self.quant_ops, lsq):
+                users = list(node.users)
+                qconfig = get_qconfig(8, lsq=lsq)
                 observer_module = qconfig.activation()
-                module.qconfig = qconfig
-                module.qbit = 8
+                observer_module.qconfig = qconfig
+                observer_module.qbit = 8
                 with graph_module.graph.inserting_after(node):
                     graph_module.add_module(node.name + "_observer", observer_module)
                     new_node = graph_module.graph.call_module(
@@ -208,54 +277,64 @@ class PytorchQuantizer:
                     )
                 for user in users:
                     user.replace_input_with(node, new_node)
-            # elif node.op == "call_function":
-            #     users = list(node.users)
-            #     qconfig = get_qconfig(8, lsq=True)
-            #     observer_module = qconfig.activation()
-            #     with graph_module.graph.inserting_after(node):
-            #         graph_module.add_module(node.name + "_observer", observer_module)
-            #         new_node = graph_module.graph.call_module(
-            #             node.name + "_observer", (node,), type_expr="observer"
-            #         )
-            #     for user in users:
-            #         user.replace_input_with(node, new_node)
-            elif node.op == "output":
-                pass
 
         self.observed_model = torch.fx.GraphModule(graph_module, graph_module.graph)
+        # self.observed_model.graph.print_tabular()
+        # raise
 
     def finetune(self, train_func):
+        for name, param in self.observed_model.named_parameters():
+            if not "observer" in name:
+                param.requires_grad_(False)
+
         train_func(self.observed_model)
         logger.info("calibtraion finish")
 
     def calibrate(self, calibtraion_func):
         self.calibrate_func = calibtraion_func
+        logger.info("calibtraion start")
         calibtraion_func(self.observed_model)
         logger.info("calibtraion finish")
+
+    def find_input_observer_node(self, node):
+        if node.type == "observer":
+            return node
+        else:
+            return self.find_input_observer_node(node.all_input_nodes[0])
+
+    def find_output_observer_node(self, node):
+        if node.type == "observer":
+            return node
+        else:
+            return self.find_output_observer_node(list(node.users)[0])
 
     def convert(self):
         graph_module = copy.deepcopy(self.observed_model)
         modules = dict(graph_module.named_modules())
+        self.op_maps = {}
         for node in list(graph_module.graph.nodes):
             if node.op == "placeholder":
                 next_node = node.next
                 module = modules[next_node.target]
-                input = Input.from_float(module)
+                input_module = Input.from_float(module)
                 with graph_module.graph.inserting_after(node):
-                    graph_module.add_module("input", input)
+                    graph_module.add_module("input", input_module)
                     new_node = graph_module.graph.call_module("input", (node,))
 
                 next_node.replace_input_with(node, new_node)
-            elif node.op == "call_module" and node.type != "observer":
+                self.op_maps[new_node.name] = node.name
+            elif (
+                node.op == "call_module"
+                and node.type != "observer"
+                and self._is_quant_op(node, graph_module, self.quant_ops)
+            ):
                 module = modules[node.target]
-
                 assert len(node.all_input_nodes) == 1
-                for input_node in node.all_input_nodes:
-                    if input_node.type == "observer":
-                        module.activation_pre_process = modules[input_node.target]
-
-                module.activation_post_process = modules[node.name + "_observer"]
-
+                input_observer_node = self.find_input_observer_node(node)
+                module.activation_pre_process = modules[input_observer_node.target]
+                output_observer_node = self.find_output_observer_node(node)
+                module.activation_post_process = modules[output_observer_node.target]
+                self.op_maps[node.name] = output_observer_node.name[:-9]
                 if isinstance(module, (nn.Conv2d, nn.Conv1d)):
                     quantized = Conv2d.from_float(module)
                 elif isinstance(module, nn.ReLU):
@@ -275,11 +354,36 @@ class PytorchQuantizer:
 
                 with graph_module.graph.inserting_after(node):
                     replace_node_module(node, modules, quantized)
+            elif node.op == "call_function" and self._is_quant_op(
+                node, graph_module, self.quant_ops
+            ):
+                function_name = get_function_name(node.target)
+                if function_name == "add":
+                    assert len(node.all_input_nodes) == 2
+                    observer_node = self.find_input_observer_node(node.args[0])
+                    node.activation_pre_process1 = modules[observer_node.target]
+                    observer_node = self.find_input_observer_node(node.args[1])
+                    node.activation_pre_process2 = modules[observer_node.target]
+                    output_observer_node = self.find_output_observer_node(node)
+                    node.activation_post_process = modules[output_observer_node.target]
+                    quantized = Add.from_float(node)
+                    with graph_module.graph.inserting_after(node):
+                        graph_module.add_submodule(node.name + "_quanted", quantized)
+                        quanted_node = graph_module.graph.call_module(
+                            node.name + "_quanted", node.args
+                        )
+                    node.replace_all_uses_with(quanted_node)
+                    graph_module.graph.erase_node(node)
+                    quanted_node.name = node.name
+                    self.op_maps[node.name] = output_observer_node.name[:-9]
 
             elif node.op == "output":
                 if isinstance(node.args[0], Node):
-                    prev_node = node.args[0]
-                    module = dict(graph_module.named_modules())[prev_node.target]
+                    prev_node = node.args[
+                        0
+                    ]  # previous node may not be observer node when not quanted
+                    observer_node = self.find_input_observer_node(node.args[0])
+                    module = dict(graph_module.named_modules())[observer_node.target]
 
                     output = Output.from_float(module)
                     with graph_module.graph.inserting_after(prev_node):
@@ -292,7 +396,10 @@ class PytorchQuantizer:
                 else:
                     for idx in range(len(node.args[0])):
                         prev_node = node.args[0][idx]
-                        module = dict(graph_module.named_modules())[prev_node.target]
+                        observer_node = self.find_observer_node(node.args[0][idx])
+                        module = dict(graph_module.named_modules())[
+                            observer_node.target
+                        ]
 
                         output = Output.from_float(module)
                         with graph_module.graph.inserting_after(prev_node):
@@ -315,7 +422,9 @@ class PytorchQuantizer:
         logger.info("quantization finish")
 
     def evaluate(self, evaluate_func):
+        logger.info("evaluation start")
         evaluate_func(self.quanted_model)
+        logger.info("evaluation finish")
 
     def profile(self, save_to_disk=False):
         dummy_input = self.gen_input_tensor(self.input_shape)
@@ -346,49 +455,47 @@ class PytorchQuantizer:
 
     def compare(self):
         logger.info("float runs")
-        prof_float = FXComparator(self.graph_module)
+        if hasattr(self, "fused_model"):
+            float_model = self.fused_model
+        else:
+            float_model = self.graph_module
+
+        prof_float = FXComparator(float_model)
         self.calibrate_func(prof_float)
 
         logger.info("quantized runs")
-        prof_quant = FXComparator(self.quanted_model)
+        quanted_model = self.quanted_model
+        prof_quant = FXComparator(quanted_model)
         self.calibrate_func(prof_quant)
 
-        float_node_dict = _node_dict(self.graph_module)
-        quant_node_dict = _node_dict(self.quanted_model)
+        float_node_dict = _node_dict(float_model)
+        quant_node_dict = _node_dict(quanted_model)
 
-        def compare(float_node_dict, quant_node_dict, quanted_model):
-            modules = dict(quanted_model.named_modules())
+        def compare(float_node_dict, quant_node_dict, float_model, quanted_model):
+            quanted_modules = dict(quanted_model.named_modules())
             node_compare_specs = []
-            for node_name in float_node_dict.keys():
-                float_node = float_node_dict[node_name]
-                if float_node.op == "placeholder":
-                    quant_node = quant_node_dict[node_name]
-                    quant_node = list(quant_node.users)[0]
-                else:
-                    quant_node = quant_node_dict[node_name]
+            for quanted_name in self.op_maps.keys():
+                float_name = self.op_maps[quanted_name]
+                float_node = float_node_dict[float_name]
+                quant_node = quant_node_dict[quanted_name]
 
                 with torch.no_grad():
-                    if node_name == "flatten":
-                        continue
-                    elif node_name == "max_pool":
-                        continue
-                    elif node_name == "output":
-                        continue
-                    else:
-                        module = modules[quant_node.target]
-
-                    float_data = float_node.meta["tensor_meta"]["tensor"].flatten()
-                    quant_data = (
-                        quant_node.meta["tensor_meta"]["tensor"].flatten()
-                        * module.output_scale
-                    )
-                    cos_sim = F.cosine_similarity(float_data, quant_data, dim=0)
-                    mae = (
-                        torch.abs(quant_data - float_data).sum()
-                        * 100.0
-                        / torch.abs(float_data).sum()
-                    )
-                    node_compare_specs.append([node_name, cos_sim, mae])
+                    if quant_node.op == "call_module":
+                        module = quanted_modules[quant_node.target]
+                        float_data = float_node.meta["tensor_meta"]["tensor"].flatten()
+                        quant_data = (
+                            quant_node.meta["tensor_meta"]["tensor"].flatten()
+                            * module.output_scale
+                        )
+                        cos_sim = F.cosine_similarity(float_data, quant_data, dim=0)
+                        mre = (
+                            torch.abs(quant_data - float_data).sum()
+                            * 100.0
+                            / torch.abs(float_data).sum()
+                        )
+                        if float_node.op == "placeholder":
+                            quanted_name = float_node.name
+                        node_compare_specs.append([quanted_name, cos_sim, mre])
 
             logger.info(
                 tabulate(
@@ -398,4 +505,4 @@ class PytorchQuantizer:
                 )
             )
 
-        compare(float_node_dict, quant_node_dict, self.quanted_model)
+        compare(float_node_dict, quant_node_dict, float_model, quanted_model)

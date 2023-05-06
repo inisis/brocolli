@@ -23,7 +23,7 @@ class FXComparator(Interpreter):
             if self.dynamic_batch:
                 shape[0] = -1
 
-            meta_info["tensor"] = result.clone() # in case of inplace op
+            meta_info["tensor"] = result.clone()  # in case of inplace op
             meta_info["shape"] = torch.Size(shape)
             meta_info["dtype"] = result.dtype
 

@@ -18,38 +18,44 @@ _triple = _ntuple(3)
 _quadruple = _ntuple(4)
 
 
-def _quantize_weight(float_wt, observer):
+def _quantize_weight(float_wt, observer, bit_width=8):
     wt_scale = observer.calculate_qparams()
-    if observer.qscheme in [torch.per_tensor_symmetric, torch.per_tensor_affine]:
-        qweight = torch.quantize_per_tensor(
-            float_wt, float(wt_scale), torch.zeros_like(wt_scale), torch.qint8
-        )
-    elif observer.qscheme in [torch.per_channel_symmetric, torch.per_channel_affine]:
-        wt_axis = observer.ch_axis
-        qweight = torch.quantize_per_channel(
-            float_wt,
-            wt_scale.to(torch.double).to(float_wt.device),
-            torch.zeros_like(wt_scale).to(torch.int64).to(float_wt.device),
-            wt_axis,
-            torch.qint8,
-        ).int_repr()
-    elif observer.qscheme in [torch.per_channel_affine_float_qparams]:
-        qweight = torch.quantize_per_channel(
-            float_wt, wt_scale.to(torch.float), 0, observer.ch_axis, observer.dtype
-        )
-    else:
-        raise ValueError("Unexpected qscheme " + observer.qscheme)
+    wt_scale_tmp = torch.tensor(wt_scale)
+    wt_scale_tmp = wt_scale_tmp * 2 ** (bit_width - 1) / 2 ** (bit_width - 1)
+    extra_dims = (1,) * (float_wt.dim() - 1)
+    wt_scale_tmp = wt_scale_tmp.view(-1, *extra_dims)
+    wt_scale_tmp = torch.where(
+        wt_scale_tmp == 0, torch.tensor(1.0, dtype=torch.float32), wt_scale_tmp
+    )
+    q_float_wt = torch.div(float_wt, wt_scale_tmp)
+    q_float_wt = torch.where(
+        wt_scale_tmp == 0, torch.tensor(0.0, dtype=torch.float32), q_float_wt
+    )
+    q_float_wt = torch.round(q_float_wt)
+    min_val = -(2 ** (bit_width - 1))
+    max_val = 2 ** (bit_width - 1) - 1
+    out_tensor = torch.clamp(q_float_wt, min_val, max_val)
+    qweight = out_tensor.to(torch.int64)
+
     return qweight, wt_scale
 
 
-def _quantize_bias(float_bias, scale):
-    qbias = torch.quantize_per_channel(
-        float_bias,
-        scale.to(torch.double).to(float_bias.device),
-        torch.zeros_like(scale).to(torch.int64).to(float_bias.device),
-        0,
-        torch.qint32,
-    ).int_repr()
+def _quantize_bias(float_bias, scale, bit_width=8):
+    bias_scale = torch.tensor(scale)
+    extra_dims = (1,) * (float_bias.dim() - 1)
+    bias_scale = bias_scale.view(-1, *extra_dims)
+    bias_scale_tmp = torch.where(
+        bias_scale == 0, torch.tensor(1.0, dtype=torch.float32), bias_scale
+    )
+    q_float_bias = torch.div(float_bias, bias_scale_tmp)
+    q_float_bias = torch.where(
+        bias_scale == 0, torch.tensor(0.0, dtype=torch.float32), q_float_bias
+    )
+    q_float_bias = torch.round(q_float_bias)
+    min_val = -(2 ** (bit_width - 1))
+    max_val = 2 ** (bit_width - 1) - 1
+    out_tensor = torch.clamp(q_float_bias, min_val, max_val)
+    qbias = out_tensor.to(torch.int64)
 
     return qbias
 
