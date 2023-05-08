@@ -55,7 +55,7 @@ class PytorchCaffeParser:
         self.save_to_proto(self.text_net, dest_path + ".prototxt")
         self.save_weights(self.binary_weights, dest_path + ".caffemodel")
         logger.info(f"prototxt saved to {dest_path}.prototxt")
-        logger.info("caffemodel saved to {dest_path}.caffemodel")
+        logger.info(f"caffemodel saved to {dest_path}.caffemodel")
 
     def save_to_proto(self, net, filename):
         with open(filename, "wb") as f:
