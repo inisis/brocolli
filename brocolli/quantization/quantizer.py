@@ -50,7 +50,7 @@ class BrocolliTracer(Tracer):
 
 
 class PytorchQuantizer:
-    def __init__(self, model, input_shape, concrete_args=None, level=1):
+    def __init__(self, model, input_shape, concrete_args=None, log_level=1):
         super(PytorchQuantizer, self).__init__()
         self.model = model.eval()
         self.device = next(self.model.parameters()).device
@@ -62,21 +62,21 @@ class PytorchQuantizer:
         self.concrete_args = concrete_args
         self.qconfig = None
         self.qconfig_dict = {"": self.qconfig}
-        self.init_logging(level)
+        self.init_logging(log_level)
         self.graph_module = self.get_graph_module(self.model, self.concrete_args, False)
         self.modules = dict(self.graph_module.named_modules())
         self.print_tabular(self.graph_module)
         self.quant_ops = get_default_quant_ops()
 
-    def init_logging(self, level):
+    def init_logging(self, log_level):
         logger.remove()
-        if level == 0:
+        if log_level == 0:
             logger.add(sys.stderr, level="DEBUG")
-        elif level == 1:
+        elif log_level == 1:
             logger.add(sys.stderr, level="INFO")
-        elif level == 2:
+        elif log_level == 2:
             logger.add(sys.stderr, level="WARNING")
-        elif level == 3:
+        elif log_level == 3:
             logger.add(sys.stderr, level="ERROR")
         else:
             raise Exception("level must be 0, 1, 2 or 3")
@@ -279,8 +279,6 @@ class PytorchQuantizer:
                     user.replace_input_with(node, new_node)
 
         self.observed_model = torch.fx.GraphModule(graph_module, graph_module.graph)
-        # self.observed_model.graph.print_tabular()
-        # raise
 
     def finetune(self, train_func):
         for name, param in self.observed_model.named_parameters():
@@ -476,6 +474,9 @@ class PytorchQuantizer:
             node_compare_specs = []
             for quanted_name in self.op_maps.keys():
                 float_name = self.op_maps[quanted_name]
+                logger.debug(
+                    f"compare float op : {float_name} and quanted op: {quanted_name}"
+                )
                 float_node = float_node_dict[float_name]
                 quant_node = quant_node_dict[quanted_name]
 
