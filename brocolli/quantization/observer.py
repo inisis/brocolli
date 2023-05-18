@@ -257,7 +257,13 @@ class MinMaxObserver(_ObserverBase):
     @torch.jit.export
     def calculate_qparams(self):
         r"""Calculates the quantization parameters."""
-        return self._calculate_qparams(self.min_val, self.max_val)
+        quant_min, quant_max = self._calculate_qmin_qmax()
+        if self.min_val >= 0:
+            quant_min, quant_max = 0, 255
+
+        max_val_pos = torch.max(self.min_val, self.max_val)
+        scale = max_val_pos / quant_max
+        return scale
 
     @torch.jit.export
     def extra_repr(self):
@@ -389,7 +395,6 @@ class LSQObserver(_ObserverBase):
             )
 
     def forward(self, x):
-        print(self.s)
         if self.per_channel:
             s_grad_scale = 1.0 / ((self.thd_pos * x.numel()) ** 0.5)
         else:
