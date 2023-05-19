@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from loguru import logger
+
 from .base import BaseOperator
 from .utils import _pair, _quantize_weight, _quantize_bias
 from .registry import register_quant_op
@@ -73,13 +75,13 @@ class _ConvNd(nn.Module):
             scale=1,
             zero_point=0,
             dtype=torch.qint8,
-            **{k: v for k, v in factory_kwargs.items() if k != "dtype"}
+            **{k: v for k, v in factory_kwargs.items() if k != "dtype"},
         )
         bias_float = (
             torch.zeros(
                 out_channels,
                 dtype=torch.float,
-                **{k: v for k, v in factory_kwargs.items() if k != "dtype"}
+                **{k: v for k, v in factory_kwargs.items() if k != "dtype"},
             )
             if bias
             else None
@@ -130,13 +132,16 @@ class _ConvNd(nn.Module):
 
         weight_post_process(mod.weight)
         qweight, wt_scale = _quantize_weight(mod.weight.float(), weight_post_process)
+
         act_scale = activation_pre_process.calculate_qparams()
-        qbias = (
-            _quantize_bias(mod.bias.float(), wt_scale * act_scale)
-            if mod.bias is not None
-            else None
+        logger.debug(
+            f"activation scale: {act_scale}, max_val: {activation_pre_process.max_val}, min_val: {activation_pre_process.min_val}"
         )
         output_scale = activation_post_process.calculate_qparams()
+        logger.debug(
+            f"output scale: {output_scale}, max_val: {activation_post_process.max_val}, min_val: {activation_post_process.min_val}"
+        )
+        qbias = mod.bias.float() if mod.bias is not None else None
 
         assert (
             weight_post_process.dtype == torch.qint8
@@ -145,19 +150,21 @@ class _ConvNd(nn.Module):
         qconv = cls(
             mod.in_channels,
             mod.out_channels,
-            mod.kernel_size,  # type: ignore[call-arg]
+            mod.kernel_size,
             mod.stride,
             mod.padding,
             mod.dilation,
             mod.groups,
-            mod.bias is not None,
+            None,
             mod.padding_mode,
         )
 
         qconv.qbit = mod.activation_pre_process.qbit
         qconv.weight = torch.nn.Parameter(qweight, requires_grad=False)
         if mod.bias is not None:
-            qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
+            qconv.bias = torch.nn.Parameter(
+                qbias.reshape(1, -1, 1, 1), requires_grad=False
+            )
         qconv.act_scale = torch.Tensor(act_scale).to(qweight.device)
         qconv.wt_scale = torch.Tensor(wt_scale).reshape(1, -1, 1, 1).to(qweight.device)
         qconv.output_scale = torch.Tensor(output_scale).to(qweight.device)
@@ -222,7 +229,7 @@ class Conv2d(_ConvNd, BaseOperator):
             groups,
             bias,
             padding_mode,
-            **factory_kwargs
+            **factory_kwargs,
         )
 
     def _get_name(self):
@@ -235,13 +242,18 @@ class Conv2d(_ConvNd, BaseOperator):
         out = F.conv2d(
             input.to(torch.double),
             self.weight.to(torch.double),
-            self.bias.to(torch.double) if self.bias is not None else None,
+            None,
             self.stride,
             self.padding,
             self.dilation,
             self.groups,
         )
-        out = out * self.act_scale * self.wt_scale / self.output_scale
+
+        if self.bias is not None:
+            out = (out * self.act_scale * self.wt_scale + self.bias) / self.output_scale
+        else:
+            out = out * self.act_scale * self.wt_scale / self.output_scale
+
         out = self.clamp(out)
 
         return out
