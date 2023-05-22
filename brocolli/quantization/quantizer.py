@@ -451,7 +451,7 @@ class PytorchQuantizer:
         print_model_size(self.graph_module)
         print_model_size(self.quanted_model)
 
-    def compare(self):
+    def compare(self, interrested_node=None):
         logger.info("float runs")
         if hasattr(self, "fused_model"):
             float_model = self.fused_model
@@ -497,6 +497,15 @@ class PytorchQuantizer:
                         if float_node.op == "placeholder":
                             quanted_name = float_node.name
                         node_compare_specs.append([quanted_name, cos_sim, mre])
+                        if interrested_node is not None and quanted_name in interrested_node:
+                            import plotext as plt
+                            plt.theme('matrix')
+                            plt.subplots(1, 2)
+                            plt.subplot(1, 1)                     
+                            plt.hist(float_data.numpy(), bins=256)
+                            plt.subplot(1, 2)
+                            plt.hist(quant_data.numpy(), bins=256)
+                            plt.show()
 
             logger.info(
                 tabulate(
