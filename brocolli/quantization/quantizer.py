@@ -496,21 +496,60 @@ class PytorchQuantizer:
                         )
                         if float_node.op == "placeholder":
                             quanted_name = float_node.name
-                        node_compare_specs.append([quanted_name, cos_sim, mre])
-                        if interrested_node is not None and quanted_name in interrested_node:
+
+                        re = (
+                            torch.abs(quant_data - float_data)
+                            * 100.0
+                            / torch.abs(float_data)
+                        )
+                        re = torch.nan_to_num(re)
+                        total = len(float_data.flatten())
+                        section_0_1 = (re < 1).sum() * 100.0 / total
+                        section_1_10 = ((1 <= re) * (re < 10)).sum() * 100.0 / total
+                        section_10_50 = ((10 <= re) * (re < 50)).sum() * 100.0 / total
+                        section_50_100 = ((50 <= re) * (re < 100)).sum() * 100.0 / total
+                        section_100 = (100 <= re).sum() * 100.0 / total
+
+                        node_compare_specs.append(
+                            [
+                                quanted_name,
+                                cos_sim,
+                                mre,
+                                section_0_1,
+                                section_1_10,
+                                section_10_50,
+                                section_50_100,
+                                section_100,
+                            ]
+                        )
+                        if (
+                            interrested_node is not None
+                            and quanted_name in interrested_node
+                        ):
                             import plotext as plt
-                            plt.theme('matrix')
+
+                            plt.theme("matrix")
                             plt.subplots(1, 2)
-                            plt.subplot(1, 1)                     
+                            plt.subplot(1, 1)
                             plt.hist(float_data.numpy(), bins=256)
                             plt.subplot(1, 2)
                             plt.hist(quant_data.numpy(), bins=256)
                             plt.show()
+                            plt.savefig("plot.txt")
 
             logger.info(
                 tabulate(
                     node_compare_specs,
-                    headers=["\nname", "\ncos_sim", "\nmre"],
+                    headers=[
+                        "\nname",
+                        "\ncos_sim",
+                        "\nmre",
+                        "\nrelative error[0-1)",
+                        "\nrelative error[1-10)",
+                        "\nrelative error[10-50)",
+                        "\nrelative error[50-100)",
+                        "\nrelative error[100-inf)",
+                    ],
                     floatfmt=".4f",
                 )
             )
