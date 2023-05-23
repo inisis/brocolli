@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="brocolli",
-    version="4.0.1",
+    version="4.0.2",
     author="desmond",
     author_email="desmond.yao@buaa.edu.cn",
     description="everything in pytorch",
