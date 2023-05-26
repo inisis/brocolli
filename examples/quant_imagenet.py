@@ -86,8 +86,8 @@ def train_func(model):
 
     criterion = torch.nn.CrossEntropyLoss().to(device)
 
-    optimizer = torch.optim.SGD(
-        model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001
+    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()),
+                                lr=0.01, momentum=0.9, weight_decay=0.0001
     )
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 30, gamma=0.1)
@@ -114,9 +114,9 @@ def calibrate_func(model):
         True,
     )
     val_loader = torch.utils.data.DataLoader(
-        # Subset(dataset, indices=[_ for _ in range(0, 8)]),
-        dataset,
-        batch_size=8,
+        Subset(dataset, indices=[_ for _ in range(0, 1024)]),
+        # dataset,
+        batch_size=1,
         shuffle=False,
         num_workers=8,
         pin_memory=True,
@@ -143,7 +143,7 @@ def calibrate_func(model):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            if i % 10 == 0:
+            if i % 1000 == 0:
                 progress.display(i)
 
         logger.info(f" * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}")
@@ -155,8 +155,8 @@ model.eval()
 pytorch_quantizer = PytorchQuantizer(model, (1, 3, 224, 224))
 pytorch_quantizer.fuse()
 pytorch_quantizer.prepare()
-pytorch_quantizer.finetune(train_func)
-# pytorch_quantizer.calibrate(calibrate_func)
-# pytorch_quantizer.convert()
-# pytorch_quantizer.evaluate(calibrate_func)
-# pytorch_quantizer.profile(True)
+pytorch_quantizer.calibrate(calibrate_func)
+pytorch_quantizer.convert()
+pytorch_quantizer.evaluate(calibrate_func)
+pytorch_quantizer.profile(True)
+pytorch_quantizer.compare(interrested_node=['add_7'])
