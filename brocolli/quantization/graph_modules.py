@@ -20,3 +20,19 @@ class BrocolliGraphModule(GraphModule):
                 graph_module.__dict__[key] = value
 
         return graph_module
+
+    def dump_json(self, filename=None):
+        import json
+
+        json_dict = {}
+        self.graph.print_tabular()
+        for node in list(self.graph.nodes):
+            if node.op == "call_module":
+                module = dict(self.named_modules())[node.target]
+                if hasattr(module, "output_scale"):
+                    output_scale = float(module.output_scale)
+                    json_dict[node.name] = output_scale
+
+        json_object = json.dumps(json_dict, indent=4)
+        with open(f"{filename}", "w") as outfile:
+            outfile.write(json_object)
