@@ -261,7 +261,7 @@ class MinMaxObserver(_ObserverBase):
         if self.min_val >= 0:
             quant_min, quant_max = 0, 255
 
-        max_val_pos = torch.max(self.min_val, self.max_val)
+        max_val_pos = torch.max(torch.abs(self.min_val), self.max_val)
         scale = max_val_pos / quant_max
         return scale
 
