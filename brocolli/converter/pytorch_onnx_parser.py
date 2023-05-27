@@ -360,6 +360,9 @@ class PytorchOnnxParser:
                 elif function_name == "baddbmm":
                     baddbmm_layer = BADDBMMFunc(node)
                     self.node_post_process(baddbmm_layer)
+                elif function_name == "permute":
+                    permute_layer = PermuteFunc(node)
+                    self.node_post_process(permute_layer)                    
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
