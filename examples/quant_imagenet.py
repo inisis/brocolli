@@ -114,7 +114,7 @@ def calibrate_func(model):
         True,
     )
     val_loader = torch.utils.data.DataLoader(
-        Subset(dataset, indices=[_ for _ in range(0, 1024)]),
+        Subset(dataset, indices=[_ for _ in range(0, 1)]),
         # dataset,
         batch_size=1,
         shuffle=False,
@@ -159,4 +159,4 @@ pytorch_quantizer.calibrate(calibrate_func)
 pytorch_quantizer.convert()
 pytorch_quantizer.evaluate(calibrate_func)
 pytorch_quantizer.profile(True)
-pytorch_quantizer.compare(interrested_node=['add_7'])
+pytorch_quantizer.compare()
