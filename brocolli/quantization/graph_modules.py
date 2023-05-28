@@ -25,7 +25,6 @@ class BrocolliGraphModule(GraphModule):
         import json
 
         json_dict = {}
-        self.graph.print_tabular()
         for node in list(self.graph.nodes):
             if node.op == "call_module":
                 module = dict(self.named_modules())[node.target]
