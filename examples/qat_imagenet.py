@@ -14,7 +14,7 @@ from brocolli.testing.quant_utils import AverageMeter, ProgressMeter, accuracy
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
-    losses = AverageMeter("Loss", ":.4e")
+    losses = AverageMeter("Loss", ":.4f")
     top1 = AverageMeter("Acc@1", ":6.2f")
     top5 = AverageMeter("Acc@5", ":6.2f")
     batch_time = AverageMeter("Time", ":6.3f")
@@ -35,9 +35,11 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         targets = targets.to(device)
 
         outputs = model(inputs)
+
         loss = criterion(outputs, targets)
 
         acc1, acc5 = accuracy(outputs.data, targets.data, topk=(1, 5))
+    
         losses.update(loss.item(), inputs.size(0))
         top1.update(acc1.item(), inputs.size(0))
         top5.update(acc5.item(), inputs.size(0))
@@ -92,7 +94,7 @@ def train_func(model):
 
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 30, gamma=0.1)
 
-    for epoch in range(0, 120):
+    for epoch in range(0, 1):
         train(train_loader, model, criterion, optimizer, epoch, device, None)
         lr_scheduler.step()
 
@@ -114,8 +116,7 @@ def calibrate_func(model):
         True,
     )
     val_loader = torch.utils.data.DataLoader(
-        Subset(dataset, indices=[_ for _ in range(0, 1)]),
-        # dataset,
+        dataset,
         batch_size=1,
         shuffle=False,
         num_workers=8,
@@ -143,7 +144,7 @@ def calibrate_func(model):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            if i % 1000 == 0:
+            if i % 10 == 0:
                 progress.display(i)
 
         logger.info(f" * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}")
@@ -154,9 +155,9 @@ model.eval()
 
 pytorch_quantizer = PytorchQuantizer(model, (1, 3, 224, 224))
 pytorch_quantizer.fuse()
-pytorch_quantizer.prepare()
+pytorch_quantizer.prepare_calibration()
 pytorch_quantizer.calibrate(calibrate_func)
+pytorch_quantizer.prepare_finetune()
+pytorch_quantizer.finetune(train_func)
 pytorch_quantizer.convert()
 pytorch_quantizer.evaluate(calibrate_func)
-pytorch_quantizer.profile(True)
-pytorch_quantizer.compare()
