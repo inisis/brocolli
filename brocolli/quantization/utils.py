@@ -66,3 +66,85 @@ def check_result(actual, desired):
 
 def _node_dict(graph_module):
     return {n.name: n for n in graph_module.graph.nodes}
+
+
+def plot_hist(module, float_node, quant_node, quanted_name):
+    import matplotlib.pyplot as plt
+
+    float_data = float_node.meta["tensor_meta"]["tensor"]
+    quant_data = quant_node.meta["tensor_meta"]["tensor"] * module.output_scale
+    float_shape = float_node.meta["tensor_meta"]["shape"]
+    quant_shape = quant_node.meta["tensor_meta"]["shape"]
+    if hasattr(module, "float_weight"):
+        plt.figure(frameon=False, clear=True)
+        plt.subplot(2, 2, 1)
+        plt.title(
+            f"{quanted_name} float weight, shape:{module.float_weight.shape}", wrap=True
+        )
+        plt.hist(module.float_weight.flatten().numpy(), bins=256)
+        plt.subplot(2, 2, 2)
+        plt.title(
+            f"{quanted_name} quantization weight, shape:{module.weight.shape}",
+            wrap=True,
+        )
+        plt.hist(
+            (module.weight.permute(1, 2, 3, 0) * module.wt_scale.flatten(0))
+            .flatten()
+            .numpy(),
+            bins=256,
+        )
+        plt.subplot(2, 2, 3)
+        plt.title(f"{quanted_name} float data, shape:{float_shape}", wrap=True)
+        plt.hist(float_data.flatten().numpy(), bins=256)
+        plt.subplot(2, 2, 4)
+        plt.title(f"{quanted_name} quantization data, shape:{quant_shape}", wrap=True)
+        plt.hist(quant_data.flatten().numpy(), bins=256)
+        plt.ioff()
+        plt.tight_layout(pad=2, w_pad=3, h_pad=3)
+        plt.show()
+        plt.savefig(f"{quanted_name}.jpg")
+        plt.close()
+        # for i in range(float_shape[1]):
+        #     plt.figure(frameon=False, clear=True)
+        #     plt.subplot(1, 2, 1)
+        #     plt.hist(float_data[:,i,:,:].flatten().numpy(), bins=256)
+        #     plt.subplot(1, 2, 2)
+        #     plt.hist(quant_data[:,i,:,:].flatten().numpy(), bins=256)
+        #     plt.ioff()
+        #     plt.tight_layout(pad=2, w_pad=3, h_pad=3)
+        #     plt.show()
+        #     plt.savefig(f'{quanted_name}_channel_{i}.jpg')
+        #     plt.close()
+    else:
+        plt.figure(frameon=False, clear=True)
+        plt.subplot(1, 2, 1)
+        plt.title(f"{quanted_name} float data, shape:{float_shape}", wrap=True)
+        plt.hist(float_data.flatten().numpy(), bins=256)
+        plt.subplot(1, 2, 2)
+        plt.title(f"{quanted_name} quantization data, shape:{quant_shape}", wrap=True)
+        plt.hist(quant_data.flatten().numpy(), bins=256)
+        plt.ioff()
+        plt.tight_layout(pad=2, w_pad=3, h_pad=3)
+        plt.show()
+        plt.savefig(f"{quanted_name}.jpg")
+        plt.close()
+        # for i in range(float_shape[1]):
+        #     float_data_channel = float_data[:,i,:,:].flatten()
+        #     quant_data_channel = quant_data[:,i,:,:].flatten()
+        #     cos_sim = F.cosine_similarity(float_data_channel, quant_data_channel, dim=0)
+        #     mre = (
+        #         torch.abs(quant_data_channel - float_data_channel).sum()
+        #         * 100.0
+        #         / torch.abs(float_data_channel).sum()
+        #     )
+        #     plt.figure(frameon=False, clear=True)
+        #     plt.subplot(1, 2, 1)
+        #     plt.title(f'mre: {mre} cos_sim: {cos_sim}', wrap=True)
+        #     plt.hist(float_data_channel.numpy(), bins=256)
+        #     plt.subplot(1, 2, 2)
+        #     plt.hist(quant_data_channel.numpy(), bins=256)
+        #     plt.ioff()
+        #     plt.tight_layout(pad=2, w_pad=3, h_pad=3)
+        #     plt.show()
+        #     plt.savefig(f'{quanted_name}_channel_{i}.jpg')
+        #     plt.close()
