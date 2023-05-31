@@ -83,7 +83,7 @@ def calibrate_func(model):
 
     with torch.no_grad():
         tick = time.time()
-        for (images, targets) in train_loader:
+        for images, targets in train_loader:
             pred = model(images)
             pred_label = torch.argmax(pred, dim=1, keepdims=True)
             test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
@@ -107,7 +107,7 @@ def evaluate_func(model):
 
     with torch.no_grad():
         tick = time.time()
-        for (images, targets) in test_loader:
+        for images, targets in test_loader:
             pred = model(images)
             pred_label = torch.argmax(pred, dim=1, keepdims=True)
             test_acc += pred_label.eq(targets.view_as(pred_label)).sum().item()
@@ -121,9 +121,9 @@ def evaluate_func(model):
 
 pytorch_quantizer = PytorchQuantizer(model, (1, 1, 28, 28))
 pytorch_quantizer.fuse()
-pytorch_quantizer.prepare()
+pytorch_quantizer.prepare_calibration()
 pytorch_quantizer.calibrate(calibrate_func)
 pytorch_quantizer.convert()
 pytorch_quantizer.evaluate(evaluate_func)
 pytorch_quantizer.profile()
-pytorch_quantizer.compare()
+pytorch_quantizer.compare(interrested_node=["conv1", "conv2", "fc1", "fc2"])
