@@ -24,6 +24,7 @@ from .utils import (
     _node_dict,
     create_target,
     get_function_name,
+    plot_hist,
 )
 from .graph_modules import BrocolliGraphModule
 from .observer import get_available_observers
@@ -240,7 +241,7 @@ class PytorchQuantizer:
         else:
             return False
 
-    def prepare(self, lsq=False):
+    def prepare_calibration(self, lsq=False):
         """
         Return:
             A GraphModule with observer (configured by qconfig_dict), ready for calibration
@@ -278,14 +279,25 @@ class PytorchQuantizer:
                 for user in users:
                     user.replace_input_with(node, new_node)
 
-        self.observed_model = torch.fx.GraphModule(graph_module, graph_module.graph)
+        self.observed_model = BrocolliGraphModule(graph_module, graph_module.graph)
+
+    def prepare_finetune(self):
+        graph_module = copy.deepcopy(self.observed_model)
+        modules = dict(graph_module.named_modules())
+        for node in list(graph_module.graph.nodes):
+            if node.op == "call_module" and node.type == "observer":
+                module = modules[node.target]
+                module.calculate_qparams()
+                module.enable_lsq()
+
+        self.finetune_model = BrocolliGraphModule(graph_module, graph_module.graph)
 
     def finetune(self, train_func):
-        for name, param in self.observed_model.named_parameters():
+        for name, param in self.finetune_model.named_parameters():
             if not "observer" in name:
                 param.requires_grad_(False)
 
-        train_func(self.observed_model)
+        train_func(self.finetune_model)
         logger.info("calibtraion finish")
 
     def calibrate(self, calibtraion_func):
@@ -307,7 +319,12 @@ class PytorchQuantizer:
             return self.find_output_observer_node(list(node.users)[0])
 
     def convert(self):
-        graph_module = copy.deepcopy(self.observed_model)
+        if hasattr(self, "finetune_model"):
+            float_model = self.finetune_model
+        else:
+            float_model = self.observed_model
+
+        graph_module = copy.deepcopy(float_model).to(torch.device("cpu"))
         modules = dict(graph_module.named_modules())
         self.op_maps = {}
         for node in list(graph_module.graph.nodes):
@@ -332,11 +349,10 @@ class PytorchQuantizer:
                 module.activation_pre_process = modules[input_observer_node.target]
                 output_observer_node = self.find_output_observer_node(node)
                 module.activation_post_process = modules[output_observer_node.target]
+                module.name = node.name
                 self.op_maps[node.name] = output_observer_node.name[:-9]
                 if isinstance(module, (nn.Conv2d, nn.Conv1d)):
                     quantized = Conv2d.from_float(module)
-                elif isinstance(module, nn.ReLU):
-                    quantized = ReLU.from_float(module)
                 elif isinstance(module, nn.MaxPool2d):
                     quantized = MaxPool.from_float(module)
                 elif isinstance(module, nn.Linear):
@@ -352,6 +368,12 @@ class PytorchQuantizer:
 
                 with graph_module.graph.inserting_after(node):
                     replace_node_module(node, modules, quantized)
+            elif node.op == "call_module":
+                module = modules[node.target]
+                if isinstance(module, nn.ReLU):
+                    prev_node = list(node.all_input_nodes)[0]
+                    node.replace_all_uses_with(prev_node)
+                    graph_module.graph.erase_node(node)
             elif node.op == "call_function" and self._is_quant_op(
                 node, graph_module, self.quant_ops
             ):
@@ -374,7 +396,6 @@ class PytorchQuantizer:
                     graph_module.graph.erase_node(node)
                     quanted_node.name = node.name
                     self.op_maps[node.name] = output_observer_node.name[:-9]
-
             elif node.op == "output":
                 if isinstance(node.args[0], Node):
                     prev_node = node.args[
@@ -415,7 +436,7 @@ class PytorchQuantizer:
                 node.replace_all_uses_with(input_node)
                 graph_module.graph.erase_node(node)
 
-        self.quanted_model = torch.fx.GraphModule(graph_module, graph_module.graph)
+        self.quanted_model = BrocolliGraphModule(graph_module, graph_module.graph)
         self.print_tabular(self.quanted_model)
         logger.info("quantization finish")
 
@@ -451,7 +472,7 @@ class PytorchQuantizer:
         print_model_size(self.graph_module)
         print_model_size(self.quanted_model)
 
-    def compare(self, interrested_node=None):
+    def compare(self, interrested_node=None, json_file=None):
         logger.info("float runs")
         if hasattr(self, "fused_model"):
             float_model = self.fused_model
@@ -470,6 +491,7 @@ class PytorchQuantizer:
         quant_node_dict = _node_dict(quanted_model)
 
         def compare(float_node_dict, quant_node_dict, float_model, quanted_model):
+            float_modules = dict(float_model.named_modules())
             quanted_modules = dict(quanted_model.named_modules())
             node_compare_specs = []
             for quanted_name in self.op_maps.keys():
@@ -526,32 +548,25 @@ class PytorchQuantizer:
                             interrested_node is not None
                             and quanted_name in interrested_node
                         ):
-                            import plotext as plt
-
-                            plt.theme("matrix")
-                            plt.subplots(1, 2)
-                            plt.subplot(1, 1)
-                            plt.hist(float_data.numpy(), bins=256)
-                            plt.subplot(1, 2)
-                            plt.hist(quant_data.numpy(), bins=256)
-                            plt.show()
-                            plt.savefig("plot.txt")
+                            plot_hist(module, float_node, quant_node, quanted_name)
 
             logger.info(
                 tabulate(
                     node_compare_specs,
                     headers=[
-                        "\nname",
-                        "\ncos_sim",
-                        "\nmre",
-                        "\nrelative error[0-1)",
-                        "\nrelative error[1-10)",
-                        "\nrelative error[10-50)",
-                        "\nrelative error[50-100)",
-                        "\nrelative error[100-inf)",
+                        "\nNAME",
+                        "\nCOSSIM",
+                        "\nMRE",
+                        "\nRE[0-1)",
+                        "\nRE[1-10)",
+                        "\nRE[10-50)",
+                        "\nRE[50-100)",
+                        "\nRE[100-inf)",
                     ],
                     floatfmt=".4f",
                 )
             )
 
         compare(float_node_dict, quant_node_dict, float_model, quanted_model)
+        if json_file:
+            quanted_model.dump_json(json_file)
