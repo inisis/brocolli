@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from collections import namedtuple
 
-from .observer import MinMaxObserver, PerChannelMinMaxObserver, LSQObserver
+from .observer import MinMaxObserver, PerChannelMinMaxObserver
 
 
 class QConfig(namedtuple("QConfig", ["activation", "weight"])):
@@ -16,16 +16,7 @@ class QConfig(namedtuple("QConfig", ["activation", "weight"])):
 
 
 def get_qconfig(bit, input_dtype=torch.qint8, lsq=False):
-    if lsq:
-        return QConfig(
-            activation=LSQObserver.with_args(
-                dtype=input_dtype, all_positive=True, symmetric=False, per_channel=False
-            ),
-            weight=LSQObserver.with_args(
-                dtype=input_dtype, all_positive=True, symmetric=False, per_channel=True
-            ),
-        )
-    elif bit == 8:
+    if bit == 8:
         return QConfig(
             activation=MinMaxObserver.with_args(
                 dtype=input_dtype, qscheme=torch.per_tensor_symmetric
