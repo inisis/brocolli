@@ -135,13 +135,17 @@ class _ConvNd(nn.Module):
 
         act_scale = activation_pre_process.calculate_qparams()
         logger.debug(
-            f"activation scale: {act_scale}, max_val: {activation_pre_process.max_val}, min_val: {activation_pre_process.min_val}"
+            f"{mod.name} activation scale: {act_scale}, max_val: {activation_pre_process.max_val}, min_val: {activation_pre_process.min_val}"
         )
         output_scale = activation_post_process.calculate_qparams()
         logger.debug(
-            f"output scale: {output_scale}, max_val: {activation_post_process.max_val}, min_val: {activation_post_process.min_val}"
+            f"{mod.name} output scale: {output_scale}, max_val: {activation_post_process.max_val}, min_val: {activation_post_process.min_val}"
         )
-        qbias = mod.bias.float() if mod.bias is not None else None
+        qbias = (
+            _quantize_bias(mod.bias.float(), act_scale * wt_scale)
+            if mod.bias is not None
+            else None
+        )
 
         assert (
             weight_post_process.dtype == torch.qint8
@@ -158,13 +162,12 @@ class _ConvNd(nn.Module):
             None,
             mod.padding_mode,
         )
-
+        qconv.name = mod.name
         qconv.qbit = mod.activation_pre_process.qbit
+        qconv.float_weight = mod.weight
         qconv.weight = torch.nn.Parameter(qweight, requires_grad=False)
         if mod.bias is not None:
-            qconv.bias = torch.nn.Parameter(
-                qbias.reshape(1, -1, 1, 1), requires_grad=False
-            )
+            qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
         qconv.act_scale = torch.Tensor(act_scale).to(qweight.device)
         qconv.wt_scale = torch.Tensor(wt_scale).reshape(1, -1, 1, 1).to(qweight.device)
         qconv.output_scale = torch.Tensor(output_scale).to(qweight.device)
@@ -240,20 +243,16 @@ class Conv2d(_ConvNd, BaseOperator):
             raise ValueError("Input shape must be `(N, C, H, W)`!")
 
         out = F.conv2d(
-            input.to(torch.double),
-            self.weight.to(torch.double),
-            None,
+            input.to(torch.float32),  # double may overflow for large input
+            self.weight.to(torch.float32),
+            self.bias.to(torch.float32),
             self.stride,
             self.padding,
             self.dilation,
             self.groups,
         )
 
-        if self.bias is not None:
-            out = (out * self.act_scale * self.wt_scale + self.bias) / self.output_scale
-        else:
-            out = out * self.act_scale * self.wt_scale / self.output_scale
-
+        out = out * self.act_scale * self.wt_scale / self.output_scale
         out = self.clamp(out)
 
         return out
