@@ -28,6 +28,7 @@ from .utils import (
 )
 from .graph_modules import BrocolliGraphModule
 from .observer import get_available_observers
+from .lsq import LSQER
 
 from .quantization_layers import *
 from .quantization_layers.registry import get_default_quant_ops
@@ -292,6 +293,9 @@ class PytorchQuantizer:
 
         self.finetune_model = BrocolliGraphModule(graph_module, graph_module.graph)
 
+    def prepare_lsq(self):
+        self.prepare_finetune()
+
     def finetune(self, train_func):
         for name, param in self.finetune_model.named_parameters():
             if not "observer" in name:
@@ -305,6 +309,21 @@ class PytorchQuantizer:
         logger.info("calibtraion start")
         calibtraion_func(self.observed_model)
         logger.info("calibtraion finish")
+
+    def lsq(self, calibtraion_func):
+        if hasattr(self, "fused_model"):
+            float_module = copy.deepcopy(self.fused_model)
+        else:
+            float_module = copy.deepcopy(self.graph_module)
+            
+        for name, param in self.finetune_model.named_parameters():
+            if not "observer" in name:
+                param.requires_grad_(False)            
+               
+        logger.info("lsq start")
+        lsq_module = LSQER(float_module.eval(), self.finetune_model)
+        calibtraion_func(lsq_module)
+        logger.info("lsq finish")
 
     def find_input_observer_node(self, node):
         if node.type == "observer":
