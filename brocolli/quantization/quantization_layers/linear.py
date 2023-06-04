@@ -52,9 +52,9 @@ class Linear(nn.Module, BaseOperator):
         qlinear.qbit = mod.activation_pre_process.qbit
         qlinear.weight = torch.nn.Parameter(qweight, requires_grad=False)
         qlinear.bias = torch.nn.Parameter(qbias, requires_grad=False)
-        qlinear.act_scale = torch.Tensor(act_scale.unsqueeze(0)).to(qweight.device)
-        qlinear.wt_scale = torch.Tensor(wt_scale).reshape(1, -1).to(qweight.device)
-        qlinear.output_scale = torch.Tensor(output_scale.unsqueeze(0)).to(qweight.device)
+        qlinear.act_scale = float(act_scale)
+        qlinear.wt_scale = wt_scale.reshape(1, -1)
+        qlinear.output_scale = float(output_scale)
         qlinear.output_min_value = mod.activation_post_process.min_val
         qlinear.output_max_value = mod.activation_post_process.max_val
 
