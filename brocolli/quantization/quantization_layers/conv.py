@@ -168,9 +168,9 @@ class _ConvNd(nn.Module):
         qconv.weight = torch.nn.Parameter(qweight, requires_grad=False)
         if mod.bias is not None:
             qconv.bias = torch.nn.Parameter(qbias, requires_grad=False)
-        qconv.act_scale = torch.tensor(act_scale).to(qweight.device)
-        qconv.wt_scale = torch.tensor(wt_scale).reshape(1, -1, 1, 1).to(qweight.device)
-        qconv.output_scale = torch.tensor(output_scale).to(qweight.device)
+        qconv.act_scale = act_scale.to(qweight.device)
+        qconv.wt_scale = wt_scale.reshape(1, -1, 1, 1).to(qweight.device)
+        qconv.output_scale = output_scale.to(qweight.device)
         qconv.output_min_value = activation_post_process.min_val
         qconv.output_max_value = activation_post_process.max_val
 
