@@ -7,7 +7,7 @@ class Input(nn.Module, BaseOperator):
         super(Input, self).__init__()
 
     def extra_repr(self):
-        s = "scale={scale}"
+        s = "output_scale={output_scale}"
         return s.format(**self.__dict__)
 
     def _get_name(self):
