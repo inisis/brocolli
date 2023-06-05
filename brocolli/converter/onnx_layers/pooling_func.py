@@ -51,6 +51,7 @@ class PoolingFunc(BaseLayer):
 
         kernel_size = self.get_value_by_key_or_index("kernel_size", 1, None)
         stride = self.get_value_by_key_or_index("stride", 2, kernel_size)
+        stride = kernel_size if stride is None else stride
         padding = self.get_value_by_key_or_index("padding", 3, 0)
         ceil_mode = self.get_value_by_key_or_index("ceil_mode", 4, False)
 

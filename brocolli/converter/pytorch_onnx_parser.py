@@ -106,7 +106,7 @@ class PytorchOnnxParser:
                 elif isinstance(module, nn.Linear):
                     linear_layer = LinearLayer(node, module)
                     self.node_post_process(linear_layer)
-                elif isinstance(module, nn.Dropout):
+                elif isinstance(module, (nn.Dropout, nn.Dropout2d)):
                     dropout_layer = DropoutLayer(node, module)
                     self.node_post_process(dropout_layer)
                 elif isinstance(module, nn.ReLU6):
@@ -362,7 +362,10 @@ class PytorchOnnxParser:
                     self.node_post_process(baddbmm_layer)
                 elif function_name == "permute":
                     permute_layer = PermuteFunc(node)
-                    self.node_post_process(permute_layer)                    
+                    self.node_post_process(permute_layer)
+                elif function_name == "log_softmax":
+                    logsoftmax_layer = LogSoftmaxFunc(node)
+                    self.node_post_process(logsoftmax_layer)
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)

@@ -94,3 +94,4 @@ from .unbind_func import UnbindFunc
 from .stack_func import StackFunc
 from .glu_func import GLUFunc
 from .baddbmm_func import BADDBMMFunc
+from .log_softmax_func import LogSoftmaxFunc
