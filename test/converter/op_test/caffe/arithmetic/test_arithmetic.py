@@ -94,6 +94,53 @@ class TestArithmeticClass:
         y = torch.rand(shape[1])
         Tester(request.node.name, model, (x, y))
 
+    def test_power(
+        self,
+        request,
+        shape=(1, 3, 1, 1),
+    ):
+        class Power(torch.nn.Module):
+            def __init__(self):
+                super(Power, self).__init__()
+
+            def forward(self, x):
+                return x.pow(2)
+
+        model = Power()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
+    def test_TorchPower(
+        self,
+        request,
+        shape=(1, 3, 1, 1),
+    ):
+        class TorchPower(torch.nn.Module):
+            def __init__(self):
+                super(TorchPower, self).__init__()
+
+            def forward(self, x):
+                return torch.pow(x, 2)
+
+        model = TorchPower()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
+    def test_Power(
+        self,
+        request,
+        shape=(1, 3, 1, 1),
+    ):
+        class TorchPower(torch.nn.Module):
+            def __init__(self):
+                super(TorchPower, self).__init__()
+
+            def forward(self, x):
+                return x ** 2
+
+        model = TorchPower()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
