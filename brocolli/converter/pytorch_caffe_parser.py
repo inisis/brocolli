@@ -358,7 +358,10 @@ class PytorchCaffeParser:
                     self.layers.append(layer_data)
                 elif function_name == "pow":
                     layer_data = self.rename_pow(node)
-                    self.layers.append(layer_data)                    
+                    self.layers.append(layer_data)   
+                elif function_name == "sqrt":
+                    layer_data = self.rename_sqrt(node)
+                    self.layers.append(layer_data)                                       
                 else:
                     raise NotImplementedError(
                         "function %s is not implemented" % (function_name)
@@ -398,7 +401,10 @@ class PytorchCaffeParser:
                 elif str(node.target) == "pow":
                     layer_data = self.rename_pow(node)
                     self.layers.append(layer_data)                        
-                else:
+                elif str(node.target) == "sqrt":
+                    layer_data = self.rename_sqrt(node)
+                    self.layers.append(layer_data)
+                else:                    
                     raise NotImplementedError(
                         "method %s is not implemented" % (str(node.target))
                     )
@@ -1553,6 +1559,15 @@ class PytorchCaffeParser:
         layer = pb2.LayerParameter()
         layer.type = "Power"
         layer.power_param.power = source_node.args[1]
+
+        self.add_bottom_top(layer, source_node)
+
+        return layer
+
+    def rename_sqrt(self, source_node):
+        layer = pb2.LayerParameter()
+        layer.type = "Power"
+        layer.power_param.power = 0.5
 
         self.add_bottom_top(layer, source_node)
 

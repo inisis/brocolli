@@ -142,6 +142,39 @@ class TestArithmeticClass:
         x = torch.rand(shape)
         Tester(request.node.name, model, x)
 
+    def test_sqrt(
+        self,
+        request,
+        shape=(1, 3, 1, 1),
+    ):
+        class Sqrt(torch.nn.Module):
+            def __init__(self):
+                super(Sqrt, self).__init__()
+
+            def forward(self, x):
+                return x.sqrt()
+
+        model = Sqrt()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
+    def test_TorchSqrt(
+        self,
+        request,
+        shape=(1, 3, 1, 1),
+    ):
+        class TorchSqrt(torch.nn.Module):
+            def __init__(self):
+                super(TorchSqrt, self).__init__()
+
+            def forward(self, x):
+                return torch.sqrt(x)
+
+        model = TorchSqrt()
+        x = torch.rand(shape)
+        Tester(request.node.name, model, x)
+
+
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     pytest.main(
