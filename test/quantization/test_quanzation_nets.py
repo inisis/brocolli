@@ -43,13 +43,13 @@ def test_mnist(shape=(1, 1, 28, 28)):
             return x
 
     model = Net()
-    url = "http://120.224.26.73:15030/aifarm/best.pt"
+    url = "http://180.127.11.166:15030/aifarm/best.pt"
     state_dict = load_state_dict_from_url(url, map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
 
     class MNISTCHINA(datasets.MNIST):
-        mirrors = ["http://120.224.26.73:15030/aifarm/mnist/"]
+        mirrors = ["http://180.127.11.166:15030/aifarm/mnist/"]
 
         def __init__(
             self,
