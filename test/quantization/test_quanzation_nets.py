@@ -117,11 +117,12 @@ def test_mnist(shape=(1, 1, 28, 28)):
 
     pytorch_quantizer = PytorchQuantizer(model, shape)
     pytorch_quantizer.fuse()
-    pytorch_quantizer.prepare()
+    pytorch_quantizer.prepare_calibration()
     pytorch_quantizer.calibrate(calibrate_func)
     pytorch_quantizer.convert()
     pytorch_quantizer.evaluate(evaluate_func)
     pytorch_quantizer.profile(True)
+    pytorch_quantizer.compare()
 
 
 if __name__ == "__main__":
