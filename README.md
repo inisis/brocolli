@@ -1,4 +1,4 @@
-# brocolli
+# brocolli (Deprecated, this repo is no longer maintained)
 
 torch fx based pytorch model converter, including pytorch2caffe, pytorch2onnx.  
 torch fx based pytorch model quantizier.
